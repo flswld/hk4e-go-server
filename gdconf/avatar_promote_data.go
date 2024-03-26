@@ -4,6 +4,12 @@ import (
 	"hk4e/pkg/logger"
 )
 
+// AddProp 增加属性
+type AddProp struct {
+	Type  int32   // 类型
+	Value float32 // 值
+}
+
 // AvatarPromoteData 角色突破配置表
 type AvatarPromoteData struct {
 	PromoteId      int32 `csv:"角色突破ID"`
@@ -20,7 +26,17 @@ type AvatarPromoteData struct {
 	LevelLimit     int32 `csv:"解锁等级上限,omitempty"`
 	MinPlayerLevel int32 `csv:"冒险等级要求,omitempty"`
 
+	AddProp1Type  int32   `csv:"[增加属性]1类型,omitempty"`
+	AddProp1Value float32 `csv:"[增加属性]1值,omitempty"`
+	AddProp2Type  int32   `csv:"[增加属性]2类型,omitempty"`
+	AddProp2Value float32 `csv:"[增加属性]2值,omitempty"`
+	AddProp3Type  int32   `csv:"[增加属性]3类型,omitempty"`
+	AddProp3Value float32 `csv:"[增加属性]3值,omitempty"`
+	AddProp4Type  int32   `csv:"[增加属性]4类型,omitempty"`
+	AddProp4Value float32 `csv:"[增加属性]4值,omitempty"`
+
 	CostItemMap map[uint32]uint32 // 消耗物品列表
+	AddPropList []*AddProp        // 增加属性列表
 }
 
 func (g *GameDataConfig) loadAvatarPromoteData() {
@@ -44,6 +60,33 @@ func (g *GameDataConfig) loadAvatarPromoteData() {
 				delete(avatarPromoteData.CostItemMap, itemId)
 			}
 		}
+		// 增加属性列表
+		addPropList := make([]*AddProp, 0)
+		if avatarPromoteData.AddProp1Type != 0 {
+			addPropList = append(addPropList, &AddProp{
+				Type:  avatarPromoteData.AddProp1Type,
+				Value: avatarPromoteData.AddProp1Value,
+			})
+		}
+		if avatarPromoteData.AddProp2Type != 0 {
+			addPropList = append(addPropList, &AddProp{
+				Type:  avatarPromoteData.AddProp2Type,
+				Value: avatarPromoteData.AddProp2Value,
+			})
+		}
+		if avatarPromoteData.AddProp3Type != 0 {
+			addPropList = append(addPropList, &AddProp{
+				Type:  avatarPromoteData.AddProp3Type,
+				Value: avatarPromoteData.AddProp3Value,
+			})
+		}
+		if avatarPromoteData.AddProp4Type != 0 {
+			addPropList = append(addPropList, &AddProp{
+				Type:  avatarPromoteData.AddProp4Type,
+				Value: avatarPromoteData.AddProp4Value,
+			})
+		}
+		avatarPromoteData.AddPropList = addPropList
 		// 通过突破等级找到突破数据
 		g.AvatarPromoteDataMap[avatarPromoteData.PromoteId][avatarPromoteData.PromoteLevel] = avatarPromoteData
 	}

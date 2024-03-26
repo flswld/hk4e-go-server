@@ -10,6 +10,12 @@ import (
 	"github.com/hjson/hjson-go/v4"
 )
 
+// PropGrow 属性成长
+type PropGrow struct {
+	Type  int32 // 类型
+	Curve int32 // 曲线
+}
+
 // AvatarData 角色配置表
 type AvatarData struct {
 	AvatarId           int32    `csv:"ID"`
@@ -28,8 +34,16 @@ type AvatarData struct {
 	PromoteRewardLevel IntArray `csv:"角色突破奖励获取等阶,omitempty"`
 	PromoteReward      IntArray `csv:"角色突破奖励,omitempty"`
 
+	PropGrow1Type  int32 `csv:"[属性成长]1类型,omitempty"`
+	PropGrow1Curve int32 `csv:"[属性成长]1曲线,omitempty"`
+	PropGrow2Type  int32 `csv:"[属性成长]2类型,omitempty"`
+	PropGrow2Curve int32 `csv:"[属性成长]2曲线,omitempty"`
+	PropGrow3Type  int32 `csv:"[属性成长]3类型,omitempty"`
+	PropGrow3Curve int32 `csv:"[属性成长]3曲线,omitempty"`
+
 	AbilityHashCodeList []int32
 	PromoteRewardMap    map[uint32]uint32
+	PropGrowList        []*PropGrow
 }
 
 type ConfigAvatar struct {
@@ -73,6 +87,27 @@ func (g *GameDataConfig) loadAvatarData() {
 				avatarData.PromoteRewardMap[uint32(promoteLevel)] = uint32(rewardId)
 			}
 		}
+		// 属性成长列表
+		propGrowList := make([]*PropGrow, 0)
+		if avatarData.PropGrow1Type != 0 {
+			propGrowList = append(propGrowList, &PropGrow{
+				Type:  avatarData.PropGrow1Type,
+				Curve: avatarData.PropGrow1Curve,
+			})
+		}
+		if avatarData.PropGrow2Type != 0 {
+			propGrowList = append(propGrowList, &PropGrow{
+				Type:  avatarData.PropGrow2Type,
+				Curve: avatarData.PropGrow2Curve,
+			})
+		}
+		if avatarData.PropGrow3Type != 0 {
+			propGrowList = append(propGrowList, &PropGrow{
+				Type:  avatarData.PropGrow3Type,
+				Curve: avatarData.PropGrow3Curve,
+			})
+		}
+		avatarData.PropGrowList = propGrowList
 		g.AvatarDataMap[avatarData.AvatarId] = avatarData
 	}
 	logger.Info("AvatarData count: %v", len(g.AvatarDataMap))

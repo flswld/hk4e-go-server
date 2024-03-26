@@ -79,6 +79,7 @@ type GameDataConfig struct {
 	MonsterRelationshipDataMap map[int32]*MonsterRelationshipData      // 怪物关联
 	MonsterDataMap             map[int32]*MonsterData                  // 怪物
 	ProudSkillDataMap          map[int32]map[int32]*ProudSkillData     // 天赋
+	AvatarCurveDataMap         map[int32]*AvatarCurveData              // 角色曲线
 }
 
 func InitGameDataConfig() {
@@ -190,6 +191,7 @@ func (g *GameDataConfig) load(loadSceneLua bool) {
 	g.loadMonsterRelationshipData()    // 怪物关联
 	g.loadMonsterData()                // 怪物
 	g.loadProudSkillData()             // 天赋
+	g.loadAvatarCurveData()            // 角色曲线
 }
 
 // CSV相关
