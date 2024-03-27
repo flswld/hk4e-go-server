@@ -98,6 +98,45 @@ func (a *DbAvatar) InitAvatar(player *Player, avatar *Avatar) {
 	return
 }
 
+// GetAvatarBaseADH 获取角色基础攻防血
+func (a *DbAvatar) GetAvatarBaseADH(avatar *Avatar, fightProp int) float32 {
+	adh := float32(0.0)
+	avatarConfig := gdconf.GetAvatarDataById(int32(avatar.AvatarId))
+	if avatarConfig == nil {
+		logger.Error("avatar config is nil, avatarId: %v", avatar.AvatarId)
+		return adh
+	}
+	switch fightProp {
+	case constant.FIGHT_PROP_BASE_ATTACK:
+		adh += avatarConfig.AttackBase
+	case constant.FIGHT_PROP_BASE_DEFENSE:
+		adh += avatarConfig.DefenseBase
+	case constant.FIGHT_PROP_BASE_HP:
+		adh += avatarConfig.HpBase
+	}
+	for _, propGrow := range avatarConfig.PropGrowList {
+		if propGrow.Type == int32(fightProp) {
+			avatarCurveConfig := gdconf.GetAvatarCurveByLevelAndType(int32(avatar.Level), propGrow.Curve)
+			if avatarCurveConfig == nil {
+				logger.Error("avatar curve config is nil, level: %v, curveType: %v", avatar.Level, propGrow.Curve)
+				return adh
+			}
+			adh *= avatarCurveConfig.Value
+		}
+	}
+	avatarPromoteConfig := gdconf.GetAvatarPromoteDataByIdAndLevel(avatarConfig.PromoteId, int32(avatar.Promote))
+	if avatarPromoteConfig == nil {
+		logger.Error("avatar promote config is nil, promoteId: %v, promoteLevel: %v", avatarConfig.PromoteId, avatar.Promote)
+		return adh
+	}
+	for _, addProp := range avatarPromoteConfig.AddPropList {
+		if addProp.Type == int32(fightProp) {
+			adh += addProp.Value
+		}
+	}
+	return adh
+}
+
 // UpdateAvatarFightProp 更新角色面板
 func (a *DbAvatar) UpdateAvatarFightProp(avatar *Avatar) {
 	avatarDataConfig := gdconf.GetAvatarDataById(int32(avatar.AvatarId))
@@ -107,13 +146,13 @@ func (a *DbAvatar) UpdateAvatarFightProp(avatar *Avatar) {
 	}
 	avatar.FightPropMap[constant.FIGHT_PROP_NONE] = 0.0
 	// 白字攻防血
-	avatar.FightPropMap[constant.FIGHT_PROP_BASE_ATTACK] = avatarDataConfig.GetBaseAttackByLevel(avatar.Level)
-	avatar.FightPropMap[constant.FIGHT_PROP_BASE_DEFENSE] = avatarDataConfig.GetBaseDefenseByLevel(avatar.Level)
-	avatar.FightPropMap[constant.FIGHT_PROP_BASE_HP] = avatarDataConfig.GetBaseHpByLevel(avatar.Level)
+	avatar.FightPropMap[constant.FIGHT_PROP_BASE_ATTACK] = a.GetAvatarBaseADH(avatar, constant.FIGHT_PROP_BASE_ATTACK)
+	avatar.FightPropMap[constant.FIGHT_PROP_BASE_DEFENSE] = a.GetAvatarBaseADH(avatar, constant.FIGHT_PROP_BASE_DEFENSE)
+	avatar.FightPropMap[constant.FIGHT_PROP_BASE_HP] = a.GetAvatarBaseADH(avatar, constant.FIGHT_PROP_BASE_HP)
 	// 白字+绿字攻防血
-	avatar.FightPropMap[constant.FIGHT_PROP_CUR_ATTACK] = avatarDataConfig.GetBaseAttackByLevel(avatar.Level)
-	avatar.FightPropMap[constant.FIGHT_PROP_CUR_DEFENSE] = avatarDataConfig.GetBaseDefenseByLevel(avatar.Level)
-	avatar.FightPropMap[constant.FIGHT_PROP_MAX_HP] = avatarDataConfig.GetBaseHpByLevel(avatar.Level)
+	avatar.FightPropMap[constant.FIGHT_PROP_CUR_ATTACK] = a.GetAvatarBaseADH(avatar, constant.FIGHT_PROP_BASE_ATTACK)
+	avatar.FightPropMap[constant.FIGHT_PROP_CUR_DEFENSE] = a.GetAvatarBaseADH(avatar, constant.FIGHT_PROP_BASE_DEFENSE)
+	avatar.FightPropMap[constant.FIGHT_PROP_MAX_HP] = a.GetAvatarBaseADH(avatar, constant.FIGHT_PROP_BASE_HP)
 	// 双暴
 	avatar.FightPropMap[constant.FIGHT_PROP_CRITICAL] = avatarDataConfig.Critical
 	avatar.FightPropMap[constant.FIGHT_PROP_CRITICAL_HURT] = avatarDataConfig.CriticalHurt
@@ -154,7 +193,7 @@ func (a *DbAvatar) AddAvatar(player *Player, avatarId uint32) {
 		PromoteRewardMap:  make(map[uint32]bool, len(avatarDataConfig.PromoteRewardMap)),
 	}
 
-	avatar.CurrHP = float64(avatarDataConfig.GetBaseHpByLevel(avatar.Level))
+	avatar.CurrHP = float64(a.GetAvatarBaseADH(avatar, constant.FIGHT_PROP_BASE_HP))
 	// 角色突破奖励领取状态
 	for promoteLevel := range avatarDataConfig.PromoteRewardMap {
 		avatar.PromoteRewardMap[promoteLevel] = false
