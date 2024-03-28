@@ -8,10 +8,9 @@ forward_region_url = "" # 转发的一级dispatch地址
 forward_dispatch_url = "" # 转发的二级dispatch地址
 
 [logger]
-level = "DEBUG"
-mode = "CONSOLE"
-track = true
-max_size = 10485760
+level = "debug"
+track_line = true
+track_thread = true
 
 [database]
 url = "mongodb://mongo:27017"

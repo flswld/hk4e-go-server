@@ -4,10 +4,9 @@ http_port = 9001
 gm_auth_key = "flswld" # gm认证密钥
 
 [logger]
-level = "DEBUG"
-mode = "CONSOLE"
-track = true
-max_size = 10485760
+level = "debug"
+track_line = true
+track_thread = true
 
 [database]
 url = "mongodb://mongo:27017"

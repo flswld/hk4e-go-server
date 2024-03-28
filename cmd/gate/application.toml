@@ -11,10 +11,9 @@ login_sdk_url = "http://127.0.0.1:8080/gate/token/verify" # 网关登录验证to
 login_sdk_account_key = "" # sdk服务器账号验证的签名密钥
 
 [logger]
-level = "DEBUG"
-mode = "CONSOLE"
-track = true
-max_size = 10485760
+level = "debug"
+track_line = true
+track_thread = true
 
 [database]
 url = "mongodb://mongo:27017"

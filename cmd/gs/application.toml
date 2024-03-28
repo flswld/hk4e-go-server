@@ -3,10 +3,9 @@ game_data_config_path = "./game_data_config" # 配置表路径
 load_scene_lua_config = true # 是否加载场景详情LUA配置数据
 
 [logger]
-level = "DEBUG"
-mode = "CONSOLE"
-track = true
-max_size = 10485760
+level = "debug"
+track_line = true
+track_thread = true
 
 [database]
 url = "mongodb://mongo:27017"

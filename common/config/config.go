@@ -65,10 +65,13 @@ type Hk4eRobot struct {
 
 // Logger 日志
 type Logger struct {
-	Level   string `toml:"level"`
-	Mode    string `toml:"mode"`
-	Track   bool   `toml:"track"`
-	MaxSize int32  `toml:"max_size"`
+	Level        string `toml:"level"`
+	TrackLine    bool   `toml:"track_line"`
+	TrackThread  bool   `toml:"track_thread"`
+	EnableFile   bool   `toml:"enable_file"`
+	FileMaxSize  int32  `toml:"file_max_size"`
+	DisableColor bool   `toml:"disable_color"`
+	EnableJson   bool   `toml:"enable_json"`
 }
 
 // Database 数据库
