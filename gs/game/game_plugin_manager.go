@@ -300,26 +300,9 @@ func (p *PluginManager) DelPlugin(iPlugin IPlugin) {
 
 // GetPlugin 获取插件实例
 func (p *PluginManager) GetPlugin(value IPlugin) (plugin IPlugin, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			switch x := r.(type) {
-			case string:
-				err = errors.New(x)
-			case error:
-				err = x
-			default:
-				err = errors.New("unknown panic")
-			}
-		}
-	}()
-	refValue := reflect.ValueOf(value)
-	if refValue.Kind() != reflect.Pointer || refValue.IsNil() {
-		return nil, errors.New("value is not pointer")
-	}
-	refType := refValue.Type()
+	refType := reflect.TypeOf(value)
 	// 校验插件是否注册
-	exist := false
-	plugin, exist = p.pluginMap[refType]
+	plugin, exist := p.pluginMap[refType]
 	if !exist {
 		err = errors.New(fmt.Sprintf("plugin not exist, refType: %v", refType))
 		return nil, err

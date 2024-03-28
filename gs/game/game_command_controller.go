@@ -383,8 +383,8 @@ func (c *CommandManager) ItemCommand(content *CommandContent) bool {
 		switch mode {
 		case "add":
 			if param1 == "all" {
-				c.gmCmd.GMAddAllItem(content.AssignPlayer.PlayerId)
-				content.SendSuccMessage(content.Executor, "已添加所有道具，指定UID：%v。", content.AssignPlayer.PlayerId)
+				c.gmCmd.GMAddAllItem(content.AssignPlayer.PlayerId, count)
+				content.SendSuccMessage(content.Executor, "已添加所有道具，指定UID：%v，数量：%v。", content.AssignPlayer.PlayerId, count)
 				return true
 			}
 			itemId, err := strconv.ParseUint(param1, 10, 32)
@@ -710,7 +710,7 @@ func (c *CommandManager) PointCommand(content *CommandContent) bool {
 		if param1 == "all" {
 			// 解锁当前场景所有锚点
 			c.gmCmd.GMUnlockAllPoint(content.AssignPlayer.PlayerId, sceneId)
-			content.SendSuccMessage(content.Executor, "已解锁所有锚点，指定UID：%v，场景ID：%v。", content.AssignPlayer.PlayerId, content.AssignPlayer.GetSceneId())
+			content.SendSuccMessage(content.Executor, "已解锁所有锚点，指定UID：%v，场景ID：%v。", content.AssignPlayer.PlayerId, sceneId)
 			return true
 		}
 		// 锚点id
@@ -719,7 +719,7 @@ func (c *CommandManager) PointCommand(content *CommandContent) bool {
 			return false
 		}
 		c.gmCmd.GMUnlockPoint(content.AssignPlayer.PlayerId, sceneId, uint32(pointId))
-		content.SendSuccMessage(content.Executor, "已解锁锚点，指定UID：%v，场景ID：%v，锚点ID：%v。", content.AssignPlayer.PlayerId, content.AssignPlayer.GetSceneId(), pointId)
+		content.SendSuccMessage(content.Executor, "已解锁锚点，指定UID：%v，场景ID：%v，锚点ID：%v。", content.AssignPlayer.PlayerId, sceneId, pointId)
 		return true
 	})
 }

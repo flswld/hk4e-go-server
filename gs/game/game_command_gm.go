@@ -128,13 +128,13 @@ func (g *GMCmd) GMAddFlycloak(userId, flycloakId uint32) {
 }
 
 // GMAddAllItem 添加玩家所有道具
-func (g *GMCmd) GMAddAllItem(userId uint32) {
+func (g *GMCmd) GMAddAllItem(userId uint32, itemCount uint32) {
 	GAME.LogoutPlayer(userId)
 	itemList := make([]*ChangeItem, 0)
 	for itemId := range GAME.GetAllItemDataConfig() {
 		itemList = append(itemList, &ChangeItem{
 			ItemId:      uint32(itemId),
-			ChangeCount: 1,
+			ChangeCount: itemCount,
 		})
 	}
 	GAME.AddPlayerItem(userId, itemList, proto.ActionReasonType_ACTION_REASON_GM)
@@ -180,7 +180,7 @@ func (g *GMCmd) GMAddAllFlycloak(userId uint32) {
 func (g *GMCmd) GMAddAll(userId uint32) {
 	GAME.LogoutPlayer(userId)
 	// 添加玩家所有道具
-	g.GMAddAllItem(userId)
+	g.GMAddAllItem(userId, 9999)
 	// 添加玩家所有武器
 	g.GMAddAllWeapon(userId, 1, 90, 6, 4)
 	// 添加玩家所有圣遗物

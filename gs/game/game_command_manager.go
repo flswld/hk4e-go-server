@@ -222,26 +222,31 @@ func (c *CommandContent) Option(typeStr string, stepFunc CommandContentStepFunc)
 
 // Execute 执行命令实际业务并返回结果
 func (c *CommandContent) Execute(thenFunc func() bool) bool {
-	dynamicStepCount := 0 // 必填参数数量
-	dynamicStepIndex := 0 // 必填参数最后的位置
-	for i, step := range c.stepList {
-		if step.StepType == CommandContentStepTypeDynamic {
-			dynamicStepCount++
-			dynamicStepIndex = i
+	// 当前参数不能被执行的数量
+	excludeParamCount := len(c.ParamList) - len(c.stepList)
+	// 获取可选参数的数量
+	optionStepCount := 0
+	for _, step := range c.stepList {
+		if step.StepType == CommandContentStepTypeOption {
+			optionStepCount++
 		}
 	}
+	// 可选参数可执行的数量
+	optionExecCount := optionStepCount - excludeParamCount
+	// 可选参数可执行的数量小于0代表肯定有个必填参数缺少
+	if optionExecCount < 0 {
+		return false
+	}
 	// 执行每个步骤
-	for i, step := range c.stepList {
-		switch step.StepType {
-		case CommandContentStepTypeOption:
-			// 可选参数 参数不足则不执行
-			if i <= dynamicStepIndex {
-				if len(c.ParamList) <= i+dynamicStepCount {
-					continue
-				}
-			} else if len(c.ParamList) <= i {
+	for _, step := range c.stepList {
+		// 确保为可选参数 参数不足则不执行
+		if step.StepType == CommandContentStepTypeOption {
+			// 参数数量不足时跳过可选参数
+			if optionExecCount <= 0 {
 				continue
 			}
+			// 没有跳过代表后面会执行本次可选参数
+			optionExecCount--
 		}
 		// 获取当前参数
 		param, ok := c.getNextParam(step.ParamTypeStr)
@@ -253,6 +258,7 @@ func (c *CommandContent) Execute(thenFunc func() bool) bool {
 			return false
 		}
 	}
+	// 执行命令业务逻辑
 	if thenFunc() {
 		return true
 	}
@@ -536,7 +542,7 @@ func (c *CommandManager) ExecCommand(cmd *CommandMessage) {
 	controller, ok := c.commandControllerMap[content.Name]
 	if !ok {
 		// 玩家可能会执行一些没有的命令仅做调试输出
-		content.SendFailMessage(content.Executor, "命令 %v 不存在，输入 help 查看帮助。", cmd.Text)
+		content.SendFailMessage(content.Executor, "命令 %v 不存在，你输入的命令 %v，输入 help 查看帮助。", content.Name, cmd.Text)
 		return
 	}
 	// 设置控制器

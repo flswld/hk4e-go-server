@@ -1563,7 +1563,7 @@ func (g *Game) GetWeatherAreaClimate(weatherAreaId uint32) uint32 {
 		for key := range weatherTemplateMap {
 			weatherTemplateList = append(weatherTemplateList, key)
 		}
-		weather = random.GetRandomInt32(1, int32(len(weatherTemplateList)-1))
+		weather = random.GetRandomInt32(1, int32(len(weatherTemplateList)))
 		weatherTemplateConfig = weatherTemplateMap[weather]
 	}
 	// 确保指定的天气模版存在
