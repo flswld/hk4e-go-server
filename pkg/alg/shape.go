@@ -113,25 +113,25 @@ func (s *Shape) Contain(pos *Vector3) bool {
 		switch shape.(type) {
 		case *RegionCubic:
 			cubic := shape.(*RegionCubic)
-			contain := regionCubicContainPos(cubic, pos)
+			contain := RegionCubicContainPos(cubic, pos)
 			if contain {
 				return true
 			}
 		case *RegionSphere:
 			sphere := shape.(*RegionSphere)
-			contain := regionSphereContainPos(sphere, pos)
+			contain := RegionSphereContainPos(sphere, pos)
 			if contain {
 				return true
 			}
 		case *RegionCylinder:
 			cylinder := shape.(*RegionCylinder)
-			contain := regionCylinderContainPos(cylinder, pos)
+			contain := RegionCylinderContainPos(cylinder, pos)
 			if contain {
 				return true
 			}
 		case *RegionPolygon:
 			polygon := shape.(*RegionPolygon)
-			contain := regionPolygonContainPos(polygon, pos)
+			contain := RegionPolygonContainPos(polygon, pos)
 			if contain {
 				return true
 			}
@@ -142,8 +142,8 @@ func (s *Shape) Contain(pos *Vector3) bool {
 	return false
 }
 
-// 检测一个点是否在立方体内
-func regionCubicContainPos(cubic *RegionCubic, pos *Vector3) bool {
+// RegionCubicContainPos 检测一个点是否在立方体内
+func RegionCubicContainPos(cubic *RegionCubic, pos *Vector3) bool {
 	cubicMinX := cubic.pos.X - cubic.size.X
 	cubicMinY := cubic.pos.Y - cubic.size.Y
 	cubicMinZ := cubic.pos.Z - cubic.size.Z
@@ -159,8 +159,8 @@ func regionCubicContainPos(cubic *RegionCubic, pos *Vector3) bool {
 	}
 }
 
-// 检测一个点是否在球体内
-func regionSphereContainPos(sphere *RegionSphere, pos *Vector3) bool {
+// RegionSphereContainPos 检测一个点是否在球体内
+func RegionSphereContainPos(sphere *RegionSphere, pos *Vector3) bool {
 	distance3D := math.Sqrt(
 		float64(sphere.pos.X-pos.X)*float64(sphere.pos.X-pos.X) +
 			float64(sphere.pos.Y-pos.Y)*float64(sphere.pos.Y-pos.Y) +
@@ -173,8 +173,8 @@ func regionSphereContainPos(sphere *RegionSphere, pos *Vector3) bool {
 	}
 }
 
-// 检测一个点是否在圆柱体内
-func regionCylinderContainPos(cylinder *RegionCylinder, pos *Vector3) bool {
+// RegionCylinderContainPos 检测一个点是否在圆柱体内
+func RegionCylinderContainPos(cylinder *RegionCylinder, pos *Vector3) bool {
 	distance2D := math.Sqrt(
 		float64(cylinder.pos.X-pos.X)*float64(cylinder.pos.X-pos.X) +
 			float64(cylinder.pos.Z-pos.Z)*float64(cylinder.pos.Z-pos.Z),
@@ -191,9 +191,9 @@ func regionCylinderContainPos(cylinder *RegionCylinder, pos *Vector3) bool {
 	}
 }
 
-// 检测一个点是否在空间多边形内
-func regionPolygonContainPos(polygon *RegionPolygon, pos *Vector3) bool {
-	contain := region2DPolygonContainPos(polygon.pointArray, &Vector2{X: pos.X, Z: pos.Z})
+// RegionPolygonContainPos 检测一个点是否在空间多边形内
+func RegionPolygonContainPos(polygon *RegionPolygon, pos *Vector3) bool {
+	contain := Region2DPolygonContainPos(polygon.pointArray, &Vector2{X: pos.X, Z: pos.Z})
 	if !contain {
 		return false
 	}
@@ -206,13 +206,13 @@ func regionPolygonContainPos(polygon *RegionPolygon, pos *Vector3) bool {
 	}
 }
 
-// 检测一个点是否在平面多边形内
-func region2DPolygonContainPos(pointArray []*Vector2, pos *Vector2) bool {
+// Region2DPolygonContainPos 检测一个点是否在平面多边形内
+func Region2DPolygonContainPos(pointArray []*Vector2, pos *Vector2) bool {
 	convexPolygonList := make([][]*Vector2, 0)
 	// TODO 凹多边形分割为多个凸多边形
 	convexPolygonList = append(convexPolygonList, pointArray)
 	for _, convexPolygon := range convexPolygonList {
-		contain := region2DConvexPolygonContainPos(convexPolygon, pos)
+		contain := Region2DConvexPolygonContainPos(convexPolygon, pos)
 		if contain {
 			return true
 		}
@@ -220,8 +220,8 @@ func region2DPolygonContainPos(pointArray []*Vector2, pos *Vector2) bool {
 	return false
 }
 
-// 检测一个点是否在平面凸多边形内
-func region2DConvexPolygonContainPos(pointArray []*Vector2, pos *Vector2) bool {
+// Region2DConvexPolygonContainPos 检测一个点是否在平面凸多边形内
+func Region2DConvexPolygonContainPos(pointArray []*Vector2, pos *Vector2) bool {
 	// 凸多边形分割为多个三角形
 	for index := range pointArray {
 		if index < 2 {

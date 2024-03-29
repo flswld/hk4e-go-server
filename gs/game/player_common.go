@@ -236,25 +236,16 @@ func (g *Game) PlayerTimeNotify(world *World) {
 }
 
 func (g *Game) PlayerGameTimeNotify(world *World) {
-	for _, player := range world.GetAllPlayer() {
-		scene := world.GetSceneById(player.GetSceneId())
-		if scene == nil {
-			logger.Error("scene is nil, sceneId: %v, uid: %v", player.GetSceneId(), player.PlayerId)
-			return
-		}
+	for _, scene := range world.sceneMap {
 		for _, scenePlayer := range scene.GetAllPlayer() {
 			playerGameTimeNotify := &proto.PlayerGameTimeNotify{
 				GameTime: scene.GetGameTime(),
 				Uid:      scenePlayer.PlayerId,
 			}
 			g.SendMsg(cmd.PlayerGameTimeNotify, scenePlayer.PlayerId, 0, playerGameTimeNotify)
-			// 设置玩家天气
-			climateType := GAME.GetWeatherAreaClimate(player.WeatherInfo.WeatherAreaId)
-			// 跳过相同的天气
-			if climateType == player.WeatherInfo.ClimateType {
-				return
-			}
-			GAME.SetPlayerWeather(player, player.WeatherInfo.WeatherAreaId, climateType)
+
+			// 天气气象随机
+			g.WeatherClimateRandom(scenePlayer)
 		}
 	}
 }

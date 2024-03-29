@@ -1,6 +1,7 @@
 package game
 
 import (
+	"hk4e/pkg/alg"
 	"math"
 	"strconv"
 	"time"
@@ -274,13 +275,15 @@ func (g *Game) SceneInitFinishReq(player *model.Player, payloadMsg pb.Message) {
 			playerEnterSceneInfoNotify.AvatarEnterInfo = append(playerEnterSceneInfoNotify.AvatarEnterInfo, avatarEnterSceneInfo)
 		}
 		g.SendMsg(cmd.PlayerEnterSceneInfoNotify, player.PlayerId, player.ClientSeq, playerEnterSceneInfoNotify)
+	}
 
-		// 设置玩家天气
-		weatherAreaId := g.GetPlayerInWeatherAreaId(player, player.GetPos())
-		if weatherAreaId != 0 {
-			climateType := GAME.GetWeatherAreaClimate(weatherAreaId)
-			GAME.SetPlayerWeather(player, weatherAreaId, climateType)
-		}
+	// 设置玩家天气
+	weatherAreaId := g.GetPlayerInWeatherAreaId(player, player.GetPos())
+	if weatherAreaId != 0 {
+		climateType := g.GetWeatherAreaClimate(weatherAreaId)
+		g.SetPlayerWeather(player, weatherAreaId, climateType)
+	} else {
+		logger.Error("weather area id error, weatherAreaId: %v", weatherAreaId)
 	}
 
 	g.UpdateWorldScenePlayerInfo(player, world)
@@ -1377,10 +1380,10 @@ func (g *Game) SceneGroupCreateEntity(player *model.Player, groupId uint32, conf
 	switch entityType {
 	case constant.ENTITY_TYPE_MONSTER:
 		// 怪物创建触发器检测
-		GAME.MonsterCreateTriggerCheck(player, group, configId)
+		g.MonsterCreateTriggerCheck(player, group, configId)
 	case constant.ENTITY_TYPE_GADGET:
 		// 物件创建触发器检测
-		GAME.GadgetCreateTriggerCheck(player, group, configId)
+		g.GadgetCreateTriggerCheck(player, group, configId)
 	}
 }
 
@@ -1460,58 +1463,72 @@ func (g *Game) CreateDropGadget(player *model.Player, pos *model.Vector, gadgetI
 }
 
 // GetPosIsInWeatherArea 获取坐标是否在指定的天气区域
-func (g *Game) GetPosIsInWeatherArea(posX, posZ float64, sceneId, weatherAreaId uint32) bool {
+func (g *Game) GetPosIsInWeatherArea(posX, posZ float64, sceneId, jsonWeatherAreaId uint32) bool {
 	// 获取场景天气区域配置表
-	weatherAreaConfig := gdconf.GetSceneWeatherAreaMapBySceneIdAndWeatherAreaId(int32(sceneId), int32(weatherAreaId))
-	if weatherAreaConfig == nil {
+	sceneWeatherAreaData := gdconf.GetSceneWeatherAreaMapBySceneIdAndWeatherAreaId(int32(sceneId), int32(jsonWeatherAreaId))
+	if sceneWeatherAreaData == nil {
+		logger.Error("scene weather area data config not exist, sceneId: %v, jsonWeatherAreaId: %v", sceneId, jsonWeatherAreaId)
 		return false
 	}
-	// 寻找玩家所在范围内的天气区域
-	polygon := weatherAreaConfig.Points
-	isInside := false
-	for i, j := 0, len(polygon)-1; i < len(polygon); i++ {
-		if (polygon[i].Y > float32(posZ)) != (polygon[j].Y > float32(posZ)) &&
-			float32(posX) < (polygon[j].X-polygon[i].X)*(float32(posZ)-polygon[i].Y)/(polygon[j].Y-polygon[i].Y)+polygon[i].X {
-			isInside = !isInside
-		}
-		j = i
+	// 判断坐标是否在指定的天气区域
+	pos := &alg.Vector2{
+		X: float32(posX),
+		Z: float32(posZ),
 	}
-	if isInside {
-		return true
-	}
-	return false
+	return alg.Region2DPolygonContainPos(sceneWeatherAreaData.VectorPoints, pos)
 }
 
 // GetPlayerInWeatherAreaId 获取玩家所在的天气区域id
-func (g *Game) GetPlayerInWeatherAreaId(player *model.Player, newPos *model.Vector) uint32 {
+func (g *Game) GetPlayerInWeatherAreaId(player *model.Player, newPos *model.Vector) (weatherAreaId uint32) {
 	// 获取场景天气区域配置表
-	sceneWeatherAreaMap := gdconf.GetSceneWeatherAreaMap()[int32(player.GetSceneId())]
-	if sceneWeatherAreaMap == nil {
-		return 0
+	sceneWeatherAreaDataMap := gdconf.GetSceneWeatherAreaMap()[int32(player.GetSceneId())]
+	if sceneWeatherAreaDataMap == nil {
+		logger.Error("scene weather area data config not exist, sceneId: %v", player.GetSceneId())
+		return
 	}
 	// 寻找玩家所在范围内的天气区域
-	var weatherAreaId uint32
 	var priority int32
 	// 玩家所在的天气区域
-	for _, area := range sceneWeatherAreaMap {
-		isInside := g.GetPosIsInWeatherArea(newPos.X, newPos.Z, player.GetSceneId(), uint32(area.AreaId))
+	for _, area := range sceneWeatherAreaDataMap {
 		// 获取天气数据配置表
-		weatherConfig := gdconf.GetWeatherDataById(area.AreaId)
-		if weatherConfig == nil {
+		weatherDataMap := gdconf.GetWeatherDataMapByJsonWeatherAreaId(area.AreaId)
+		if weatherDataMap == nil {
 			// 有些天气不在配置表内
-			// logger.Error("weather data config not exist, weatherId: %v", area.AreaId)
+			logger.Error("weather data config not exist, weatherAreaId: %v", area.AreaId)
 			continue
 		}
-		// 确保默认自动开启
-		if weatherConfig.DefaultOpen != 1 {
-			continue
-		}
-		if isInside && weatherConfig.Priority > priority {
-			weatherAreaId = uint32(area.AreaId)
-			priority = weatherConfig.Priority
+		for _, weatherData := range weatherDataMap {
+			// 确保高度不超过
+			if weatherData.MaxHeight != 0 && player.GetPos().Y > float64(weatherData.MaxHeight) {
+				continue
+			}
+			// 确保默认自动开启
+			if weatherData.DefaultOpen != 1 {
+				continue
+			}
+			// 确保处于天气区域内
+			if !g.GetPosIsInWeatherArea(newPos.X, newPos.Z, player.GetSceneId(), uint32(weatherData.JsonWeatherAreaId)) {
+				continue
+			}
+			// 优先级比较
+			if weatherData.Priority > priority {
+				weatherAreaId = uint32(weatherData.WeatherAreaId)
+				priority = weatherData.Priority
+			}
 		}
 	}
-	return weatherAreaId
+	return
+}
+
+// WeatherClimateRandom 随机天气气象
+func (g *Game) WeatherClimateRandom(player *model.Player) {
+	// 设置玩家天气
+	climateType := g.GetWeatherAreaClimate(player.WeatherInfo.WeatherAreaId)
+	// 跳过相同的天气
+	if climateType == player.WeatherInfo.ClimateType {
+		return
+	}
+	g.SetPlayerWeather(player, player.WeatherInfo.WeatherAreaId, climateType)
 }
 
 // SceneWeatherAreaCheck 场景天气区域变更检测
@@ -1521,12 +1538,13 @@ func (g *Game) SceneWeatherAreaCheck(player *model.Player, oldPos *model.Vector,
 		return
 	}
 	// 如果玩家还在历史区域内就不获取当前所在区域
-	if g.GetPosIsInWeatherArea(newPos.X, newPos.Z, player.GetSceneId(), player.WeatherInfo.WeatherAreaId) {
+	if g.GetPosIsInWeatherArea(newPos.X, newPos.Z, player.GetSceneId(), player.WeatherInfo.JsonWeatherAreaId) {
 		return
 	}
 	// 获取当前所在的天气区域
 	weatherAreaId := g.GetPlayerInWeatherAreaId(player, newPos)
 	if weatherAreaId == 0 {
+		logger.Error("weather area id error, weatherAreaId: %v", weatherAreaId)
 		return
 	}
 	// 判断天气区域是否变更
@@ -1534,29 +1552,29 @@ func (g *Game) SceneWeatherAreaCheck(player *model.Player, oldPos *model.Vector,
 		return
 	}
 	// 设置玩家天气
-	climateType := GAME.GetWeatherAreaClimate(weatherAreaId)
-	GAME.SetPlayerWeather(player, weatherAreaId, climateType)
+	climateType := g.GetWeatherAreaClimate(weatherAreaId)
+	g.SetPlayerWeather(player, weatherAreaId, climateType)
 }
 
-// GetWeatherAreaClimate 获取天气区域气象
+// GetWeatherAreaClimate 获取天气气象
 func (g *Game) GetWeatherAreaClimate(weatherAreaId uint32) uint32 {
 	// 获取天气数据配置表
-	weatherConfig := gdconf.GetWeatherDataById(int32(weatherAreaId))
-	if weatherConfig == nil {
-		// logger.Error("weather data config not exist, weatherId: %v", weatherAreaId)
+	weatherData := gdconf.GetWeatherDataByWeatherAreaId(int32(weatherAreaId))
+	if weatherData == nil {
+		logger.Error("weather data config not exist, weatherAreaId: %v", weatherAreaId)
 		return 0
 	}
 	// 如果指定了则使用指定的天气
 	var weatherTemplateConfig *gdconf.WeatherTemplate
 	var weather int32
-	if weatherConfig.UseDefaultWeather == 1 && weatherConfig.DefaultWeather != 0 {
-		weather = weatherConfig.DefaultWeather
-		weatherTemplateConfig = gdconf.GetWeatherTemplateByTemplateNameAndWeather(weatherConfig.TemplateName, weather)
+	if weatherData.UseDefaultWeather == 1 && weatherData.DefaultWeather != 0 {
+		weather = weatherData.DefaultWeather
+		weatherTemplateConfig = gdconf.GetWeatherTemplateByTemplateNameAndWeather(weatherData.TemplateName, weather)
 	} else {
 		// 随机取个天气类型
-		weatherTemplateMap := gdconf.GetWeatherTemplateMap()[weatherConfig.TemplateName]
+		weatherTemplateMap := gdconf.GetWeatherTemplateMap()[weatherData.TemplateName]
 		if weatherTemplateMap == nil {
-			logger.Error("weather template map not exist, templateName: %v", weatherConfig.TemplateName)
+			logger.Error("weather template map not exist, templateName: %v", weatherData.TemplateName)
 			return 0
 		}
 		weatherTemplateList := make([]int32, 0, len(weatherTemplateMap))
@@ -1568,11 +1586,10 @@ func (g *Game) GetWeatherAreaClimate(weatherAreaId uint32) uint32 {
 	}
 	// 确保指定的天气模版存在
 	if weatherTemplateConfig == nil {
-		logger.Error("weather template config not exist, templateName: %v, weather: %v", weatherConfig.TemplateName, weather)
+		logger.Error("weather template config not exist, templateName: %v, weather: %v", weatherData.TemplateName, weather)
 		return 0
 	}
 	// 随机气象 轮盘赌选择法RWS
-	var climateType uint32
 	climateWeightMap := map[uint32]int32{
 		constant.CLIMATE_TYPE_SUNNY:        weatherTemplateConfig.Sunny,
 		constant.CLIMATE_TYPE_CLOUDY:       weatherTemplateConfig.Cloudy,
@@ -1582,25 +1599,36 @@ func (g *Game) GetWeatherAreaClimate(weatherAreaId uint32) uint32 {
 		constant.CLIMATE_TYPE_MIST:         weatherTemplateConfig.Mist,
 		constant.CLIMATE_TYPE_DESERT:       weatherTemplateConfig.Desert,
 	}
-	logger.Debug("climate weight: %v", climateWeightMap)
-	randNum := random.GetRandomInt32(0, 100-1)
+	var weightAll int32
+	for _, weight := range climateWeightMap {
+		weightAll += weight
+	}
+	// logger.Debug("weather climate weightMap: %v, weightAll: %v", climateWeightMap, weightAll)
+	randNum := random.GetRandomInt32(0, weightAll-1)
 	sumWeight := int32(0)
 	for climate, weight := range climateWeightMap {
 		sumWeight += weight
 		if sumWeight > randNum {
-			climateType = climate
-			break
+			return climate
 		}
 	}
-	return climateType
+	return 0
 }
 
 // SetPlayerWeather 设置玩家天气
 func (g *Game) SetPlayerWeather(player *model.Player, weatherAreaId uint32, climateType uint32) {
-	logger.Debug("weather climateType: %v, weatherAreaId: %v", climateType, weatherAreaId)
+	// 获取天气数据配置表
+	weatherData := gdconf.GetWeatherDataByWeatherAreaId(int32(weatherAreaId))
+	if weatherData == nil {
+		logger.Error("weather data config not exist, weatherAreaId: %v", weatherAreaId)
+		return
+	}
+
+	logger.Debug("weather climateType: %v, weatherAreaId: %v, jsonWeatherAreaId: %v, uid: %v", climateType, weatherAreaId, weatherData.JsonWeatherAreaId, player.PlayerId)
 
 	// 记录数据
 	player.WeatherInfo.WeatherAreaId = weatherAreaId
+	player.WeatherInfo.JsonWeatherAreaId = uint32(weatherData.JsonWeatherAreaId)
 	player.WeatherInfo.ClimateType = climateType
 
 	sceneAreaWeatherNotify := &proto.SceneAreaWeatherNotify{

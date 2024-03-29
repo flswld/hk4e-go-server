@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 
@@ -87,7 +88,8 @@ func (c *CommandManager) NewHelpCommandController() *CommandController {
 		Description: "<color=#FFFFCC>{alias}</color> <color=#FFCC99>帮助</color>",
 		UsageList: []string{
 			"{alias} 查看简要帮助信息",
-			"{alias} <序号/命令别名> 查看详细帮助信息",
+			"{alias} <页数> 查看指定页数的帮助信息",
+			"{alias} <命令别名> 查看详细帮助信息",
 		},
 		Perm: CommandPermNormal,
 		Func: c.HelpCommand,
@@ -95,55 +97,91 @@ func (c *CommandManager) NewHelpCommandController() *CommandController {
 }
 
 func (c *CommandManager) HelpCommand(content *CommandContent) bool {
-	var controller *CommandController // 命令控制器
+	var mode = "page"                 // 模式
+	var page uint32 = 1               // 页数
 	var alias string                  // 别名
+	var controller *CommandController // 命令控制器
 
 	return content.Option("string", func(param any) bool {
 		value := param.(string)
+		// 数字的话就是页面
+		parseUint, err := strconv.ParseUint(value, 10, 32)
+		if err == nil {
+			page = uint32(parseUint)
+			mode = "page"
+			return true
+		}
 		// 通过别名获取
 		controller = c.commandControllerMap[value]
 		if controller == nil {
 			return false
 		}
 		alias = value
+		mode = "alias"
 		return true
 	}).Execute(func() bool {
-		if alias == "" {
+		switch mode {
+		case "page":
 			// 显示简要帮助信息
 			helpText := "<color=#66B2FF>================</color><color=#CCE5FF>/ 帮 助 /</color><color=#66B2FF>================</color>\n"
-			commandCount := 0 // 权限足够的命令
-			for _, controller := range c.commandControllerList {
+			// 获取玩家权限足够的命令列表
+			playerCommandControllerList := make([]*CommandController, 0)
+			for _, commandController := range c.commandControllerList {
 				// 权限不足跳过
-				if content.Executor.CmdPerm < uint8(controller.Perm) {
+				if content.Executor.CmdPerm < uint8(commandController.Perm) {
 					continue
 				}
-				commandCount++
+				playerCommandControllerList = append(playerCommandControllerList, commandController)
+			}
+			// 每页显示的命令数量
+			const commandsPerPage = 10
+			// 最大页数
+			maxPages := uint32(math.Ceil(float64(len(playerCommandControllerList)) / float64(commandsPerPage)))
+			// 页数超出范围
+			if page > maxPages {
+				content.SendFailMessage(content.AssignPlayer, "超出命令帮助页数范围，最大页数：%v", maxPages)
+				return true
+			}
+			// 获取页数索引
+			startIndex := int((page - 1) * commandsPerPage)
+			endIndex := startIndex + commandsPerPage
+			if endIndex > len(playerCommandControllerList) {
+				endIndex = len(playerCommandControllerList)
+			}
+			// 添加帮助文本
+			for i, commandController := range playerCommandControllerList[startIndex:endIndex] {
+				// 计算命令在整个列表中的索引
+				commandIndex := startIndex + i + 1
 				// GM命令和普通命令区分颜色
 				var permColor string
-				switch controller.Perm {
+				switch commandController.Perm {
 				case CommandPermNormal:
 					permColor = "#CCFFCC"
 				case CommandPermGM:
 					permColor = "#FF9999"
 				}
-				helpText += fmt.Sprintf("<color=%v>%v. %v</color> <color=#FFE5CC>-</color> %v\n", permColor, commandCount, controller.Name, strings.ReplaceAll(controller.Description, "{alias}", controller.AliasList[0]))
+				helpText += fmt.Sprintf("<color=%v>%v. %v</color> <color=#FFE5CC>-</color> %v\n", permColor, commandIndex, commandController.Name, strings.ReplaceAll(commandController.Description, "{alias}", commandController.AliasList[0]))
 			}
+			helpText += fmt.Sprintf("\n<color=#CCE5FF>当前第 %v 页，共 %v 页~</color>", page, maxPages)
+			// 发送帮助文本
 			content.SendMessage(content.Executor, helpText)
 			return true
-		}
-		// 命令详细用法
-		usage := "命令用法：\n"
-		for i, s := range controller.UsageList {
-			s = strings.ReplaceAll(s, "{alias}", alias)
-			usage += fmt.Sprintf("%v. %v", i+1, s)
-			// 换行
-			if i != len(controller.UsageList)-1 {
-				usage += "\n"
+		case "alias":
+			// 命令详细用法
+			usage := "命令用法：\n"
+			for i, s := range controller.UsageList {
+				s = strings.ReplaceAll(s, "{alias}", alias)
+				usage += fmt.Sprintf("%v. %v", i+1, s)
+				// 换行
+				if i != len(controller.UsageList)-1 {
+					usage += "\n"
+				}
 			}
+			text := fmt.Sprintf("<color=#FFFFCC>%v</color><color=#CCCCFF> 命令详细帮助：</color>\n\n%v\n\n<color=#CCE5FF>所有别名：</color><color=#E0E0E0>%v</color>", controller.Name, usage, controller.AliasList)
+			content.SendMessage(content.Executor, text)
+			return true
 		}
-		text := fmt.Sprintf("<color=#FFFFCC>%v</color><color=#CCCCFF> 命令详细帮助：</color>\n\n%v\n\n<color=#CCE5FF>所有别名：</color><color=#E0E0E0>%v</color>", controller.Name, usage, controller.AliasList)
-		content.SendMessage(content.Executor, text)
-		return true
+		return false
 	})
 }
 
@@ -744,7 +782,7 @@ func (c *CommandManager) WeatherCommand(content *CommandContent) bool {
 	var climateType uint32                                             // 气象类型
 
 	return content.Option("uint32", func(param any) bool {
-		// 天气id
+		// 天气区域id
 		weatherAreaId = param.(uint32)
 		return true
 	}).Dynamic("uint32", func(param any) bool {

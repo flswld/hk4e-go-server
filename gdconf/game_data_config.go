@@ -73,6 +73,7 @@ type GameDataConfig struct {
 	VehicleDataMap             map[int32]*VehicleData                  // 载具
 	OpenStateDataMap           map[int32]*OpenStateData                // 开放状态
 	WeatherDataMap             map[int32]*WeatherData                  // 天气
+	WeatherDataJsonMap         map[int32]map[int32]*WeatherData        // 天气 json的天气区域id格式
 	WeatherTemplateMap         map[string]map[int32]*WeatherTemplate   // 天气模版
 	SceneWeatherAreaMap        map[int32]map[int32]*SceneWeatherArea   // 天气区域
 	PubgWorldGadgetDataMap     map[int32]*PubgWorldGadgetData          // pubg世界物件

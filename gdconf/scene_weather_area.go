@@ -1,6 +1,7 @@
 package gdconf
 
 import (
+	"hk4e/pkg/alg"
 	"os"
 	"strconv"
 
@@ -13,6 +14,8 @@ import (
 type SceneWeatherArea struct {
 	AreaId int32        `json:"area_id"` // 天气区域id
 	Points []*AreaPoint `json:"points"`  // 多边形平面顶点数组
+
+	VectorPoints []*alg.Vector2 `json:"-"` // 多边形平面顶点二维向量数组
 }
 
 type AreaPoint struct {
@@ -42,6 +45,14 @@ func (g *GameDataConfig) loadSceneWeatherArea() {
 		}
 		// 记录每个天气区域
 		for _, area := range sceneWeatherAreaList {
+			area.VectorPoints = make([]*alg.Vector2, 0, len(area.Points))
+			// 多边形平面顶点数组转换
+			for _, point := range area.Points {
+				area.VectorPoints = append(area.VectorPoints, &alg.Vector2{
+					X: point.X,
+					Z: point.Y,
+				})
+			}
 			_, exist := g.SceneWeatherAreaMap[sceneId]
 			if !exist {
 				g.SceneWeatherAreaMap[sceneId] = make(map[int32]*SceneWeatherArea, len(area.Points))

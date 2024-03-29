@@ -233,7 +233,11 @@ func (c *CommandContent) Execute(thenFunc func() bool) bool {
 	}
 	// 可选参数可执行的数量
 	optionExecCount := optionStepCount - excludeParamCount
-	// 可选参数可执行的数量小于0代表肯定有个必填参数缺少
+	// 如果不能执行的参数数量为负数代表可执行的可选参数为0
+	if excludeParamCount < 0 {
+		optionExecCount = 0
+	}
+	// 可选参数可执行的数量为负数代表肯定有个必填参数缺少
 	if optionExecCount < 0 {
 		return false
 	}

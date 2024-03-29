@@ -8,12 +8,12 @@ import (
 )
 
 func TestLogger(t *testing.T) {
-	config.CONF = &config.Config{Logger: config.Logger{Level: "DEBUG", Mode: "CONSOLE", Track: true}}
+	config.CONF = &config.Config{Logger: config.Logger{Level: "DEBUG", TrackLine: true, TrackThread: true, EnableJson: true}}
 
 	logger.InitLogger("logger_test")
 	defer logger.CloseLogger()
 	logger.Warn("logger test ...")
-	for i := 0; i < 100; i++ {
-		go func(x int) { logger.Info("%d", x) }(i)
+	for i := 0; i < 10000; i++ {
+		logger.Info("%v", i)
 	}
 }

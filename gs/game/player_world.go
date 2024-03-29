@@ -284,12 +284,8 @@ func (g *Game) ChangeGameTimeReq(player *model.Player, payloadMsg pb.Message) {
 	logger.Debug("change game time, gameTime: %v, uid: %v", gameTime, player.PlayerId)
 	g.ChangeGameTime(scene, gameTime)
 
-	// 设置玩家天气
-	climateType := GAME.GetWeatherAreaClimate(player.WeatherInfo.WeatherAreaId)
-	// 跳过相同的天气
-	if climateType != player.WeatherInfo.ClimateType {
-		g.SetPlayerWeather(player, player.WeatherInfo.WeatherAreaId, climateType)
-	}
+	// 天气气象随机
+	g.WeatherClimateRandom(player)
 
 	rsp := &proto.ChangeGameTimeRsp{
 		CurGameTime: scene.GetGameTime(),
