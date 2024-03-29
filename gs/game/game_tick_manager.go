@@ -267,8 +267,10 @@ func (t *TickManager) onTick5Second(now int64) {
 	for _, world := range WORLD_MANAGER.GetAllWorld() {
 		if world.GetOwner().SceneLoadState == model.SceneEnterDone {
 			// 多人世界其他玩家的坐标位置广播
-			GAME.WorldPlayerLocationNotify(world)
-			GAME.ScenePlayerLocationNotify(world)
+			if world.IsMultiplayerWorld() {
+				GAME.WorldPlayerLocationNotify(world)
+				GAME.ScenePlayerLocationNotify(world)
+			}
 		}
 	}
 	iPlugin, err := PLUGIN_MANAGER.GetPlugin(&PluginPubg{})
@@ -294,14 +296,16 @@ func (t *TickManager) onTickSecond(now int64) {
 	for _, world := range WORLD_MANAGER.GetAllWorld() {
 		if world.GetOwner().SceneLoadState == model.SceneEnterDone {
 			// 世界里所有玩家的网络延迟广播
-			GAME.WorldPlayerRTTNotify(world)
+			if world.IsMultiplayerWorld() {
+				GAME.WorldPlayerRTTNotify(world)
+			}
 		}
 		// 每个场景时间+1
 		for _, scene := range world.GetAllScene() {
 			if world.GetOwner().Pause {
 				continue
 			}
-			GAME.ChangeGameTime(scene, scene.GetGameTime()+1)
+			scene.ChangeGameTime(scene.GetGameTime() + 1)
 		}
 	}
 	// GCG游戏Tick
