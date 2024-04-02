@@ -541,10 +541,9 @@ func (g *Game) LoadSceneBlockAsync(player *model.Player, oldScene *Scene, newSce
 	// 跨越了block格子
 	logger.Debug("player cross scene block grid, oldGid: %v, newGid: %v, uid: %v", oldGid, newGid, player.PlayerId)
 	if player.SceneBlockAsyncLoad {
-		return true
+		return false
 	}
 	logger.Info("async load player scene block from db, uid: %v", player.PlayerId)
-	player.SceneBlockAsyncLoad = true
 	oldGridList := oldSceneBlockAoi.GetSurrGridListByGid(oldGid, 1)
 	newGridList := newSceneBlockAoi.GetSurrGridListByGid(newGid, 1)
 	delGridIdList := make([]uint32, 0)
@@ -589,6 +588,7 @@ func (g *Game) LoadSceneBlockAsync(player *model.Player, oldScene *Scene, newSce
 	if len(loadSceneBlockMap) == 0 {
 		return false
 	}
+	player.SceneBlockAsyncLoad = true
 	go func() {
 		loadSceneBlockList := make([]*model.SceneBlock, 0)
 		for _, block := range loadSceneBlockMap {
