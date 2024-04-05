@@ -249,7 +249,12 @@ func (t *TickManager) onTickMinute(now int64) {
 	gdconf.LuaStateLruRemove()
 	for _, world := range WORLD_MANAGER.GetAllWorld() {
 		if world.GetOwner().SceneLoadState == model.SceneEnterDone {
-			GAME.PlayerGameTimeNotify(world)
+			// 天气气象随机
+			for _, scene := range world.GetAllScene() {
+				for _, scenePlayer := range scene.GetAllPlayer() {
+					GAME.WeatherClimateRandom(scenePlayer, scenePlayer.WeatherInfo.WeatherAreaId)
+				}
+			}
 		}
 	}
 }
@@ -299,13 +304,12 @@ func (t *TickManager) onTickSecond(now int64) {
 			if world.IsMultiplayerWorld() {
 				GAME.WorldPlayerRTTNotify(world)
 			}
-		}
-		// 每个场景时间+1
-		for _, scene := range world.GetAllScene() {
-			if world.GetOwner().Pause {
-				continue
+			// 场景时间增加
+			if !world.GetOwner().Pause && world.GetOwner().PropMap[constant.PLAYER_PROP_IS_GAME_TIME_LOCKED] != 1 {
+				for _, scene := range world.GetAllScene() {
+					scene.ChangeGameTime(scene.gameTime + 1)
+				}
 			}
-			scene.ChangeGameTime(scene.GetGameTime() + 1)
 		}
 	}
 	// GCG游戏Tick

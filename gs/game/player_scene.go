@@ -277,13 +277,17 @@ func (g *Game) SceneInitFinishReq(player *model.Player, payloadMsg pb.Message) {
 		g.SendMsg(cmd.PlayerEnterSceneInfoNotify, player.PlayerId, player.ClientSeq, playerEnterSceneInfoNotify)
 	}
 
-	// 设置玩家天气
-	weatherAreaId := g.GetPlayerInWeatherAreaId(player, player.GetPos())
-	if weatherAreaId != 0 {
+	// 天气未初始化 或 未锁定天气并且是场景跳跃 更新天气
+	if player.WeatherInfo.WeatherAreaId == 0 || player.PropMap[constant.PLAYER_PROP_IS_WEATHER_LOCKED] == 0 {
+		// 初始化天气区域id
+		weatherAreaId := g.GetPlayerInWeatherAreaId(player, player.GetPos())
+		if weatherAreaId == 0 {
+			logger.Error("weather area id error, weatherAreaId: %v", weatherAreaId)
+			return
+		}
+		// 获取天气气象
 		climateType := g.GetWeatherAreaClimate(weatherAreaId)
-		g.SetPlayerWeather(player, weatherAreaId, climateType)
-	} else {
-		logger.Error("weather area id error, weatherAreaId: %v", weatherAreaId)
+		g.SetPlayerWeather(player, weatherAreaId, climateType, false)
 	}
 
 	g.UpdateWorldScenePlayerInfo(player, world)
@@ -1521,14 +1525,18 @@ func (g *Game) GetPlayerInWeatherAreaId(player *model.Player, newPos *model.Vect
 }
 
 // WeatherClimateRandom 随机天气气象
-func (g *Game) WeatherClimateRandom(player *model.Player) {
-	// 设置玩家天气
-	climateType := g.GetWeatherAreaClimate(player.WeatherInfo.WeatherAreaId)
+func (g *Game) WeatherClimateRandom(player *model.Player, weatherAreaId uint32) {
+	// 天气气象锁定则跳过
+	if player.PropMap[constant.PLAYER_PROP_IS_WEATHER_LOCKED] == 1 {
+		return
+	}
+	// 获取天气气象
+	climateType := g.GetWeatherAreaClimate(weatherAreaId)
 	// 跳过相同的天气
 	if climateType == player.WeatherInfo.ClimateType {
 		return
 	}
-	g.SetPlayerWeather(player, player.WeatherInfo.WeatherAreaId, climateType)
+	g.SetPlayerWeather(player, player.WeatherInfo.WeatherAreaId, climateType, true)
 }
 
 // SceneWeatherAreaCheck 场景天气区域变更检测
@@ -1551,9 +1559,8 @@ func (g *Game) SceneWeatherAreaCheck(player *model.Player, oldPos *model.Vector,
 	if player.WeatherInfo.WeatherAreaId == weatherAreaId {
 		return
 	}
-	// 设置玩家天气
-	climateType := g.GetWeatherAreaClimate(weatherAreaId)
-	g.SetPlayerWeather(player, weatherAreaId, climateType)
+	// 随机天气气象
+	g.WeatherClimateRandom(player, weatherAreaId)
 }
 
 // GetWeatherAreaClimate 获取天气气象
@@ -1616,7 +1623,7 @@ func (g *Game) GetWeatherAreaClimate(weatherAreaId uint32) uint32 {
 }
 
 // SetPlayerWeather 设置玩家天气
-func (g *Game) SetPlayerWeather(player *model.Player, weatherAreaId uint32, climateType uint32) {
+func (g *Game) SetPlayerWeather(player *model.Player, weatherAreaId uint32, climateType uint32, sendNotify bool) {
 	// 获取天气数据配置表
 	weatherData := gdconf.GetWeatherDataByWeatherAreaId(int32(weatherAreaId))
 	if weatherData == nil {
@@ -1631,6 +1638,9 @@ func (g *Game) SetPlayerWeather(player *model.Player, weatherAreaId uint32, clim
 	player.WeatherInfo.JsonWeatherAreaId = uint32(weatherData.JsonWeatherAreaId)
 	player.WeatherInfo.ClimateType = climateType
 
+	if !sendNotify {
+		return
+	}
 	sceneAreaWeatherNotify := &proto.SceneAreaWeatherNotify{
 		WeatherAreaId: weatherAreaId,
 		ClimateType:   climateType,

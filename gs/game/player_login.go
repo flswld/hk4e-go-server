@@ -195,8 +195,8 @@ func (g *Game) CreatePlayer(userId uint32) *model.Player {
 	player.PropMap[constant.PLAYER_PROP_IS_SPRING_AUTO_USE] = 1
 	player.PropMap[constant.PLAYER_PROP_SPRING_AUTO_USE_PERCENT] = 50
 	player.PropMap[constant.PLAYER_PROP_IS_FLYABLE] = 0
-	player.PropMap[constant.PLAYER_PROP_IS_WEATHER_LOCKED] = 1
-	player.PropMap[constant.PLAYER_PROP_IS_GAME_TIME_LOCKED] = 1
+	player.PropMap[constant.PLAYER_PROP_IS_WEATHER_LOCKED] = 0
+	player.PropMap[constant.PLAYER_PROP_IS_GAME_TIME_LOCKED] = 0
 	player.PropMap[constant.PLAYER_PROP_IS_TRANSFERABLE] = 1
 	player.PropMap[constant.PLAYER_PROP_MAX_STAMINA] = 10000
 

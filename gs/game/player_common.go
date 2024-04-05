@@ -243,9 +243,6 @@ func (g *Game) PlayerGameTimeNotify(world *World) {
 				Uid:      scenePlayer.PlayerId,
 			}
 			g.SendMsg(cmd.PlayerGameTimeNotify, scenePlayer.PlayerId, 0, playerGameTimeNotify)
-
-			// 天气气象随机
-			g.WeatherClimateRandom(scenePlayer)
 		}
 	}
 }

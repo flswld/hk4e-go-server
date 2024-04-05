@@ -285,7 +285,7 @@ func (g *Game) ChangeGameTimeReq(player *model.Player, payloadMsg pb.Message) {
 	g.ChangeGameTime(scene, gameTime)
 
 	// 天气气象随机
-	g.WeatherClimateRandom(player)
+	g.WeatherClimateRandom(player, player.WeatherInfo.WeatherAreaId)
 
 	rsp := &proto.ChangeGameTimeRsp{
 		CurGameTime: scene.GetGameTime(),

@@ -19,8 +19,13 @@ import (
 
 func (g *Game) PlayerSetPauseReq(player *model.Player, payloadMsg pb.Message) {
 	req := payloadMsg.(*proto.PlayerSetPauseReq)
+	// 处于多人游戏中禁止暂停
+	if player.IsInMp {
+		g.SendError(cmd.PlayerSetPauseRsp, player, &proto.PlayerSetPauseRsp{}, proto.Retcode_RET_FAIL)
+	}
 	player.Pause = req.IsPaused
-	g.SendMsg(cmd.PlayerSetPauseRsp, player.PlayerId, player.ClientSeq, new(proto.PlayerSetPauseRsp))
+
+	g.SendSucc(cmd.PlayerSetPauseRsp, player, &proto.PlayerSetPauseRsp{})
 }
 
 func (g *Game) SetPlayerPropReq(player *model.Player, payloadMsg pb.Message) {
@@ -29,7 +34,7 @@ func (g *Game) SetPlayerPropReq(player *model.Player, payloadMsg pb.Message) {
 		logger.Debug("player set prop, key: %v, value: %v, uid: %v", propValue.Type, propValue.Val, player.PlayerId)
 		player.PropMap[propValue.Type] = uint32(propValue.Val)
 	}
-	g.SendMsg(cmd.SetPlayerPropRsp, player.PlayerId, player.ClientSeq, new(proto.SetPlayerPropRsp))
+	g.SendSucc(cmd.SetPlayerPropRsp, player, &proto.SetPlayerPropRsp{})
 }
 
 func (g *Game) SetOpenStateReq(player *model.Player, payloadMsg pb.Message) {
