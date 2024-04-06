@@ -306,9 +306,7 @@ func (t *TickManager) onTickSecond(now int64) {
 			}
 			// 场景时间增加
 			if !world.GetOwner().Pause && world.GetOwner().PropMap[constant.PLAYER_PROP_IS_GAME_TIME_LOCKED] != 1 {
-				for _, scene := range world.GetAllScene() {
-					scene.ChangeGameTime(scene.gameTime + 1)
-				}
+				world.ChangeGameTime(world.GetGameTime() + 1)
 			}
 		}
 	}

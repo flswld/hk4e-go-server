@@ -366,25 +366,25 @@ func (g *Game) HandleDrown(player *model.Player, stamina uint32) {
 	if player.StaminaInfo.State != proto.MotionState_MOTION_SWIM_MOVE && player.StaminaInfo.State != proto.MotionState_MOTION_SWIM_DASH {
 		return
 	}
-	logger.Debug("player drown, curStamina: %v, state: %v", stamina, player.StaminaInfo.State)
 	// 设置角色为死亡
 	world := WORLD_MANAGER.GetWorldById(player.WorldId)
 	if world == nil {
 		logger.Error("world is nil, worldId: %v, uid: %v", player.WorldId, player.PlayerId)
 		return
 	}
-	for _, worldAvatar := range world.GetPlayerWorldAvatarList(player) {
-		dbAvatar := player.GetDbAvatar()
-		avatar := dbAvatar.GetAvatarById(worldAvatar.GetAvatarId())
-		if avatar == nil {
-			logger.Error("get avatar is nil, avatarId: %v", worldAvatar.GetAvatarId())
-			continue
-		}
-		if avatar.LifeState != constant.LIFE_STATE_ALIVE {
-			continue
-		}
-		g.KillPlayerAvatar(player, worldAvatar.GetAvatarId(), proto.PlayerDieType_PLAYER_DIE_DRAWN)
+	// 获取现行的角色
+	activeAvatarId := player.GetDbTeam().GetActiveAvatarId()
+	activeAvatar := player.GetDbAvatar().GetAvatarById(activeAvatarId)
+	if activeAvatar == nil {
+		logger.Error("active avatar is nil, avatarId: %v", activeAvatarId)
+		return
 	}
+	if activeAvatar.LifeState != constant.LIFE_STATE_ALIVE {
+		return
+	}
+	g.KillPlayerAvatar(player, activeAvatarId, proto.PlayerDieType_PLAYER_DIE_DRAWN)
+
+	logger.Debug("player drown, curStamina: %v, state: %v", stamina, player.StaminaInfo.State)
 }
 
 // SetVehicleStamina 设置载具耐力

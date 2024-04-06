@@ -236,14 +236,12 @@ func (g *Game) PlayerTimeNotify(world *World) {
 }
 
 func (g *Game) PlayerGameTimeNotify(world *World) {
-	for _, scene := range world.sceneMap {
-		for _, scenePlayer := range scene.GetAllPlayer() {
-			playerGameTimeNotify := &proto.PlayerGameTimeNotify{
-				GameTime: scene.GetGameTime(),
-				Uid:      scenePlayer.PlayerId,
-			}
-			g.SendMsg(cmd.PlayerGameTimeNotify, scenePlayer.PlayerId, 0, playerGameTimeNotify)
+	for _, player := range world.GetAllPlayer() {
+		playerGameTimeNotify := &proto.PlayerGameTimeNotify{
+			GameTime: world.GetGameTime(),
+			Uid:      player.PlayerId,
 		}
+		g.SendMsg(cmd.PlayerGameTimeNotify, player.PlayerId, 0, playerGameTimeNotify)
 	}
 }
 

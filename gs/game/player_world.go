@@ -276,19 +276,14 @@ func (g *Game) ChangeGameTimeReq(player *model.Player, payloadMsg pb.Message) {
 		logger.Error("get world is nil, worldId: %v, uid: %v", player.WorldId, player.PlayerId)
 		return
 	}
-	scene := world.GetSceneById(player.GetSceneId())
-	if scene == nil {
-		logger.Error("scene is nil, sceneId: %v, uid: %v", player.GetSceneId(), player.PlayerId)
-		return
-	}
 	logger.Debug("change game time, gameTime: %v, uid: %v", gameTime, player.PlayerId)
-	g.ChangeGameTime(scene, gameTime)
+	g.ChangeGameTime(world, gameTime)
 
 	// 天气气象随机
 	g.WeatherClimateRandom(player, player.WeatherInfo.WeatherAreaId)
 
 	rsp := &proto.ChangeGameTimeRsp{
-		CurGameTime: scene.GetGameTime(),
+		CurGameTime: world.GetGameTime(),
 	}
 	g.SendMsg(cmd.ChangeGameTimeRsp, player.PlayerId, player.ClientSeq, rsp)
 }
@@ -564,15 +559,15 @@ func (g *Game) UnlockPlayerSceneArea(player *model.Player, sceneId uint32, areaI
 	g.TriggerQuest(player, constant.QUEST_FINISH_COND_TYPE_UNLOCK_AREA, "", int32(sceneId), int32(areaId))
 }
 
-// ChangeGameTime 修改游戏场景时间
-func (g *Game) ChangeGameTime(scene *Scene, gameTime uint32) {
-	scene.ChangeGameTime(gameTime)
-	for _, scenePlayer := range scene.GetAllPlayer() {
+// ChangeGameTime 修改游戏时间
+func (g *Game) ChangeGameTime(world *World, gameTime uint32) {
+	world.ChangeGameTime(gameTime)
+	for _, player := range world.GetAllPlayer() {
 		playerGameTimeNotify := &proto.PlayerGameTimeNotify{
-			GameTime: scene.GetGameTime(),
-			Uid:      scenePlayer.PlayerId,
+			GameTime: world.GetGameTime(),
+			Uid:      player.PlayerId,
 		}
-		g.SendMsg(cmd.PlayerGameTimeNotify, scenePlayer.PlayerId, scenePlayer.ClientSeq, playerGameTimeNotify)
+		g.SendMsg(cmd.PlayerGameTimeNotify, player.PlayerId, player.ClientSeq, playerGameTimeNotify)
 	}
 }
 

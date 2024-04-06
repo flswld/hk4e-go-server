@@ -234,7 +234,7 @@ func (g *Game) SceneInitFinishReq(player *model.Player, payloadMsg pb.Message) {
 		g.SendMsg(cmd.SceneTimeNotify, player.PlayerId, player.ClientSeq, sceneTimeNotify)
 
 		playerGameTimeNotify := &proto.PlayerGameTimeNotify{
-			GameTime: scene.GetGameTime(),
+			GameTime: world.GetGameTime(),
 			Uid:      player.PlayerId,
 		}
 		g.SendMsg(cmd.PlayerGameTimeNotify, player.PlayerId, player.ClientSeq, playerGameTimeNotify)

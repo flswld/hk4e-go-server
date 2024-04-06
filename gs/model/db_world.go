@@ -7,6 +7,7 @@ import (
 type DbWorld struct {
 	SceneMap    map[uint32]*DbScene
 	MapMarkList []*MapMark
+	GameTime    uint32 // 游戏内提瓦特大陆的时间
 }
 
 type DbScene struct {
@@ -26,6 +27,7 @@ type MapMark struct {
 func (p *Player) GetDbWorld() *DbWorld {
 	if p.DbWorld == nil {
 		p.DbWorld = new(DbWorld)
+		p.DbWorld.GameTime = 8 * 60 // 初始时间
 	}
 	if p.DbWorld.SceneMap == nil {
 		p.DbWorld.SceneMap = make(map[uint32]*DbScene)

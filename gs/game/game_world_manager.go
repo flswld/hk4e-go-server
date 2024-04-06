@@ -856,6 +856,14 @@ func (w *World) RemoveWaitPlayer(uid uint32) {
 	delete(w.waitEnterPlayerMap, uid)
 }
 
+func (w *World) GetGameTime() uint32 {
+	return w.GetOwner().GetDbWorld().GameTime
+}
+
+func (w *World) ChangeGameTime(time uint32) {
+	w.GetOwner().GetDbWorld().GameTime = time % 1440
+}
+
 func (w *World) CreateScene(sceneId uint32) *Scene {
 	scene := &Scene{
 		id:         sceneId,
@@ -863,7 +871,6 @@ func (w *World) CreateScene(sceneId uint32) *Scene {
 		playerMap:  make(map[uint32]*model.Player),
 		entityMap:  make(map[uint32]*Entity),
 		groupMap:   make(map[uint32]*Group),
-		gameTime:   0,
 		createTime: time.Now().UnixMilli(),
 		meeoIndex:  0,
 	}

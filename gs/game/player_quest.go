@@ -231,6 +231,7 @@ func (g *Game) StartQuest(player *model.Player, questId uint32, notifyClient boo
 
 	g.ExecQuest(player, questId, QuestExecTypeStart)
 	g.QuestStartTriggerCheck(player, questId)
+	g.CheckQuestFinishedCond(player, questId)
 
 	if notifyClient {
 		ntf := &proto.QuestListUpdateNotify{
@@ -401,7 +402,7 @@ func (g *Game) ExecQuest(player *model.Player, questId uint32, questExecType int
 				logger.Error("scene is nil, sceneId: %v, uid: %v", player.GetSceneId(), player.PlayerId)
 				continue
 			}
-			g.ChangeGameTime(scene, uint32(hour*60))
+			g.ChangeGameTime(world, uint32(hour*60))
 		case constant.QUEST_EXEC_TYPE_ROLLBACK_QUEST:
 			// 回滚任务
 			if len(questExec.Param) != 1 {
@@ -417,6 +418,36 @@ func (g *Game) ExecQuest(player *model.Player, questId uint32, questExecType int
 			g.StartQuest(player, rollbackQuest.QuestId, true)
 		default:
 			logger.Error("not support quest exec type: %v, uid: %v", questExec.Type, player.PlayerId)
+		}
+	}
+}
+
+// CheckQuestFinishedCond 检测任务已完成的条件
+func (g *Game) CheckQuestFinishedCond(player *model.Player, questId uint32) {
+	g.EndlessLoopCheck(EndlessLoopCheckTypeCheckFinishedCond)
+	questDataConfig := gdconf.GetQuestDataById(int32(questId))
+	if questDataConfig == nil {
+		return
+	}
+	// TODO 检测已经完成的失败条件
+	// 检测已经完成的完成条件
+	for _, cond := range questDataConfig.FinishCondList {
+		switch cond.Type {
+		case constant.QUEST_FINISH_COND_TYPE_UNLOCK_TRANS_POINT:
+			sceneId := uint32(cond.Param[0])
+			pointId := uint32(cond.Param[1])
+
+			dbWorld := player.GetDbWorld()
+			dbScene := dbWorld.GetSceneById(sceneId)
+			if dbScene == nil {
+				logger.Error("get dbScene is nil, sceneId: %v, uid: %v", sceneId, player.PlayerId)
+				continue
+			}
+			unlock := dbScene.CheckPointUnlock(pointId)
+			if !unlock {
+				continue
+			}
+			g.TriggerQuest(player, constant.QUEST_FINISH_COND_TYPE_UNLOCK_TRANS_POINT, "", int32(sceneId), int32(pointId))
 		}
 	}
 }

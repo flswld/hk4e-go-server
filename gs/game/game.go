@@ -258,6 +258,7 @@ const (
 	EndlessLoopCheckTypeTriggerQuest
 	EndlessLoopCheckTypeUseItem
 	EndlessLoopCheckTypeCallLuaFunc
+	EndlessLoopCheckTypeCheckFinishedCond
 )
 
 func (g *Game) EndlessLoopCheck(checkType int) {
@@ -296,6 +297,10 @@ func (g *Game) EndlessLoopCheck(checkType int) {
 			EndlessLoopHandleFunc()
 		}
 	case EndlessLoopCheckTypeCallLuaFunc:
+		if checkCount > 1000 {
+			EndlessLoopHandleFunc()
+		}
+	case EndlessLoopCheckTypeCheckFinishedCond:
 		if checkCount > 1000 {
 			EndlessLoopHandleFunc()
 		}
