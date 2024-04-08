@@ -2,6 +2,7 @@ package gdconf
 
 import (
 	"fmt"
+	"hk4e/common/constant"
 	"os"
 
 	"hk4e/pkg/endec"
@@ -119,4 +120,43 @@ func GetAvatarDataById(avatarId int32) *AvatarData {
 
 func GetAvatarDataMap() map[int32]*AvatarData {
 	return CONF.AvatarDataMap
+}
+
+// GetAvatarBaseADH 获取角色基础攻防血
+func GetAvatarBaseADH(avatarId uint32, level uint8, promote uint8, fightProp int) float32 {
+	adh := float32(0.0)
+	avatarConfig := GetAvatarDataById(int32(avatarId))
+	if avatarConfig == nil {
+		logger.Error("avatar config is nil, avatarId: %v", avatarId)
+		return adh
+	}
+	switch fightProp {
+	case constant.FIGHT_PROP_BASE_ATTACK:
+		adh += avatarConfig.AttackBase
+	case constant.FIGHT_PROP_BASE_DEFENSE:
+		adh += avatarConfig.DefenseBase
+	case constant.FIGHT_PROP_BASE_HP:
+		adh += avatarConfig.HpBase
+	}
+	for _, propGrow := range avatarConfig.PropGrowList {
+		if propGrow.Type == int32(fightProp) {
+			avatarCurveConfig := GetAvatarCurveByLevelAndType(int32(level), propGrow.Curve)
+			if avatarCurveConfig == nil {
+				logger.Error("avatar curve config is nil, level: %v, curveType: %v", level, propGrow.Curve)
+				return adh
+			}
+			adh *= avatarCurveConfig.Value
+		}
+	}
+	avatarPromoteConfig := GetAvatarPromoteDataByIdAndLevel(avatarConfig.PromoteId, int32(promote))
+	if avatarPromoteConfig == nil {
+		logger.Error("avatar promote config is nil, promoteId: %v, promoteLevel: %v", avatarConfig.PromoteId, promote)
+		return adh
+	}
+	for _, addProp := range avatarPromoteConfig.AddPropList {
+		if addProp.Type == int32(fightProp) {
+			adh += addProp.Value
+		}
+	}
+	return adh
 }

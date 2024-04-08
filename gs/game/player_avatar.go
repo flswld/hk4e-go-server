@@ -631,7 +631,40 @@ func (g *Game) UpdatePlayerAvatarFightProp(userId uint32, avatarId uint32) {
 	}
 
 	// 更新角色面板
-	dbAvatar.UpdateAvatarFightProp(avatar)
+	avatarDataConfig := gdconf.GetAvatarDataById(int32(avatar.AvatarId))
+	if avatarDataConfig == nil {
+		logger.Error("avatarDataConfig error, avatarId: %v", avatar.AvatarId)
+		return
+	}
+	avatar.FightPropMap[constant.FIGHT_PROP_NONE] = 0.0
+	// 白字攻防血
+	avatar.FightPropMap[constant.FIGHT_PROP_BASE_ATTACK] = gdconf.GetAvatarBaseADH(avatar.AvatarId, avatar.Level, avatar.Promote, constant.FIGHT_PROP_BASE_ATTACK)
+	avatar.FightPropMap[constant.FIGHT_PROP_BASE_DEFENSE] = gdconf.GetAvatarBaseADH(avatar.AvatarId, avatar.Level, avatar.Promote, constant.FIGHT_PROP_BASE_DEFENSE)
+	avatar.FightPropMap[constant.FIGHT_PROP_BASE_HP] = gdconf.GetAvatarBaseADH(avatar.AvatarId, avatar.Level, avatar.Promote, constant.FIGHT_PROP_BASE_HP)
+	// 白字+绿字攻防血
+	avatar.FightPropMap[constant.FIGHT_PROP_CUR_ATTACK] = gdconf.GetAvatarBaseADH(avatar.AvatarId, avatar.Level, avatar.Promote, constant.FIGHT_PROP_BASE_ATTACK)
+	avatar.FightPropMap[constant.FIGHT_PROP_CUR_DEFENSE] = gdconf.GetAvatarBaseADH(avatar.AvatarId, avatar.Level, avatar.Promote, constant.FIGHT_PROP_BASE_DEFENSE)
+	avatar.FightPropMap[constant.FIGHT_PROP_MAX_HP] = gdconf.GetAvatarBaseADH(avatar.AvatarId, avatar.Level, avatar.Promote, constant.FIGHT_PROP_BASE_HP)
+	// 双暴
+	avatar.FightPropMap[constant.FIGHT_PROP_CRITICAL] = avatarDataConfig.Critical
+	avatar.FightPropMap[constant.FIGHT_PROP_CRITICAL_HURT] = avatarDataConfig.CriticalHurt
+	// 元素充能
+	avatar.FightPropMap[constant.FIGHT_PROP_CHARGE_EFFICIENCY] = 1.0
+
+	// 武器基础属性加成
+	weaponItemConfig := gdconf.GetItemDataById(int32(avatar.EquipWeapon.ItemId))
+	if weaponItemConfig == nil {
+		logger.Error("weaponItemConfig is nil, itemId: %v", avatar.EquipWeapon.ItemId)
+		return
+	}
+	for _, prop := range weaponItemConfig.PropList {
+		curveConfig := gdconf.GetWeaponCurveByLevelAndType(int32(avatar.EquipWeapon.Level), prop.Curve)
+		if curveConfig == nil {
+			logger.Error("curveConfig is nil, level: %v, curve: %v", avatar.EquipWeapon.Level, prop.Curve)
+			return
+		}
+		avatar.FightPropMap[uint32(prop.Type)] += prop.Value * curveConfig.Value
+	}
 
 	avatarFightPropNotify := &proto.AvatarFightPropNotify{
 		AvatarGuid:   avatar.Guid,

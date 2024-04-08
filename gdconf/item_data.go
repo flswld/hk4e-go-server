@@ -9,6 +9,12 @@ type ItemUse struct {
 	UseParam  []string
 }
 
+type Prop struct {
+	Type  int32   // 类型
+	Value float32 // 初始值
+	Curve int32   // 曲线
+}
+
 // ItemData 道具分类分表整合配置表
 type ItemData struct {
 	// 公共表头字段
@@ -42,8 +48,15 @@ type ItemData struct {
 	EquipBaseExp   int32    `csv:"武器初始经验,omitempty"`
 	AwakenMaterial int32    `csv:"精炼道具,omitempty"`
 	AwakenCoinCost IntArray `csv:"精炼摩拉消耗,omitempty"`
+	Prop1Type      int32    `csv:"[属性]1类型,omitempty"`
+	Prop1Value     float32  `csv:"[属性]1初始值,omitempty"`
+	Prop1Curve     int32    `csv:"[属性]1成长曲线,omitempty"`
+	Prop2Type      int32    `csv:"[属性]2类型,omitempty"`
+	Prop2Value     float32  `csv:"[属性]2初始值,omitempty"`
+	Prop2Curve     int32    `csv:"[属性]2成长曲线,omitempty"`
 
 	SkillAffix []int32
+	PropList   []*Prop
 
 	// 圣遗物
 	ReliquaryType     int32 `csv:"圣遗物类别,omitempty"`
@@ -101,6 +114,21 @@ func (g *GameDataConfig) loadItemData() {
 			}
 			if itemData.SkillAffix2 != 0 {
 				itemData.SkillAffix = append(itemData.SkillAffix, itemData.SkillAffix2)
+			}
+			itemData.PropList = make([]*Prop, 0)
+			if itemData.Prop1Type != 0 {
+				itemData.PropList = append(itemData.PropList, &Prop{
+					Type:  itemData.Prop1Type,
+					Value: itemData.Prop1Value,
+					Curve: itemData.Prop1Curve,
+				})
+			}
+			if itemData.Prop2Type != 0 {
+				itemData.PropList = append(itemData.PropList, &Prop{
+					Type:  itemData.Prop2Type,
+					Value: itemData.Prop2Value,
+					Curve: itemData.Prop2Curve,
+				})
 			}
 			g.ItemDataMap[itemData.ItemId] = itemData
 		}
