@@ -183,6 +183,9 @@ func (p *Player) InitOnlineData() {
 	dbItem := p.GetDbItem()
 	dbItem.InitDbItem(p)
 
+	// 更新角色面板
+	dbAvatar.UpdateAllAvatarFightProp()
+
 	p.MailMap = make(map[uint32]*Mail)
 }
 
