@@ -59,10 +59,15 @@ type ItemData struct {
 	PropList   []*Prop
 
 	// 圣遗物
-	ReliquaryType     int32 `csv:"圣遗物类别,omitempty"`
-	MainPropDepotId   int32 `csv:"主属性库ID,omitempty"`
-	AppendPropDepotId int32 `csv:"追加属性库ID,omitempty"`
-	AppendPropCount   int32 `csv:"追加属性初始条数,omitempty"`
+	ReliquaryType     int32    `csv:"圣遗物类别,omitempty"`
+	Stage             int32    `csv:"阶数,omitempty"`
+	MainPropDepotId   int32    `csv:"主属性库ID,omitempty"`
+	AppendPropDepotId int32    `csv:"追加属性库ID,omitempty"`
+	AppendPropCount   int32    `csv:"追加属性初始条数,omitempty"`
+	SuitId            int32    `csv:"套装ID,omitempty"`
+	PropAddLevel      IntArray `csv:"属性加成等级,omitempty"`
+	BaseConvExp       int32    `csv:"基础转化经验,omitempty"`
+	UpgradeLevelMax   int32    `csv:"强化等级上限,omitempty"`
 }
 
 func (g *GameDataConfig) loadItemData() {

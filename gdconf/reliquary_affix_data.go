@@ -6,10 +6,13 @@ import (
 
 // ReliquaryAffixData 圣遗物追加属性配置表
 type ReliquaryAffixData struct {
-	AppendPropId      int32 `csv:"追加属性ID"`
-	AppendPropDepotId int32 `csv:"追加属性库ID,omitempty"`
-	PropType          int32 `csv:"属性类别,omitempty"`
-	RandomWeight      int32 `csv:"随机权重,omitempty"`
+	AppendPropId      int32   `csv:"追加属性ID"`
+	AppendPropDepotId int32   `csv:"追加属性库ID,omitempty"`
+	Group             int32   `csv:"组别,omitempty"`
+	PropType          int32   `csv:"属性类别,omitempty"`
+	AppendPropValue   float32 `csv:"追加属性值,omitempty"`
+	RandomWeight      int32   `csv:"随机权重,omitempty"`
+	UpgradeWeight     int32   `csv:"升级权重,omitempty"`
 }
 
 func (g *GameDataConfig) loadReliquaryAffixData() {

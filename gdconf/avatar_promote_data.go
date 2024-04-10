@@ -12,9 +12,10 @@ type AddProp struct {
 
 // AvatarPromoteData 角色突破配置表
 type AvatarPromoteData struct {
-	PromoteId      int32 `csv:"角色突破ID"`
-	PromoteLevel   int32 `csv:"突破等级,omitempty"`
-	CostCoin       int32 `csv:"消耗金币,omitempty"`
+	PromoteId    int32 `csv:"角色突破ID"`
+	PromoteLevel int32 `csv:"突破等级,omitempty"`
+	CostCoin     int32 `csv:"消耗金币,omitempty"`
+
 	CostItemId1    int32 `csv:"[消耗物品]1ID,omitempty"`
 	CostItemCount1 int32 `csv:"[消耗物品]1数量,omitempty"`
 	CostItemId2    int32 `csv:"[消耗物品]2ID,omitempty"`
@@ -23,6 +24,7 @@ type AvatarPromoteData struct {
 	CostItemCount3 int32 `csv:"[消耗物品]3数量,omitempty"`
 	CostItemId4    int32 `csv:"[消耗物品]4ID,omitempty"`
 	CostItemCount4 int32 `csv:"[消耗物品]4数量,omitempty"`
+
 	LevelLimit     int32 `csv:"解锁等级上限,omitempty"`
 	MinPlayerLevel int32 `csv:"冒险等级要求,omitempty"`
 
