@@ -256,15 +256,9 @@ func (g *Game) OnOffline(userId uint32, changeGsInfo *ChangeGsInfo) {
 		return
 	}
 
-	// 回写当前血量和元素能量属性
 	dbAvatar := player.GetDbAvatar()
 	for _, avatar := range dbAvatar.GetAvatarMap() {
-		avatar.CurrHP = float64(avatar.FightPropMap[constant.FIGHT_PROP_CUR_HP])
-		avatarSkillDataConfig := gdconf.GetAvatarEnergySkillConfig(avatar.SkillDepotId)
-		if avatarSkillDataConfig != nil {
-			fightPropEnergy := constant.ELEMENT_TYPE_FIGHT_PROP_ENERGY_MAP[int(avatarSkillDataConfig.CostElemType)]
-			avatar.CurrEnergy = float64(avatar.FightPropMap[uint32(fightPropEnergy.CurEnergy)])
-		}
+		dbAvatar.SaveOfflineFightProp(avatar)
 	}
 
 	world := WORLD_MANAGER.GetWorldById(player.WorldId)

@@ -75,9 +75,7 @@ func (a *DbAvatar) InitDbAvatar(player *Player) {
 	}
 }
 
-func (a *DbAvatar) InitAvatar(player *Player, avatar *Avatar) {
-	// 角色战斗属性
-	avatar.FightPropMap = make(map[uint32]float32)
+func (a *DbAvatar) LoadOfflineFightProp(avatar *Avatar) {
 	// 当前血量
 	avatar.FightPropMap[constant.FIGHT_PROP_CUR_HP] = float32(avatar.CurrHP)
 	// 当前元素能量
@@ -87,6 +85,23 @@ func (a *DbAvatar) InitAvatar(player *Player, avatar *Avatar) {
 		avatar.FightPropMap[uint32(fightPropEnergy.MaxEnergy)] = float32(avatarSkillDataConfig.CostElemVal)
 		avatar.FightPropMap[uint32(fightPropEnergy.CurEnergy)] = float32(avatar.CurrEnergy)
 	}
+}
+
+func (a *DbAvatar) SaveOfflineFightProp(avatar *Avatar) {
+	// 当前血量
+	avatar.CurrHP = float64(avatar.FightPropMap[constant.FIGHT_PROP_CUR_HP])
+	// 当前元素能量
+	avatarSkillDataConfig := gdconf.GetAvatarEnergySkillConfig(avatar.SkillDepotId)
+	if avatarSkillDataConfig != nil {
+		fightPropEnergy := constant.ELEMENT_TYPE_FIGHT_PROP_ENERGY_MAP[int(avatarSkillDataConfig.CostElemType)]
+		avatar.CurrEnergy = float64(avatar.FightPropMap[uint32(fightPropEnergy.CurEnergy)])
+	}
+}
+
+func (a *DbAvatar) InitAvatar(player *Player, avatar *Avatar) {
+	// 角色战斗属性
+	avatar.FightPropMap = make(map[uint32]float32)
+	a.LoadOfflineFightProp(avatar)
 	// guid
 	avatar.Guid = player.GetNextGameObjectGuid()
 	player.GameObjectGuidMap[avatar.Guid] = GameObject(avatar)
@@ -104,6 +119,10 @@ func (a *DbAvatar) UpdateAllAvatarFightProp() {
 
 // UpdateAvatarFightProp 更新角色面板
 func (a *DbAvatar) UpdateAvatarFightProp(avatar *Avatar) {
+	// 清空动态计算的战斗属性
+	a.SaveOfflineFightProp(avatar)
+	avatar.FightPropMap = make(map[uint32]float32)
+	a.LoadOfflineFightProp(avatar)
 	// 更新角色面板
 	avatarDataConfig := gdconf.GetAvatarDataById(int32(avatar.AvatarId))
 	if avatarDataConfig == nil {
