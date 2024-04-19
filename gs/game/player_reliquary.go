@@ -21,6 +21,7 @@ func (g *Game) ReliquaryUpgradeReq(player *model.Player, payloadMsg pb.Message) 
 		g.SendError(cmd.ReliquaryUpgradeRsp, player, &proto.ReliquaryUpgradeRsp{})
 		return
 	}
+	totalAddExp := uint32(0)
 	if len(req.ItemParamList) != 0 {
 		itemList := make([]*ChangeItem, 0)
 		for _, itemParam := range req.ItemParamList {
@@ -43,6 +44,12 @@ func (g *Game) ReliquaryUpgradeReq(player *model.Player, payloadMsg pb.Message) 
 				g.SendError(cmd.ReliquaryUpgradeRsp, player, &proto.ReliquaryUpgradeRsp{})
 				return
 			}
+			foodReliquaryConfig := gdconf.GetItemDataById(int32(foodReliquary.ItemId))
+			if foodReliquaryConfig == nil {
+				logger.Error("reliquary config error, itemId: %v", reliquary.ItemId)
+				return
+			}
+			totalAddExp += uint32(foodReliquaryConfig.BaseConvExp)
 			reliquaryIdList = append(reliquaryIdList, foodReliquary.ReliquaryId)
 		}
 		g.CostPlayerReliquary(player.PlayerId, reliquaryIdList)
@@ -54,14 +61,43 @@ func (g *Game) ReliquaryUpgradeReq(player *model.Player, payloadMsg pb.Message) 
 		oldAppendPropList = append(oldAppendPropList, appendPropId)
 	}
 
-	// TODO 暂时先瞎鸡巴强化
-	reliquary.Level += 1
-	reliquary.Exp += 100
-	if reliquary.Level == 5 || reliquary.Level == 9 || reliquary.Level == 13 || reliquary.Level == 17 || reliquary.Level == 21 {
-		g.AppendReliquaryProp(reliquary, 1)
+	reliquaryConfig := gdconf.GetItemDataById(int32(reliquary.ItemId))
+	if reliquaryConfig == nil {
+		logger.Error("reliquary config error, itemId: %v", reliquary.ItemId)
+		return
 	}
 
+	reliquary.Exp += totalAddExp
+	for i := 0; i < 1000; i++ {
+		reliquaryLevelConfig := gdconf.GetReliquaryLevelDataByStageAndLevel(reliquaryConfig.Stage, int32(reliquary.Level))
+		if reliquaryLevelConfig == nil {
+			logger.Error("reliquaryLevelConfig is nil, stage: %v, level: %v", reliquaryConfig.Stage, reliquary.Level)
+			return
+		}
+		if reliquary.Exp < uint32(reliquaryLevelConfig.Exp) {
+			break
+		}
+		reliquary.Exp -= uint32(reliquaryLevelConfig.Exp)
+		reliquary.Level++
+	}
+
+	for level := oldLevel + 1; level <= reliquary.Level; level++ {
+		for _, propAddLevel := range reliquaryConfig.PropAddLevel {
+			if int32(level) == propAddLevel {
+				g.AppendReliquaryProp(reliquary, 1)
+			}
+		}
+	}
 	g.SendMsg(cmd.StoreItemChangeNotify, player.PlayerId, player.ClientSeq, g.PacketStoreItemChangeNotifyByReliquary(reliquary))
+
+	// 获取持有该圣遗物的角色
+	dbAvatar := player.GetDbAvatar()
+	avatar := dbAvatar.GetAvatarById(reliquary.AvatarId)
+	// 圣遗物可能没被任何角色装备 仅在被装备时更新面板
+	if avatar != nil {
+		// 角色更新面板
+		g.UpdatePlayerAvatarFightProp(player.PlayerId, avatar.AvatarId)
+	}
 
 	rsp := &proto.ReliquaryUpgradeRsp{
 		OldLevel:            uint32(oldLevel),
@@ -153,7 +189,7 @@ func (g *Game) AddPlayerReliquary(userId uint32, itemId uint32) uint64 {
 	return reliquaryId
 }
 
-func (g *Game) GetReliquaryAffixDataRandomByDepotId(appendPropDepotId int32, excludeTypeList ...uint32) *gdconf.ReliquaryAffixData {
+func (g *Game) GetReliquaryAffixDataRandomByDepotId(appendPropDepotId int32, excludeMainPropType uint32, excludeAppendPropIdList []uint32) *gdconf.ReliquaryAffixData {
 	appendPropMap, exist := gdconf.GetReliquaryAffixDataMap()[appendPropDepotId]
 	if !exist {
 		return nil
@@ -161,15 +197,17 @@ func (g *Game) GetReliquaryAffixDataRandomByDepotId(appendPropDepotId int32, exc
 	weightAll := int32(0)
 	appendPropList := make([]*gdconf.ReliquaryAffixData, 0)
 	for _, data := range appendPropMap {
-		isBoth := false
 		// 排除列表中的属性类型是否相同
-		for _, propType := range excludeTypeList {
-			if propType == uint32(data.PropType) {
-				isBoth = true
-				break
+		if excludeMainPropType == uint32(data.PropType) {
+			continue
+		}
+		skip := false
+		for _, excludeAppendPropId := range excludeAppendPropIdList {
+			if uint32(data.AppendPropId) == excludeAppendPropId {
+				skip = true
 			}
 		}
-		if isBoth {
+		if skip {
 			continue
 		}
 		weightAll += data.RandomWeight
@@ -203,21 +241,24 @@ func (g *Game) AppendReliquaryProp(reliquary *model.Reliquary, count int32) {
 	}
 	// 圣遗物追加属性的次数
 	for i := 0; i < int(count); i++ {
-		// 要排除的属性类型
-		excludeTypeList := make([]uint32, 0, len(reliquary.AppendPropIdList)+1)
-		// 排除主属性
-		excludeTypeList = append(excludeTypeList, uint32(reliquaryMainConfig.PropType))
 		// 排除追加的属性
-		for _, propId := range reliquary.AppendPropIdList {
-			targetAffixConfig := gdconf.GetReliquaryAffixDataByDepotIdAndPropId(reliquaryConfig.AppendPropDepotId, int32(propId))
-			if targetAffixConfig == nil {
-				logger.Error("target affix config error, propId: %v", propId)
-				return
+		excludeAppendPropIdList := make([]uint32, 0)
+		if len(reliquary.AppendPropIdList) < 4 {
+			for _, appendPropId := range reliquary.AppendPropIdList {
+				excludeAppendPropIdList = append(excludeAppendPropIdList, appendPropId)
 			}
-			excludeTypeList = append(excludeTypeList, uint32(targetAffixConfig.PropType))
+		} else {
+			for _, reliquaryAffixConfig := range gdconf.GetReliquaryAffixDataMap()[reliquaryConfig.AppendPropDepotId] {
+				for _, appendPropId := range reliquary.AppendPropIdList {
+					if uint32(reliquaryAffixConfig.AppendPropId) == appendPropId {
+						continue
+					}
+					excludeAppendPropIdList = append(excludeAppendPropIdList, uint32(reliquaryAffixConfig.AppendPropId))
+				}
+			}
 		}
 		// 将要添加的属性
-		appendAffixConfig := g.GetReliquaryAffixDataRandomByDepotId(reliquaryConfig.AppendPropDepotId, excludeTypeList...)
+		appendAffixConfig := g.GetReliquaryAffixDataRandomByDepotId(reliquaryConfig.AppendPropDepotId, uint32(reliquaryMainConfig.PropType), excludeAppendPropIdList)
 		if appendAffixConfig == nil {
 			logger.Error("append affix config error, appendPropDepotId: %v", reliquaryConfig.AppendPropDepotId)
 			return

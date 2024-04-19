@@ -246,11 +246,9 @@ func (g *Game) WeaponPromoteReq(player *model.Player, payloadMsg pb.Message) {
 	// 消耗突破材料和摩拉
 	ok = g.CostPlayerItem(player.PlayerId, costItemList)
 	if !ok {
-		if !ok {
-			logger.Error("item count not enough, uid: %v", player.PlayerId)
-			g.SendError(cmd.WeaponPromoteRsp, player, &proto.WeaponPromoteRsp{}, proto.Retcode_RET_ITEM_COUNT_NOT_ENOUGH)
-			return
-		}
+		logger.Error("item count not enough, uid: %v", player.PlayerId)
+		g.SendError(cmd.WeaponPromoteRsp, player, &proto.WeaponPromoteRsp{}, proto.Retcode_RET_ITEM_COUNT_NOT_ENOUGH)
+		return
 	}
 
 	// 突破前的信息
@@ -511,7 +509,7 @@ func (g *Game) CostPlayerWeapon(userId uint32, weaponIdList []uint64) {
 
 // GetWeaponUpgradeReturnMaterial 获取武器强化返回的材料
 func (g *Game) GetWeaponUpgradeReturnMaterial(overflowExp uint32) (returnItemList []*proto.ItemParam) {
-	returnItemList = make([]*proto.ItemParam, 0, 0)
+	returnItemList = make([]*proto.ItemParam, 0)
 	// 武器强化材料返还
 	type materialExpData struct {
 		ItemId uint32

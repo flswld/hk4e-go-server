@@ -581,7 +581,7 @@ func (g *Game) UpgradePlayerAvatar(player *model.Player, avatar *model.Avatar, e
 	// 角色增加经验
 	avatar.Exp += expCount
 	// 角色升级
-	for {
+	for i := 0; i < 1000; i++ {
 		// 获取角色等级配置表
 		avatarLevelConfig := gdconf.GetAvatarLevelDataByLevel(int32(avatar.Level))
 		if avatarLevelConfig == nil {
