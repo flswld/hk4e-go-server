@@ -8,7 +8,7 @@ import (
 type ReliquaryLevelData struct {
 	Stage int32 `csv:"阶数"`
 	Level int32 `csv:"等级,omitempty"`
-	Exp   int32 `csv:"升到下一级所需经验,omitempty"`
+	Exp   int32 `csv:"成长到下一级所需经验,omitempty"`
 
 	AddProp1Type   int32   `csv:"[增加属性]1类型,omitempty"`
 	AddProp1Value  float32 `csv:"[增加属性]1值,omitempty"`
