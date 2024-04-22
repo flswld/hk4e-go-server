@@ -8,8 +8,14 @@ import (
 	"hk4e/pkg/random"
 	"hk4e/protocol/cmd"
 	"hk4e/protocol/proto"
+	"strconv"
 
 	pb "google.golang.org/protobuf/proto"
+)
+
+const (
+	RELIQUARY_APPEND_PROP_MAX = 4
+	RELIQUARY_CONV_EXP        = 0.8
 )
 
 /************************************************** 接口请求 **************************************************/
@@ -18,60 +24,116 @@ func (g *Game) ReliquaryUpgradeReq(player *model.Player, payloadMsg pb.Message) 
 	req := payloadMsg.(*proto.ReliquaryUpgradeReq)
 	reliquary, ok := player.GameObjectGuidMap[req.TargetReliquaryGuid].(*model.Reliquary)
 	if !ok {
+		logger.Error("reliquary guid not exist, targetReliquaryGuid: %v, uid: %v", req.TargetReliquaryGuid, player.PlayerId)
 		g.SendError(cmd.ReliquaryUpgradeRsp, player, &proto.ReliquaryUpgradeRsp{})
 		return
 	}
+	// 计算总经验
 	totalAddExp := uint32(0)
+	totalCostSCoin := uint32(0)
 	if len(req.ItemParamList) != 0 {
+		// 经验材料
 		itemList := make([]*ChangeItem, 0)
 		for _, itemParam := range req.ItemParamList {
 			itemList = append(itemList, &ChangeItem{
 				ItemId:      itemParam.ItemId,
 				ChangeCount: itemParam.Count,
 			})
+			itemConfig := gdconf.GetItemDataById(int32(itemParam.ItemId))
+			if itemConfig == nil {
+				logger.Error("itemConfig is nil, itemId: %v", itemParam.ItemId)
+				g.SendError(cmd.ReliquaryUpgradeRsp, player, &proto.ReliquaryUpgradeRsp{}, proto.Retcode_RET_NOT_FOUND_CONFIG)
+				return
+			}
+			for _, itemUse := range itemConfig.ItemUseList {
+				if itemUse.UseOption == constant.ITEM_USE_ADD_RELIQUARY_EXP {
+					exp, err := strconv.Atoi(itemUse.UseParam[0])
+					if err != nil {
+						logger.Error("item use param format error: %v", err)
+						g.SendError(cmd.ReliquaryUpgradeRsp, player, &proto.ReliquaryUpgradeRsp{}, proto.Retcode_RET_NOT_FOUND_CONFIG)
+						return
+					}
+					totalAddExp += uint32(exp)
+					totalCostSCoin += uint32(exp)
+				}
+			}
 		}
 		ok := g.CostPlayerItem(player.PlayerId, itemList)
 		if !ok {
-			g.SendError(cmd.ReliquaryUpgradeRsp, player, &proto.ReliquaryUpgradeRsp{})
+			logger.Error("item count not enough, itemList: %v, uid: %v", itemList, player.PlayerId)
+			g.SendError(cmd.ReliquaryUpgradeRsp, player, &proto.ReliquaryUpgradeRsp{}, proto.Retcode_RET_ITEM_COUNT_NOT_ENOUGH)
 			return
 		}
 	}
 	if len(req.FoodReliquaryGuidList) != 0 {
+		// 其他圣遗物
 		reliquaryIdList := make([]uint64, 0)
 		for _, foodReliquaryGuid := range req.FoodReliquaryGuidList {
 			foodReliquary, ok := player.GameObjectGuidMap[foodReliquaryGuid].(*model.Reliquary)
 			if !ok {
+				logger.Error("food reliquary guid not exist, foodReliquaryGuid: %v, uid: %v", foodReliquaryGuid, player.PlayerId)
 				g.SendError(cmd.ReliquaryUpgradeRsp, player, &proto.ReliquaryUpgradeRsp{})
 				return
 			}
 			foodReliquaryConfig := gdconf.GetItemDataById(int32(foodReliquary.ItemId))
 			if foodReliquaryConfig == nil {
-				logger.Error("reliquary config error, itemId: %v", reliquary.ItemId)
+				logger.Error("foodReliquaryConfig is nil, itemId: %v", foodReliquary.ItemId)
+				g.SendError(cmd.ReliquaryUpgradeRsp, player, &proto.ReliquaryUpgradeRsp{}, proto.Retcode_RET_NOT_FOUND_CONFIG)
 				return
 			}
 			totalAddExp += uint32(foodReliquaryConfig.BaseConvExp)
+			totalCostSCoin += uint32(foodReliquaryConfig.BaseConvExp)
+			foodExp := uint32(0)
+			for level := uint8(1); level < foodReliquary.Level; level++ {
+				reliquaryLevelConfig := gdconf.GetReliquaryLevelDataByStageAndLevel(foodReliquaryConfig.Stage, int32(level))
+				if reliquaryLevelConfig == nil {
+					logger.Error("reliquaryLevelConfig is nil, stage: %v, level: %v", foodReliquaryConfig.Stage, level)
+					g.SendError(cmd.ReliquaryUpgradeRsp, player, &proto.ReliquaryUpgradeRsp{}, proto.Retcode_RET_NOT_FOUND_CONFIG)
+					return
+				}
+				foodExp += uint32(reliquaryLevelConfig.Exp)
+			}
+			foodExp += foodReliquary.Exp
+			totalAddExp += uint32(float32(foodExp) * RELIQUARY_CONV_EXP)
 			reliquaryIdList = append(reliquaryIdList, foodReliquary.ReliquaryId)
 		}
 		g.CostPlayerReliquary(player.PlayerId, reliquaryIdList)
 	}
-
+	// 消耗金币
+	ok = g.CostPlayerItem(player.PlayerId, []*ChangeItem{{ItemId: constant.ITEM_ID_SCOIN, ChangeCount: totalCostSCoin}})
+	if !ok {
+		logger.Error("item count not enough, totalCostSCoin: %v, uid: %v", totalCostSCoin, player.PlayerId)
+		g.SendError(cmd.ReliquaryUpgradeRsp, player, &proto.ReliquaryUpgradeRsp{}, proto.Retcode_RET_ITEM_COUNT_NOT_ENOUGH)
+		return
+	}
+	// 经验暴击
+	powerUpRate := uint32(1)
+	rn := random.GetRandomFloat32(0.0, 100.0)
+	if rn < 1.0 {
+		powerUpRate = 5
+	} else if rn < 9.0 {
+		powerUpRate = 2
+	}
+	totalAddExp *= powerUpRate
+	// 升级前数据
 	oldLevel := reliquary.Level
 	oldAppendPropList := make([]uint32, 0)
 	for _, appendPropId := range reliquary.AppendPropIdList {
 		oldAppendPropList = append(oldAppendPropList, appendPropId)
 	}
-
+	// 升级
 	reliquaryConfig := gdconf.GetItemDataById(int32(reliquary.ItemId))
 	if reliquaryConfig == nil {
-		logger.Error("reliquary config error, itemId: %v", reliquary.ItemId)
+		logger.Error("reliquaryConfig is nil, itemId: %v", reliquary.ItemId)
+		g.SendError(cmd.ReliquaryUpgradeRsp, player, &proto.ReliquaryUpgradeRsp{}, proto.Retcode_RET_NOT_FOUND_CONFIG)
 		return
 	}
-
 	reliquary.Exp += totalAddExp
 	for i := 0; i < 1000; i++ {
 		reliquaryLevelConfig := gdconf.GetReliquaryLevelDataByStageAndLevel(reliquaryConfig.Stage, int32(reliquary.Level))
 		if reliquaryLevelConfig == nil {
 			logger.Error("reliquaryLevelConfig is nil, stage: %v, level: %v", reliquaryConfig.Stage, reliquary.Level)
+			g.SendError(cmd.ReliquaryUpgradeRsp, player, &proto.ReliquaryUpgradeRsp{}, proto.Retcode_RET_NOT_FOUND_CONFIG)
 			return
 		}
 		if reliquary.Exp < uint32(reliquaryLevelConfig.Exp) {
@@ -80,7 +142,7 @@ func (g *Game) ReliquaryUpgradeReq(player *model.Player, payloadMsg pb.Message) 
 		reliquary.Exp -= uint32(reliquaryLevelConfig.Exp)
 		reliquary.Level++
 	}
-
+	// 追加词条
 	for level := oldLevel + 1; level <= reliquary.Level; level++ {
 		for _, propAddLevel := range reliquaryConfig.PropAddLevel {
 			if int32(level) == propAddLevel {
@@ -89,7 +151,6 @@ func (g *Game) ReliquaryUpgradeReq(player *model.Player, payloadMsg pb.Message) 
 		}
 	}
 	g.SendMsg(cmd.StoreItemChangeNotify, player.PlayerId, player.ClientSeq, g.PacketStoreItemChangeNotifyByReliquary(reliquary))
-
 	// 获取持有该圣遗物的角色
 	dbAvatar := player.GetDbAvatar()
 	avatar := dbAvatar.GetAvatarById(reliquary.AvatarId)
@@ -98,13 +159,12 @@ func (g *Game) ReliquaryUpgradeReq(player *model.Player, payloadMsg pb.Message) 
 		// 角色更新面板
 		g.UpdatePlayerAvatarFightProp(player.PlayerId, avatar.AvatarId)
 	}
-
 	rsp := &proto.ReliquaryUpgradeRsp{
 		OldLevel:            uint32(oldLevel),
 		CurLevel:            uint32(reliquary.Level),
 		TargetReliquaryGuid: req.TargetReliquaryGuid,
 		CurAppendPropList:   reliquary.AppendPropIdList,
-		PowerUpRate:         5,
+		PowerUpRate:         powerUpRate,
 		OldAppendPropList:   oldAppendPropList,
 	}
 	g.SendMsg(cmd.ReliquaryUpgradeRsp, player.PlayerId, player.ClientSeq, rsp)
@@ -201,13 +261,14 @@ func (g *Game) GetReliquaryAffixDataRandomByDepotId(appendPropDepotId int32, exc
 		if excludeMainPropType == uint32(data.PropType) {
 			continue
 		}
-		skip := false
+		exist = false
 		for _, excludeAppendPropId := range excludeAppendPropIdList {
 			if uint32(data.AppendPropId) == excludeAppendPropId {
-				skip = true
+				exist = true
+				break
 			}
 		}
-		if skip {
+		if exist {
 			continue
 		}
 		weightAll += data.RandomWeight
@@ -243,16 +304,22 @@ func (g *Game) AppendReliquaryProp(reliquary *model.Reliquary, count int32) {
 	for i := 0; i < int(count); i++ {
 		// 排除追加的属性
 		excludeAppendPropIdList := make([]uint32, 0)
-		if len(reliquary.AppendPropIdList) < 4 {
+		if len(reliquary.AppendPropIdList) < RELIQUARY_APPEND_PROP_MAX {
+			// 解锁新的不重复词条
 			for _, appendPropId := range reliquary.AppendPropIdList {
 				excludeAppendPropIdList = append(excludeAppendPropIdList, appendPropId)
 			}
 		} else {
+			// 强化现有词条
 			for _, reliquaryAffixConfig := range gdconf.GetReliquaryAffixDataMap()[reliquaryConfig.AppendPropDepotId] {
+				exist := false
 				for _, appendPropId := range reliquary.AppendPropIdList {
 					if uint32(reliquaryAffixConfig.AppendPropId) == appendPropId {
-						continue
+						exist = true
+						break
 					}
+				}
+				if !exist {
 					excludeAppendPropIdList = append(excludeAppendPropIdList, uint32(reliquaryAffixConfig.AppendPropId))
 				}
 			}
