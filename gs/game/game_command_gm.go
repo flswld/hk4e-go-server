@@ -115,18 +115,6 @@ func (g *GMCmd) GMAddAvatar(userId, avatarId uint32, level, promote uint8) {
 	GAME.SendMsg(cmd.AvatarPropNotify, player.PlayerId, player.ClientSeq, GAME.PacketAvatarPropNotify(avatar))
 }
 
-// GMAddCostume 添加玩家时装
-func (g *GMCmd) GMAddCostume(userId, costumeId uint32) {
-	// 添加时装
-	GAME.AddPlayerCostume(userId, costumeId)
-}
-
-// GMAddFlycloak 添加玩家风之翼
-func (g *GMCmd) GMAddFlycloak(userId, flycloakId uint32) {
-	// 添加风之翼
-	GAME.AddPlayerFlycloak(userId, flycloakId)
-}
-
 // GMAddAllItem 添加玩家所有道具
 func (g *GMCmd) GMAddAllItem(userId uint32, itemCount uint32) {
 	GAME.LogoutPlayer(userId)
@@ -160,37 +148,6 @@ func (g *GMCmd) GMAddAllAvatar(userId uint32, level, promote uint8) {
 	for avatarId := range GAME.GetAllAvatarDataConfig() {
 		g.GMAddAvatar(userId, uint32(avatarId), level, promote)
 	}
-}
-
-// GMAddAllCostume 添加玩家所有时装
-func (g *GMCmd) GMAddAllCostume(userId uint32) {
-	for costumeId := range gdconf.GetAvatarCostumeDataMap() {
-		g.GMAddCostume(userId, uint32(costumeId))
-	}
-}
-
-// GMAddAllFlycloak 添加玩家所有风之翼
-func (g *GMCmd) GMAddAllFlycloak(userId uint32) {
-	for flycloakId := range gdconf.GetAvatarFlycloakDataMap() {
-		g.GMAddFlycloak(userId, uint32(flycloakId))
-	}
-}
-
-// GMAddAll 添加玩家所有内容
-func (g *GMCmd) GMAddAll(userId uint32) {
-	GAME.LogoutPlayer(userId)
-	// 添加玩家所有道具
-	g.GMAddAllItem(userId, 9999)
-	// 添加玩家所有武器
-	g.GMAddAllWeapon(userId, 1, 90, 6, 4)
-	// 添加玩家所有圣遗物
-	g.GMAddAllReliquary(userId, 5)
-	// 添加玩家所有角色
-	g.GMAddAllAvatar(userId, 90, 6)
-	// 添加玩家所有时装
-	g.GMAddAllCostume(userId)
-	// 添加玩家所有风之翼
-	g.GMAddAllFlycloak(userId)
 }
 
 // GMKillSelf 杀死自己

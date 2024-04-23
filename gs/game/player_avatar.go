@@ -631,6 +631,17 @@ func (g *Game) UpdatePlayerAvatarFightProp(userId uint32, avatarId uint32) {
 	}
 	dbAvatar.UpdateAvatarFightProp(avatar)
 
+	entityId := world.GetPlayerWorldAvatarEntityId(player, avatar.AvatarId)
+	if entityId != 0 {
+		scene := world.GetSceneById(player.GetSceneId())
+		entity := scene.GetEntity(entityId)
+		if entity == nil {
+			logger.Error("get entity is nil, entityId: %v", entityId)
+			return
+		}
+		entity.SetFightProp(avatar.FightPropMap)
+	}
+
 	avatarFightPropNotify := &proto.AvatarFightPropNotify{
 		AvatarGuid:   avatar.Guid,
 		FightPropMap: avatar.FightPropMap,

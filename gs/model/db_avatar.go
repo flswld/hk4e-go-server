@@ -123,23 +123,16 @@ func (a *DbAvatar) UpdateAvatarFightProp(avatar *Avatar) {
 	a.SaveOfflineFightProp(avatar)
 	avatar.FightPropMap = make(map[uint32]float32)
 	a.LoadOfflineFightProp(avatar)
-	// 更新角色面板
+	// 角色基础属性
 	avatarDataConfig := gdconf.GetAvatarDataById(int32(avatar.AvatarId))
 	if avatarDataConfig == nil {
 		logger.Error("avatarDataConfig error, avatarId: %v", avatar.AvatarId)
 		return
 	}
 	avatar.FightPropMap[constant.FIGHT_PROP_NONE] = 0.0
-	// 白字攻防血
-	avatar.FightPropMap[constant.FIGHT_PROP_BASE_ATTACK] = gdconf.GetAvatarBaseADH(avatar.AvatarId, avatar.Level, avatar.Promote, constant.FIGHT_PROP_BASE_ATTACK)
-	avatar.FightPropMap[constant.FIGHT_PROP_BASE_DEFENSE] = gdconf.GetAvatarBaseADH(avatar.AvatarId, avatar.Level, avatar.Promote, constant.FIGHT_PROP_BASE_DEFENSE)
-	avatar.FightPropMap[constant.FIGHT_PROP_BASE_HP] = gdconf.GetAvatarBaseADH(avatar.AvatarId, avatar.Level, avatar.Promote, constant.FIGHT_PROP_BASE_HP)
-	// 双暴
-	avatar.FightPropMap[constant.FIGHT_PROP_CRITICAL] = avatarDataConfig.Critical
-	avatar.FightPropMap[constant.FIGHT_PROP_CRITICAL_HURT] = avatarDataConfig.CriticalHurt
-	// 元素充能
-	avatar.FightPropMap[constant.FIGHT_PROP_CHARGE_EFFICIENCY] = 1.0
-
+	for k, v := range gdconf.GetAvatarFightPropMap(avatar.AvatarId, avatar.Level, avatar.Promote) {
+		avatar.FightPropMap[k] = v
+	}
 	// 武器基础属性加成
 	weaponItemConfig := gdconf.GetItemDataById(int32(avatar.EquipWeapon.ItemId))
 	if weaponItemConfig == nil {
@@ -154,7 +147,6 @@ func (a *DbAvatar) UpdateAvatarFightProp(avatar *Avatar) {
 		}
 		avatar.FightPropMap[uint32(prop.Type)] += prop.Value * curveConfig.Value
 	}
-
 	// 圣遗物属性加成
 	for _, reliquary := range avatar.EquipReliquaryMap {
 		// 主词条
@@ -185,8 +177,7 @@ func (a *DbAvatar) UpdateAvatarFightProp(avatar *Avatar) {
 			avatar.FightPropMap[uint32(reliquaryAffixConfig.PropType)] += reliquaryAffixConfig.AppendPropValue
 		}
 	}
-
-	// 白字+绿字攻防血
+	// 百分比加成
 	avatar.FightPropMap[constant.FIGHT_PROP_CUR_ATTACK] = avatar.FightPropMap[constant.FIGHT_PROP_BASE_ATTACK] * (1.0 + avatar.FightPropMap[constant.FIGHT_PROP_ATTACK_PERCENT])
 	avatar.FightPropMap[constant.FIGHT_PROP_CUR_DEFENSE] = avatar.FightPropMap[constant.FIGHT_PROP_BASE_DEFENSE] * (1.0 + avatar.FightPropMap[constant.FIGHT_PROP_DEFENSE_PERCENT])
 	avatar.FightPropMap[constant.FIGHT_PROP_MAX_HP] = avatar.FightPropMap[constant.FIGHT_PROP_BASE_HP] * (1.0 + avatar.FightPropMap[constant.FIGHT_PROP_HP_PERCENT])
@@ -225,7 +216,7 @@ func (a *DbAvatar) AddAvatar(player *Player, avatarId uint32) {
 		PromoteRewardMap:  make(map[uint32]bool, len(avatarDataConfig.PromoteRewardMap)),
 	}
 
-	avatar.CurrHP = float64(gdconf.GetAvatarBaseADH(avatar.AvatarId, avatar.Level, avatar.Promote, constant.FIGHT_PROP_BASE_HP))
+	avatar.CurrHP = float64(gdconf.GetAvatarFightPropMap(avatar.AvatarId, avatar.Level, avatar.Promote)[constant.FIGHT_PROP_BASE_HP])
 	// 角色突破奖励领取状态
 	for promoteLevel := range avatarDataConfig.PromoteRewardMap {
 		avatar.PromoteRewardMap[promoteLevel] = false

@@ -1410,7 +1410,7 @@ func (g *Game) CreateMonster(player *model.Player, pos *model.Vector, monsterId 
 	rot.Y = random.GetRandomFloat64(0.0, 360.0)
 	entityId := scene.CreateEntityMonster(
 		pos, rot,
-		monsterId, uint8(random.GetRandomInt32(1, 90)),
+		monsterId, level,
 		0, 0, constant.VISION_LEVEL_NORMAL,
 	)
 	entity := scene.GetEntity(entityId)

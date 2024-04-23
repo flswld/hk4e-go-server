@@ -5,26 +5,22 @@ import (
 	"hk4e/pkg/logger"
 )
 
+// HpDrop 血量掉落
 type HpDrop struct {
 	Id        int32 // ID
 	HpPercent int32 // 血量百分比
 }
 
-type FightProp struct {
-	FightPropId    int32
-	FightPropValue float32
-}
-
 // MonsterData 怪物配置表
 type MonsterData struct {
-	MonsterId    int32   `csv:"ID"`
-	Name         string  `csv:"名称$text_name_Name,omitempty"`
-	HpBase       float32 `csv:"基础生命值,omitempty"`
-	AttackBase   float32 `csv:"基础攻击力,omitempty"`
-	DefenseBase  float32 `csv:"基础防御力,omitempty"`
-	Critical     float32 `csv:"暴击率,omitempty"`
-	CriticalHurt float32 `csv:"暴击伤害,omitempty"`
-
+	MonsterId int32  `csv:"ID"`
+	Name      string `csv:"名称$text_name_Name,omitempty"`
+	// 战斗属性
+	HpBase          float32 `csv:"基础生命值,omitempty"`
+	AttackBase      float32 `csv:"基础攻击力,omitempty"`
+	DefenseBase     float32 `csv:"基础防御力,omitempty"`
+	Critical        float32 `csv:"暴击率,omitempty"`
+	CriticalHurt    float32 `csv:"暴击伤害,omitempty"`
 	FireSubHurt     float32 `csv:"火元素抗性,omitempty"`
 	GrassSubHurt    float32 `csv:"草元素抗性,omitempty"`
 	WaterSubHurt    float32 `csv:"水元素抗性,omitempty"`
@@ -42,14 +38,14 @@ type MonsterData struct {
 	ElementMastery  float32 `csv:"元素精通,omitempty"`
 	PhysicalSubHurt float32 `csv:"物理抗性,omitempty"`
 	PhysicalAddHurt float32 `csv:"物理伤害加成,omitempty"`
-
+	// 属性成长
 	PropGrow1Type  int32 `csv:"[属性成长]1类型,omitempty"`
 	PropGrow1Curve int32 `csv:"[属性成长]1曲线,omitempty"`
 	PropGrow2Type  int32 `csv:"[属性成长]2类型,omitempty"`
 	PropGrow2Curve int32 `csv:"[属性成长]2曲线,omitempty"`
 	PropGrow3Type  int32 `csv:"[属性成长]3类型,omitempty"`
 	PropGrow3Curve int32 `csv:"[属性成长]3曲线,omitempty"`
-
+	// 血量掉落
 	Drop1Id        int32 `csv:"[掉落]1ID,omitempty"`
 	Drop1HpPercent int32 `csv:"[掉落]1血量百分比,omitempty"`
 	Drop2Id        int32 `csv:"[掉落]2ID,omitempty"`
@@ -70,6 +66,36 @@ func (g *GameDataConfig) loadMonsterData() {
 	for _, monsterData := range monsterDataList {
 		// 战斗属性列表
 		monsterData.FightPropList = make([]*FightProp, 0)
+		if monsterData.HpBase != 0.0 {
+			monsterData.FightPropList = append(monsterData.FightPropList, &FightProp{
+				FightPropId:    constant.FIGHT_PROP_BASE_HP,
+				FightPropValue: monsterData.HpBase,
+			})
+		}
+		if monsterData.AttackBase != 0.0 {
+			monsterData.FightPropList = append(monsterData.FightPropList, &FightProp{
+				FightPropId:    constant.FIGHT_PROP_BASE_ATTACK,
+				FightPropValue: monsterData.AttackBase,
+			})
+		}
+		if monsterData.DefenseBase != 0.0 {
+			monsterData.FightPropList = append(monsterData.FightPropList, &FightProp{
+				FightPropId:    constant.FIGHT_PROP_BASE_DEFENSE,
+				FightPropValue: monsterData.DefenseBase,
+			})
+		}
+		if monsterData.Critical != 0.0 {
+			monsterData.FightPropList = append(monsterData.FightPropList, &FightProp{
+				FightPropId:    constant.FIGHT_PROP_CRITICAL,
+				FightPropValue: monsterData.Critical,
+			})
+		}
+		if monsterData.CriticalHurt != 0.0 {
+			monsterData.FightPropList = append(monsterData.FightPropList, &FightProp{
+				FightPropId:    constant.FIGHT_PROP_CRITICAL_HURT,
+				FightPropValue: monsterData.CriticalHurt,
+			})
+		}
 		if monsterData.FireSubHurt != 0.0 {
 			monsterData.FightPropList = append(monsterData.FightPropList, &FightProp{
 				FightPropId:    constant.FIGHT_PROP_FIRE_SUB_HURT,
@@ -226,16 +252,27 @@ func GetMonsterDataMap() map[int32]*MonsterData {
 	return CONF.MonsterDataMap
 }
 
-// TODO 成长属性要读表
-
-func (m *MonsterData) GetBaseHpByLevel(level uint8) float32 {
-	return m.HpBase * float32(level)
-}
-
-func (m *MonsterData) GetBaseAttackByLevel(level uint8) float32 {
-	return m.AttackBase * float32(level)
-}
-
-func (m *MonsterData) GetBaseDefenseByLevel(level uint8) float32 {
-	return m.DefenseBase * float32(level)
+func GetMonsterFightPropMap(monsterId uint32, level uint8) map[uint32]float32 {
+	fightPropMap := make(map[uint32]float32)
+	monsterConfig := GetMonsterDataById(int32(monsterId))
+	if monsterConfig == nil {
+		logger.Error("monster config is nil, monsterId: %v", monsterId)
+		return fightPropMap
+	}
+	for _, fightProp := range monsterConfig.FightPropList {
+		fightPropId := fightProp.FightPropId
+		fightPropValue := fightProp.FightPropValue
+		for _, propGrow := range monsterConfig.PropGrowList {
+			if propGrow.Type == fightPropId {
+				monsterCurveConfig := GetMonsterCurveByLevelAndType(int32(level), propGrow.Curve)
+				if monsterCurveConfig == nil {
+					logger.Error("monster curve config is nil, level: %v, curveType: %v", level, propGrow.Curve)
+					return fightPropMap
+				}
+				fightPropValue *= monsterCurveConfig.Value
+			}
+		}
+		fightPropMap[uint32(fightPropId)] = fightPropValue
+	}
+	return fightPropMap
 }

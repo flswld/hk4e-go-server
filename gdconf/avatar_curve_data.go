@@ -14,7 +14,7 @@ type Curve struct {
 // AvatarCurveData 角色曲线配置表
 type AvatarCurveData struct {
 	Level int32 `csv:"等级"`
-
+	// 曲线
 	Curve1Type       int32   `csv:"[曲线]1类型,omitempty"`
 	Curve1Arithmetic int32   `csv:"[曲线]1运算,omitempty"`
 	Curve1Value      float32 `csv:"[曲线]1值,omitempty"`
@@ -28,7 +28,7 @@ type AvatarCurveData struct {
 	Curve4Arithmetic int32   `csv:"[曲线]4运算,omitempty"`
 	Curve4Value      float32 `csv:"[曲线]4值,omitempty"`
 
-	CurveList []*Curve
+	CurveList []*Curve // 曲线列表
 }
 
 func (g *GameDataConfig) loadAvatarCurveData() {
