@@ -53,8 +53,12 @@ func (g *Game) SetPlayerBornDataReq(player *model.Player, payloadMsg pb.Message)
 	dbWeapon.AddWeapon(player, uint32(avatarDataConfig.InitialWeapon), weaponId)
 	weapon := dbWeapon.GetWeaponById(weaponId)
 	dbAvatar.WearWeapon(dbAvatar.MainCharAvatarId, weapon)
+	// 主角添加进队伍
 	dbTeam := player.GetDbTeam()
 	dbTeam.GetActiveTeam().SetAvatarIdList([]uint32{dbAvatar.MainCharAvatarId})
+	// 主角面板
+	avatar := dbAvatar.GetAvatarById(dbAvatar.MainCharAvatarId)
+	dbAvatar.UpdateAvatarFightProp(avatar)
 
 	g.AcceptQuest(player, false)
 

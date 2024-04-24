@@ -21,9 +21,7 @@ func (g *Game) PingReq(player *model.Player, payloadMsg pb.Message) {
 	player.ClientTime = req.ClientTime
 	now := uint32(time.Now().Unix())
 	// 客户端与服务器时间相差太过严重
-	max := math.Max(float64(now), float64(player.ClientTime))
-	min := math.Min(float64(now), float64(player.ClientTime))
-	if math.Abs(max-min) > 600.0 {
+	if math.Abs(math.Max(float64(now), float64(player.ClientTime))-math.Min(float64(now), float64(player.ClientTime))) > 600.0 {
 		logger.Error("abs of client time and server time above 600s, clientTime: %v, uid: %v", player.ClientTime, player.PlayerId)
 	}
 	player.LastKeepaliveTime = now

@@ -88,13 +88,40 @@ func (g *Game) HandlePlayerExpAdd(userId uint32) {
 		player.PropMap[constant.PLAYER_PROP_PLAYER_LEVEL]++
 		player.PropMap[constant.PLAYER_PROP_PLAYER_EXP] -= uint32(playerLevelConfig.Exp)
 	}
+	// TODO 完善的世界等级机制
+	player.PropMap[constant.PLAYER_PROP_PLAYER_WORLD_LEVEL] = g.GetWorldLevelByPlayerLevel(player.PropMap[constant.PLAYER_PROP_PLAYER_LEVEL])
 	// 更新玩家属性
 	g.SendMsg(cmd.PlayerPropNotify, player.PlayerId, player.ClientSeq, g.PacketPlayerPropNotify(
 		player,
 		constant.PLAYER_PROP_PLAYER_LEVEL,
 		constant.PLAYER_PROP_PLAYER_EXP,
+		constant.PLAYER_PROP_PLAYER_WORLD_LEVEL,
 	))
 	g.TriggerOpenState(userId)
+}
+
+func (g *Game) GetWorldLevelByPlayerLevel(playerLevel uint32) uint32 {
+	if playerLevel < 20 {
+		return 0
+	} else if playerLevel < 25 {
+		return 1
+	} else if playerLevel < 30 {
+		return 2
+	} else if playerLevel < 35 {
+		return 3
+	} else if playerLevel < 40 {
+		return 4
+	} else if playerLevel < 45 {
+		return 5
+	} else if playerLevel < 50 {
+		return 6
+	} else if playerLevel < 55 {
+		return 7
+	} else if playerLevel < 60 {
+		return 8
+	} else {
+		return 8
+	}
 }
 
 // TriggerOpenState 触发检测功能开放状态更新

@@ -62,7 +62,7 @@ func (l *LocalEventManager) LocalEventHandle(localEvent *LocalEvent) {
 				}
 			}()
 			gdconf.ReloadGameDataConfig(reloadSceneLua)
-			LOCAL_EVENT_MANAGER.localEventChan <- &LocalEvent{
+			l.localEventChan <- &LocalEvent{
 				EventId: ReloadGameDataConfigFinish,
 			}
 		}()

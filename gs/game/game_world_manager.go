@@ -51,6 +51,7 @@ func (w *WorldManager) CreateWorld(owner *model.Player) *World {
 	worldId := uint64(w.snowflake.GenId())
 	world := &World{
 		id:                   worldId,
+		worldManager:         w,
 		owner:                owner,
 		playerMap:            make(map[uint32]*model.Player),
 		sceneMap:             make(map[uint32]*Scene),
@@ -193,7 +194,7 @@ func (w *WorldManager) LoadSceneAoi() {
 }
 
 func (w *World) IsValidScenePos(sceneId uint32, x, y, z float32) bool {
-	aoiManager, exist := WORLD_MANAGER.sceneBlockAoiMap[sceneId]
+	aoiManager, exist := w.worldManager.sceneBlockAoiMap[sceneId]
 	if !exist {
 		return false
 	}
@@ -222,6 +223,7 @@ type EnterSceneContext struct {
 // World 世界数据结构
 type World struct {
 	id                   uint64
+	worldManager         *WorldManager
 	owner                *model.Player
 	playerMap            map[uint32]*model.Player
 	sceneMap             map[uint32]*Scene
@@ -246,6 +248,10 @@ func (w *World) GetBulletPhysicsEngine() *PhysicsEngine {
 
 func (w *World) GetId() uint64 {
 	return w.id
+}
+
+func (w *World) GetWorldManager() *WorldManager {
+	return w.worldManager
 }
 
 func (w *World) GetOwner() *model.Player {
@@ -369,13 +375,13 @@ func (w *World) AddPlayer(player *model.Player) {
 	// 将玩家自身当前的队伍角色信息复制到世界的玩家本地队伍
 	dbTeam := player.GetDbTeam()
 	team := dbTeam.GetActiveTeam()
-	if WORLD_MANAGER.IsAiWorld(w) {
+	if w.worldManager.IsAiWorld(w) {
 		w.SetPlayerLocalTeam(player, []uint32{dbTeam.GetActiveAvatarId()})
 	} else {
 		w.SetPlayerLocalTeam(player, team.GetAvatarIdList())
 	}
 	w.SetPlayerActiveAvatarId(player, dbTeam.GetActiveAvatarId())
-	if WORLD_MANAGER.IsAiWorld(w) {
+	if w.worldManager.IsAiWorld(w) {
 		w.AddMultiplayerTeam(player)
 	} else {
 		w.UpdateMultiplayerTeam()
@@ -397,7 +403,7 @@ func (w *World) RemovePlayer(player *model.Player) {
 	delete(w.multiplayerTeam.localTeamMap, player.PlayerId)
 	delete(w.multiplayerTeam.localTeamEntityMap, player.PlayerId)
 	delete(w.multiplayerTeam.localActiveAvatarMap, player.PlayerId)
-	if WORLD_MANAGER.IsAiWorld(w) {
+	if w.worldManager.IsAiWorld(w) {
 		w.RemoveMultiplayerTeam(player)
 	} else {
 		if player.PlayerId != w.owner.PlayerId {
@@ -810,9 +816,6 @@ func (w *World) AddChat(chatInfo *proto.ChatInfo) {
 		w.chatMsgList = w.chatMsgList[1:]
 	}
 	w.chatMsgList = append(w.chatMsgList, chatInfo)
-	chatMsg := GAME.ConvChatInfoToChatMsg(chatInfo)
-	chatMsg.IsDelete = true
-	go USER_MANAGER.SaveUserChatMsgToDbSync(chatMsg)
 }
 
 func (w *World) GetChatList() []*proto.ChatInfo {
@@ -821,7 +824,7 @@ func (w *World) GetChatList() []*proto.ChatInfo {
 
 // ChangeToMultiplayer 转换为多人世界
 func (w *World) ChangeToMultiplayer() {
-	WORLD_MANAGER.multiplayerWorldNum++
+	w.worldManager.multiplayerWorldNum++
 	w.multiplayer = true
 	w.owner.IsInMp = true
 }

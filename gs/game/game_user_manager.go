@@ -171,7 +171,7 @@ func (u *UserManager) UserLoginLoad(userId uint32, clientSeq uint32, gateAppId s
 func (u *UserManager) OnlineUser(player *model.Player) {
 	player.Online = true
 	player.OnlineTime = uint32(time.Now().Unix())
-	USER_MANAGER.AddUser(player)
+	u.AddUser(player)
 	GAME.messageQueue.SendToAll(&mq.NetMsg{
 		MsgType: mq.MsgTypeServer,
 		EventId: mq.ServerUserOnlineStateChangeNotify,
@@ -269,7 +269,7 @@ func (u *UserManager) UserOfflineSave(player *model.Player, changeGsInfo *Change
 
 // OfflineUser 玩家离线
 func (u *UserManager) OfflineUser(player *model.Player, changeGsInfo *ChangeGsInfo) {
-	USER_MANAGER.DeleteUser(player.PlayerId)
+	u.DeleteUser(player.PlayerId)
 	GAME.messageQueue.SendToAll(&mq.NetMsg{
 		MsgType: mq.MsgTypeServer,
 		EventId: mq.ServerUserOnlineStateChangeNotify,
@@ -280,7 +280,7 @@ func (u *UserManager) OfflineUser(player *model.Player, changeGsInfo *ChangeGsIn
 	})
 	atomic.AddInt32(&ONLINE_PLAYER_NUM, -1)
 	if changeGsInfo.IsChangeGs {
-		gsAppId := USER_MANAGER.GetRemoteUserGsAppId(changeGsInfo.JoinHostUserId)
+		gsAppId := u.GetRemoteUserGsAppId(changeGsInfo.JoinHostUserId)
 		GAME.messageQueue.SendToGate(player.GateAppId, &mq.NetMsg{
 			MsgType: mq.MsgTypeServer,
 			EventId: mq.ServerUserGsChangeNotify,
@@ -621,7 +621,7 @@ func (p PlayerLastSaveTimeSortList) Swap(i, j int) {
 func (u *UserManager) UserCopyAndSave(exitSave bool) {
 	startTime := time.Now().UnixNano()
 	playerList := make(PlayerLastSaveTimeSortList, 0)
-	for _, player := range USER_MANAGER.GetAllOnlineUserList() {
+	for _, player := range u.GetAllOnlineUserList() {
 		if player.PlayerId < PlayerBaseUid {
 			continue
 		}
@@ -688,7 +688,7 @@ func (u *UserManager) UserCopyAndSave(exitSave bool) {
 				player.LastSaveTime = uint32(time.Now().UnixMilli())
 				saveCount++
 			case model.DbDelete:
-				USER_MANAGER.DeleteUser(player.PlayerId)
+				u.DeleteUser(player.PlayerId)
 			case model.DbNormal:
 				updatePlayerList = append(updatePlayerList, playerData)
 				player.LastSaveTime = uint32(time.Now().UnixMilli())
@@ -701,7 +701,7 @@ func (u *UserManager) UserCopyAndSave(exitSave bool) {
 		updatePlayerList: updatePlayerList,
 		exitSave:         exitSave,
 	}
-	USER_MANAGER.GetSaveUserChan() <- saveUserData
+	u.GetSaveUserChan() <- saveUserData
 	endTime := time.Now().UnixNano()
 	costTime := endTime - startTime
 	logger.Info("run save user copy cost time: %v ns, save user count: %v", costTime, saveCount)

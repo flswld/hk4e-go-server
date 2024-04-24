@@ -562,13 +562,7 @@ func (g *Game) UnlockPlayerSceneArea(player *model.Player, sceneId uint32, areaI
 // ChangeGameTime 修改游戏时间
 func (g *Game) ChangeGameTime(world *World, gameTime uint32) {
 	world.ChangeGameTime(gameTime)
-	for _, player := range world.GetAllPlayer() {
-		playerGameTimeNotify := &proto.PlayerGameTimeNotify{
-			GameTime: world.GetGameTime(),
-			Uid:      player.PlayerId,
-		}
-		g.SendMsg(cmd.PlayerGameTimeNotify, player.PlayerId, player.ClientSeq, playerGameTimeNotify)
-	}
+	g.PlayerGameTimeNotify(world)
 }
 
 const (

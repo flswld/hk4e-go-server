@@ -168,6 +168,9 @@ func (g *Game) PlayerChatReq(player *model.Player, payloadMsg pb.Message) {
 		return
 	}
 	world.AddChat(sendChatInfo)
+	chatMsg := g.ConvChatInfoToChatMsg(chatInfo)
+	chatMsg.IsDelete = true
+	go USER_MANAGER.SaveUserChatMsgToDbSync(chatMsg)
 
 	ntf := &proto.PlayerChatNotify{
 		ChannelId: channelId,
