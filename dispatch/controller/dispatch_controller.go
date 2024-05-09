@@ -197,12 +197,10 @@ func (c *Controller) queryCurRegion(ctx *gin.Context) {
 		c.dispatchReqErrorRsp(ctx, 2)
 		return
 	}
-	var gateServerAddr *api.GateServerAddr = nil
-	var err error = nil
 	now := time.Now().Unix()
-	inst, exist := c.gateServerMap.Load(versionStr)
-	if !exist || (exist && now-inst.(*GateServerInfo).timestamp > 60) {
-		gateServerAddr, err = c.discoveryClient.GetGateServerAddr(ctx.Request.Context(), &api.GetGateServerAddrReq{
+	gateServerInfo, exist := c.gateServerMap.Load(versionStr)
+	if !exist {
+		addr, err := c.discoveryClient.GetGateServerAddr(ctx.Request.Context(), &api.GetGateServerAddrReq{
 			GameVersion: versionStr,
 		})
 		if err != nil {
@@ -210,14 +208,29 @@ func (c *Controller) queryCurRegion(ctx *gin.Context) {
 			c.dispatchReqErrorRsp(ctx, 2)
 			return
 		}
-		c.gateServerMap.Store(versionStr, &GateServerInfo{
-			addr:      gateServerAddr,
+		gateServerInfo = &GateServerInfo{
+			addr:      addr,
 			timestamp: now,
-		})
-	} else {
-		gateServerAddr = inst.(*GateServerInfo).addr
+		}
+		c.gateServerMap.Store(versionStr, gateServerInfo)
 	}
+	if now-gateServerInfo.(*GateServerInfo).timestamp > 60 {
+		addr, err := c.discoveryClient.GetGateServerAddr(ctx.Request.Context(), &api.GetGateServerAddrReq{
+			GameVersion: versionStr,
+		})
+		if err != nil {
+			logger.Error("get gate server addr error: %v", err)
+		} else {
+			gateServerInfo = &GateServerInfo{
+				addr:      addr,
+				timestamp: now,
+			}
+			c.gateServerMap.Store(versionStr, gateServerInfo)
+		}
+	}
+	gateServerAddr := gateServerInfo.(*GateServerInfo).addr
 	var regionCurr *proto.QueryCurrRegionHttpRsp = nil
+	var err error = nil
 	if !config.GetConfig().Hk4e.ForwardModeEnable {
 		if !c.stopServerInfo.StopServer {
 			regionCurr = GetRegionCurr(c.ec2b, gateServerAddr, &api.StopServerInfo{StopServer: false})

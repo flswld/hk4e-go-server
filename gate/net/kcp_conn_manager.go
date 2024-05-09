@@ -698,7 +698,6 @@ func (k *KcpConnManager) syncMinLoadServerAppid() {
 	})
 	if err != nil {
 		logger.Error("get gs server appid error: %v", err)
-		k.minLoadGsServerAppId = ""
 	} else {
 		k.minLoadGsServerAppId = gsServerAppId.AppId
 	}

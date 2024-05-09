@@ -18,5 +18,9 @@ track_thread = true
 [database]
 url = "mongodb://mongo:27017"
 
+[redis]
+addr = "redis://redis:6379"
+password = ""
+
 [mq]
 nats_url = "nats://nats:4222"

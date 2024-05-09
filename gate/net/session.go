@@ -252,6 +252,7 @@ func (k *KcpConnManager) connCtrlMsgHandle(
 			return
 		}
 		k.closeKcpConnBySessionId(sessionId, connCtrlMsg.KickReason)
+	default:
 	}
 }
 
@@ -311,6 +312,7 @@ func (k *KcpConnManager) serverMsgHandle(
 			kickFinishNotifyChan <- true
 			delete(reLoginRemoteKickRegMap, serverMsg.UserId)
 		}
+	default:
 	}
 }
 
@@ -419,7 +421,9 @@ func (k *KcpConnManager) forwardRobotMsgToClientHandle(session *Session) {
 				switch netMsg.EventId {
 				case mq.ServerForwardModeServerCloseNotify:
 					session.conn.Close()
+				default:
 				}
+			default:
 			}
 		}
 	}
@@ -479,6 +483,14 @@ func (k *KcpConnManager) doGateLogin(req *proto.GetPlayerTokenReq, session *Sess
 		logger.Error("verify token error, openId: %v", req.AccountUid)
 		return k.loginFailRsp(0, proto.Retcode_RET_ACCOUNT_VEIRFY_ERROR, false, 0)
 	}
+	ok := k.db.DistLock(req.AccountUid)
+	if !ok {
+		logger.Error("account lock fail, openId: %v", req.AccountUid)
+		return k.loginFailRsp(0, proto.Retcode_RET_ANOTHER_LOGIN, false, 0)
+	}
+	defer func() {
+		k.db.DistUnlock(req.AccountUid)
+	}()
 	account, err := k.db.QueryAccountByOpenId(req.AccountUid)
 	if err != nil {
 		logger.Error("query account error: %v, openId: %v", err, req.AccountUid)
@@ -595,7 +607,7 @@ func (k *KcpConnManager) doGateLogin(req *proto.GetPlayerTokenReq, session *Sess
 	// 密钥交换
 	session.keyId = req.KeyId
 	session.clientRandKey = req.ClientRandKey
-	ok := k.keyExchange(session, uid, rsp)
+	ok = k.keyExchange(session, uid, rsp)
 	if !ok {
 		logger.Error("key exchange error, uid: %v", uid)
 		return k.loginFailRsp(0, proto.Retcode_RET_SVR_ERROR, false, 0)
