@@ -177,10 +177,11 @@ func (a *DbAvatar) UpdateAvatarFightProp(avatar *Avatar) {
 			avatar.FightPropMap[uint32(reliquaryAffixConfig.PropType)] += reliquaryAffixConfig.AppendPropValue
 		}
 	}
-	// 百分比加成
-	avatar.FightPropMap[constant.FIGHT_PROP_CUR_ATTACK] = avatar.FightPropMap[constant.FIGHT_PROP_BASE_ATTACK] * (1.0 + avatar.FightPropMap[constant.FIGHT_PROP_ATTACK_PERCENT])
-	avatar.FightPropMap[constant.FIGHT_PROP_CUR_DEFENSE] = avatar.FightPropMap[constant.FIGHT_PROP_BASE_DEFENSE] * (1.0 + avatar.FightPropMap[constant.FIGHT_PROP_DEFENSE_PERCENT])
-	avatar.FightPropMap[constant.FIGHT_PROP_MAX_HP] = avatar.FightPropMap[constant.FIGHT_PROP_BASE_HP] * (1.0 + avatar.FightPropMap[constant.FIGHT_PROP_HP_PERCENT])
+	// 攻防血绿字计算
+	fpm := avatar.FightPropMap
+	fpm[constant.FIGHT_PROP_CUR_ATTACK] = fpm[constant.FIGHT_PROP_BASE_ATTACK]*(1.0+fpm[constant.FIGHT_PROP_ATTACK_PERCENT]) + fpm[constant.FIGHT_PROP_ATTACK]
+	fpm[constant.FIGHT_PROP_CUR_DEFENSE] = fpm[constant.FIGHT_PROP_BASE_DEFENSE]*(1.0+fpm[constant.FIGHT_PROP_DEFENSE_PERCENT]) + fpm[constant.FIGHT_PROP_DEFENSE]
+	fpm[constant.FIGHT_PROP_MAX_HP] = fpm[constant.FIGHT_PROP_BASE_HP]*(1.0+fpm[constant.FIGHT_PROP_HP_PERCENT]) + fpm[constant.FIGHT_PROP_HP]
 }
 
 func (a *DbAvatar) AddAvatar(player *Player, avatarId uint32) {
