@@ -819,7 +819,7 @@ func (g *Game) SubPlayerAvatarHp(userId uint32, avatarId uint32, value float32, 
 		default:
 			dieType = proto.PlayerDieType_PLAYER_DIE_GM
 		}
-		g.KillPlayerAvatar(player, entity.GetAvatarEntity().GetAvatarId(), dieType)
+		g.KillPlayerAvatar(player, entity.(*AvatarEntity).GetAvatarId(), dieType)
 	}
 }
 

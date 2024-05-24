@@ -181,20 +181,20 @@ func (g *Game) RestoreCountStaminaHandler(player *model.Player) {
 			continue
 		}
 		// 确保实体类型是否为载具
-		gadgetEntity := entity.GetGadgetEntity()
-		if gadgetEntity == nil || gadgetEntity.GetGadgetVehicleEntity() == nil {
+		gadgetVehicleEntity, ok := entity.(*GadgetVehicleEntity)
+		if !ok {
 			continue
 		}
 		// 获取载具配置表
-		vehicleDataConfig := gdconf.GetVehicleDataById(int32(gadgetEntity.GetGadgetVehicleEntity().GetVehicleId()))
+		vehicleDataConfig := gdconf.GetVehicleDataById(int32(gadgetVehicleEntity.GetVehicleId()))
 		if vehicleDataConfig == nil {
-			logger.Error("vehicle config error, vehicleId: %v", gadgetEntity.GetGadgetVehicleEntity().GetVehicleId())
+			logger.Error("vehicle config error, vehicleId: %v", gadgetVehicleEntity.GetVehicleId())
 			continue
 		}
-		restoreDelay := gadgetEntity.GetGadgetVehicleEntity().GetRestoreDelay()
+		restoreDelay := gadgetVehicleEntity.GetRestoreDelay()
 		// 做个限制不然一直加就panic了
 		if restoreDelay < uint8(vehicleDataConfig.ConfigGadgetVehicle.Vehicle.Stamina.StaminaRecoverWaitTime*10) {
-			gadgetEntity.GetGadgetVehicleEntity().SetRestoreDelay(restoreDelay + 1)
+			gadgetVehicleEntity.SetRestoreDelay(restoreDelay + 1)
 		}
 	}
 	// 处理玩家
@@ -276,40 +276,43 @@ func (g *Game) GetChangeStamina(curStamina int32, maxStamina int32, staminaCost 
 }
 
 // UpdateVehicleStamina 更新载具耐力
-func (g *Game) UpdateVehicleStamina(player *model.Player, vehicleEntity *Entity, staminaCost int32) {
+func (g *Game) UpdateVehicleStamina(player *model.Player, entity IEntity, staminaCost int32) {
 	// 耐力消耗为0代表不更改 仍然执行后面的话会导致回复出问题
 	if staminaCost == 0 {
 		return
 	}
 	staminaInfo := player.StaminaInfo
 	// 确保载具实体存在
-	if vehicleEntity == nil {
+	if entity == nil {
 		return
 	}
-	gadgetEntity := vehicleEntity.GetGadgetEntity()
+	gadgetVehicleEntity, ok := entity.(*GadgetVehicleEntity)
+	if !ok {
+		return
+	}
 	// 获取载具配置表
-	vehicleDataConfig := gdconf.GetVehicleDataById(int32(gadgetEntity.GetGadgetVehicleEntity().GetVehicleId()))
+	vehicleDataConfig := gdconf.GetVehicleDataById(int32(gadgetVehicleEntity.GetVehicleId()))
 	if vehicleDataConfig == nil {
-		logger.Error("vehicle config error, vehicleId: %v", gadgetEntity.GetGadgetVehicleEntity().GetVehicleId())
+		logger.Error("vehicle config error, vehicleId: %v", gadgetVehicleEntity.GetVehicleId())
 		return
 	}
 	// 添加的耐力大于0为恢复
 	if staminaCost > 0 {
 		// 耐力延迟1.5s(15 ticks)恢复 动作状态为加速将立刻恢复耐力
-		restoreDelay := gadgetEntity.GetGadgetVehicleEntity().GetRestoreDelay()
+		restoreDelay := gadgetVehicleEntity.GetRestoreDelay()
 		if restoreDelay < uint8(vehicleDataConfig.ConfigGadgetVehicle.Vehicle.Stamina.StaminaRecoverWaitTime*10) && staminaInfo.State != proto.MotionState_MOTION_SKIFF_POWERED_DASH {
 			return // 不恢复耐力
 		}
 	} else {
 		// 消耗耐力重新计算恢复需要延迟的tick
-		gadgetEntity.GetGadgetVehicleEntity().SetRestoreDelay(0)
+		gadgetVehicleEntity.SetRestoreDelay(0)
 	}
 	// 因为载具的耐力需要换算
 	// 这里先*100后面要用的时候再换算 为了确保精度
 	// 最大耐力值
-	maxStamina := int32(gadgetEntity.GetGadgetVehicleEntity().GetMaxStamina() * 100)
+	maxStamina := int32(gadgetVehicleEntity.GetMaxStamina() * 100)
 	// 现行耐力值
-	curStamina := int32(gadgetEntity.GetGadgetVehicleEntity().GetCurStamina() * 100)
+	curStamina := int32(gadgetVehicleEntity.GetCurStamina() * 100)
 	// 将被变更的耐力
 	stamina := g.GetChangeStamina(curStamina, maxStamina, staminaCost)
 	// 当前无变动不要频繁发包
@@ -317,7 +320,7 @@ func (g *Game) UpdateVehicleStamina(player *model.Player, vehicleEntity *Entity,
 		return
 	}
 	// 更改载具耐力 (换算)
-	g.SetVehicleStamina(player, vehicleEntity, float32(stamina)/100)
+	g.SetVehicleStamina(player, entity, float32(stamina)/100)
 }
 
 // UpdatePlayerStamina 更新玩家耐力
@@ -388,14 +391,17 @@ func (g *Game) HandleDrown(player *model.Player, stamina uint32) {
 }
 
 // SetVehicleStamina 设置载具耐力
-func (g *Game) SetVehicleStamina(player *model.Player, vehicleEntity *Entity, stamina float32) {
+func (g *Game) SetVehicleStamina(player *model.Player, entity IEntity, stamina float32) {
 	// 设置载具的耐力
-	gadgetEntity := vehicleEntity.GetGadgetEntity()
-	gadgetEntity.GetGadgetVehicleEntity().SetCurStamina(stamina)
+	gadgetVehicleEntity, ok := entity.(*GadgetVehicleEntity)
+	if !ok {
+		return
+	}
+	gadgetVehicleEntity.SetCurStamina(stamina)
 	// logger.Debug("vehicle stamina set, stamina: %v", stamina)
 
 	vehicleStaminaNotify := new(proto.VehicleStaminaNotify)
-	vehicleStaminaNotify.EntityId = vehicleEntity.GetId()
+	vehicleStaminaNotify.EntityId = entity.GetId()
 	vehicleStaminaNotify.CurStamina = stamina
 	g.SendMsg(cmd.VehicleStaminaNotify, player.PlayerId, player.ClientSeq, vehicleStaminaNotify)
 }

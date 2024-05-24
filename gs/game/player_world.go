@@ -413,12 +413,11 @@ func (g *Game) GadgetInteractReq(player *model.Player, payloadMsg pb.Message) {
 	}
 
 	interactType := proto.InteractType_INTERACT_NONE
-	switch entity.GetEntityType() {
-	case constant.ENTITY_TYPE_GADGET:
-		gadgetEntity := entity.GetGadgetEntity()
-		gadgetDataConfig := gdconf.GetGadgetDataById(int32(gadgetEntity.GetGadgetId()))
+	switch entity.(type) {
+	case IGadgetEntity:
+		gadgetDataConfig := gdconf.GetGadgetDataById(int32(entity.(IGadgetEntity).GetGadgetId()))
 		if gadgetDataConfig == nil {
-			logger.Error("get gadget data config is nil, gadgetId: %v, uid: %v", gadgetEntity.GetGadgetId(), player.PlayerId)
+			logger.Error("get gadget data config is nil, gadgetId: %v, uid: %v", entity.(IGadgetEntity).GetGadgetId(), player.PlayerId)
 			return
 		}
 		logger.Debug("[GadgetInteractReq] GadgetData: %+v, EntityId: %v, uid: %v", gadgetDataConfig, entity.GetId(), player.PlayerId)
@@ -426,13 +425,13 @@ func (g *Game) GadgetInteractReq(player *model.Player, payloadMsg pb.Message) {
 		case constant.GADGET_TYPE_GADGET, constant.GADGET_TYPE_EQUIP, constant.GADGET_TYPE_ENERGY_BALL:
 			// 掉落物捡起
 			interactType = proto.InteractType_INTERACT_PICK_ITEM
-			gadgetNormalEntity := gadgetEntity.GetGadgetNormalEntity()
+			gadgetNormalEntity := entity.(*GadgetNormalEntity)
 			g.AddPlayerItem(player.PlayerId, []*ChangeItem{{ItemId: gadgetNormalEntity.GetItemId(), ChangeCount: 1}}, proto.ActionReasonType_ACTION_REASON_SUBFIELD_DROP)
 			g.KillEntity(player, scene, entity.GetId(), proto.PlayerDieType_PLAYER_DIE_NONE)
 		case constant.GADGET_TYPE_GATHER_OBJECT:
 			// 采集物摘取
 			interactType = proto.InteractType_INTERACT_GATHER
-			gadgetNormalEntity := gadgetEntity.GetGadgetNormalEntity()
+			gadgetNormalEntity := entity.(*GadgetNormalEntity)
 			g.AddPlayerItem(player.PlayerId, []*ChangeItem{{ItemId: gadgetNormalEntity.GetItemId(), ChangeCount: 1}}, proto.ActionReasonType_ACTION_REASON_GATHER)
 			g.KillEntity(player, scene, entity.GetId(), proto.PlayerDieType_PLAYER_DIE_NONE)
 		case constant.GADGET_TYPE_CHEST:
@@ -454,11 +453,11 @@ func (g *Game) GadgetInteractReq(player *model.Player, payloadMsg pb.Message) {
 		default:
 			logger.Error("not support gadget type: %v, uid: %v", gadgetDataConfig.Type, player.PlayerId)
 		}
-	case constant.ENTITY_TYPE_MONSTER:
+	case *MonsterEntity:
 		// TODO 环境动物掉落道具
 		g.KillEntity(player, scene, entity.GetId(), proto.PlayerDieType_PLAYER_DIE_NONE)
 	default:
-		logger.Error("not support entity type: %v, uid: %v", entity.GetEntityType(), player.PlayerId)
+		logger.Error("not support entity: %v, uid: %v", entity, player.PlayerId)
 	}
 
 	rsp := &proto.GadgetInteractRsp{
@@ -570,7 +569,7 @@ const (
 	MonsterDropTypeKill
 )
 
-func (g *Game) monsterDrop(player *model.Player, monsterDropType int, hpDropId int32, entity *Entity) {
+func (g *Game) monsterDrop(player *model.Player, monsterDropType int, hpDropId int32, entity IEntity) {
 	dropId := int32(0)
 	dropCount := int32(0)
 	switch monsterDropType {
@@ -628,7 +627,7 @@ func (g *Game) monsterDrop(player *model.Player, monsterDropType int, hpDropId i
 	}
 }
 
-func (g *Game) chestDrop(player *model.Player, entity *Entity) {
+func (g *Game) chestDrop(player *model.Player, entity IEntity) {
 	sceneGroupConfig := gdconf.GetSceneGroup(int32(entity.GetGroupId()))
 	if sceneGroupConfig == nil {
 		logger.Error("get scene group config is nil, groupId: %v, uid: %v", entity.GetGroupId(), player.PlayerId)

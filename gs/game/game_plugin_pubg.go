@@ -227,7 +227,11 @@ func (p *PluginPubg) EventEvtDoSkillSucc(iEvent IPluginEvent) {
 		scene := world.GetSceneById(player.GetSceneId())
 		avatarEntity := scene.GetEntity(worldAvatar.GetAvatarEntityId())
 		for _, entity := range scene.GetAllEntity() {
-			if entity.GetId() == avatarEntity.GetId() || entity.GetEntityType() != constant.ENTITY_TYPE_AVATAR {
+			if entity.GetId() == avatarEntity.GetId() {
+				continue
+			}
+			_, ok := entity.(*AvatarEntity)
+			if !ok {
 				continue
 			}
 			distance3D := math.Sqrt(
@@ -267,7 +271,8 @@ func (p *PluginPubg) EventEvtBeingHit(iEvent IPluginEvent) {
 	if defEntity == nil {
 		return
 	}
-	if defEntity.GetEntityType() != constant.ENTITY_TYPE_AVATAR {
+	defAvatarEntity, ok := defEntity.(*AvatarEntity)
+	if !ok {
 		return
 	}
 	fightProp := defEntity.GetFightProp()
@@ -275,20 +280,25 @@ func (p *PluginPubg) EventEvtBeingHit(iEvent IPluginEvent) {
 	if currHp-attackResult.Damage > 0.0 {
 		return
 	}
-	defPlayer := USER_MANAGER.GetOnlineUser(defEntity.GetAvatarEntity().GetUid())
+	defPlayer := USER_MANAGER.GetOnlineUser(defAvatarEntity.GetUid())
 	if defPlayer == nil {
 		return
 	}
 	atkEntity := scene.GetEntity(attackResult.AttackerId)
-	if atkEntity != nil && atkEntity.GetEntityType() == constant.ENTITY_TYPE_AVATAR {
-		atkPlayer := USER_MANAGER.GetOnlineUser(atkEntity.GetAvatarEntity().GetUid())
-		if atkPlayer == nil {
-			return
-		}
-		info := fmt.Sprintf("『%v』击败了『%v』。", atkPlayer.NickName, defPlayer.NickName)
-		GAME.PlayerChatReq(world.GetOwner(), &proto.PlayerChatReq{ChatInfo: &proto.ChatInfo{Content: &proto.ChatInfo_Text{Text: info}}})
-		p.CreateUserTimer(defPlayer.PlayerId, 10, p.UserTimerPubgDieExit, p.world.GetId())
+	if atkEntity == nil {
+		return
 	}
+	atkAvatarEntity, ok := atkEntity.(*AvatarEntity)
+	if !ok {
+		return
+	}
+	atkPlayer := USER_MANAGER.GetOnlineUser(atkAvatarEntity.GetUid())
+	if atkPlayer == nil {
+		return
+	}
+	info := fmt.Sprintf("『%v』击败了『%v』。", atkPlayer.NickName, defPlayer.NickName)
+	GAME.PlayerChatReq(world.GetOwner(), &proto.PlayerChatReq{ChatInfo: &proto.ChatInfo{Content: &proto.ChatInfo_Text{Text: info}}})
+	p.CreateUserTimer(defPlayer.PlayerId, 10, p.UserTimerPubgDieExit, p.world.GetId())
 }
 
 // EvtCreateGadget 创建物件实体事件
@@ -518,7 +528,7 @@ func (p *PluginPubg) StartPubg() {
 			p.world.GetOwner(),
 			&model.Vector{X: float64(pubgWorldGadgetDataConfig.X), Y: float64(pubgWorldGadgetDataConfig.Y), Z: float64(pubgWorldGadgetDataConfig.Z)},
 			uint32(pubgWorldGadgetDataConfig.GadgetId),
-			nil,
+			false, 0, 0,
 		)
 		p.entityIdWorldGadgetIdMap[entityId] = pubgWorldGadgetDataConfig.WorldGadgetId
 	}
@@ -697,19 +707,19 @@ func (p *PluginPubg) GetAlivePlayerList() []*model.Player {
 }
 
 func (p *PluginPubg) PubgHit(scene *Scene, defAvatarEntityId uint32, atkAvatarEntityId uint32, isBow bool) {
-	defAvatarEntity := scene.GetEntity(defAvatarEntityId)
-	if defAvatarEntity == nil {
+	defEntity := scene.GetEntity(defAvatarEntityId)
+	if defEntity == nil {
 		return
 	}
-	defPlayer := USER_MANAGER.GetOnlineUser(defAvatarEntity.GetAvatarEntity().GetUid())
+	defPlayer := USER_MANAGER.GetOnlineUser(defEntity.(*AvatarEntity).GetUid())
 	if defPlayer == nil {
 		return
 	}
-	atkAvatarEntity := scene.GetEntity(atkAvatarEntityId)
-	if atkAvatarEntity == nil {
+	atkEntity := scene.GetEntity(atkAvatarEntityId)
+	if atkEntity == nil {
 		return
 	}
-	atkPlayer := USER_MANAGER.GetOnlineUser(atkAvatarEntity.GetAvatarEntity().GetUid())
+	atkPlayer := USER_MANAGER.GetOnlineUser(atkEntity.(*AvatarEntity).GetUid())
 	if atkPlayer == nil {
 		return
 	}
@@ -719,7 +729,7 @@ func (p *PluginPubg) PubgHit(scene *Scene, defAvatarEntityId uint32, atkAvatarEn
 		return
 	}
 	p.playerHitTimeMap[atkPlayer.PlayerId] = now
-	atk := atkAvatarEntity.GetFightProp()[constant.FIGHT_PROP_CUR_ATTACK]
+	atk := atkEntity.GetFightProp()[constant.FIGHT_PROP_CUR_ATTACK]
 	dmg := float32(0.0)
 	if isBow {
 		dmg = atk / PUBG_BOW_ATTACK_ATK_RATIO
@@ -728,8 +738,8 @@ func (p *PluginPubg) PubgHit(scene *Scene, defAvatarEntityId uint32, atkAvatarEn
 	}
 	GAME.handleEvtBeingHit(defPlayer, scene, &proto.EvtBeingHitInfo{
 		AttackResult: &proto.AttackResult{
-			AttackerId:   atkAvatarEntity.GetId(),
-			DefenseId:    defAvatarEntity.GetId(),
+			AttackerId:   atkEntity.GetId(),
+			DefenseId:    defEntity.GetId(),
 			Damage:       dmg,
 			DamageShield: dmg,
 		},
@@ -742,8 +752,8 @@ func (p *PluginPubg) PubgHit(scene *Scene, defAvatarEntityId uint32, atkAvatarEn
 		AttackResult: attackResultTemplate,
 		FrameNum:     0,
 	}
-	evtBeingHitInfo.AttackResult.AttackerId = atkAvatarEntity.GetId()
-	evtBeingHitInfo.AttackResult.DefenseId = defAvatarEntity.GetId()
+	evtBeingHitInfo.AttackResult.AttackerId = atkEntity.GetId()
+	evtBeingHitInfo.AttackResult.DefenseId = defEntity.GetId()
 	evtBeingHitInfo.AttackResult.Damage = dmg
 	if evtBeingHitInfo.AttackResult.HitCollision == nil {
 		return

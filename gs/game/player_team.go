@@ -86,7 +86,7 @@ func (g *Game) SetUpAvatarTeamReq(player *model.Player, payloadMsg pb.Message) {
 		}
 		g.SendToSceneA(scene, cmd.SceneEntityDisappearNotify, player.ClientSeq, sceneEntityDisappearNotify, 0)
 
-		sceneEntityInfo := g.PacketSceneEntityInfoAvatar(scene, player, newAvatarEntity.GetAvatarEntity().GetAvatarId())
+		sceneEntityInfo := g.PacketSceneEntityInfoAvatar(scene, player, newAvatarEntity.(*AvatarEntity).GetAvatarId())
 		sceneEntityAppearNotify := &proto.SceneEntityAppearNotify{
 			AppearType: proto.VisionType_VISION_REPLACE,
 			Param:      oldAvatarEntity.GetId(),
@@ -144,7 +144,7 @@ func (g *Game) ChooseCurAvatarTeamReq(player *model.Player, payloadMsg pb.Messag
 		}
 		g.SendToSceneA(scene, cmd.SceneEntityDisappearNotify, player.ClientSeq, sceneEntityDisappearNotify, 0)
 
-		sceneEntityInfo := g.PacketSceneEntityInfoAvatar(scene, player, newAvatarEntity.GetAvatarEntity().GetAvatarId())
+		sceneEntityInfo := g.PacketSceneEntityInfoAvatar(scene, player, newAvatarEntity.(*AvatarEntity).GetAvatarId())
 		sceneEntityAppearNotify := &proto.SceneEntityAppearNotify{
 			AppearType: proto.VisionType_VISION_REPLACE,
 			Param:      oldAvatarEntity.GetId(),
@@ -215,7 +215,7 @@ func (g *Game) ChangeMpTeamAvatarReq(player *model.Player, payloadMsg pb.Message
 		}
 		g.SendToSceneA(scene, cmd.SceneEntityDisappearNotify, player.ClientSeq, sceneEntityDisappearNotify, 0)
 
-		sceneEntityInfo := g.PacketSceneEntityInfoAvatar(scene, player, newAvatarEntity.GetAvatarEntity().GetAvatarId())
+		sceneEntityInfo := g.PacketSceneEntityInfoAvatar(scene, player, newAvatarEntity.(*AvatarEntity).GetAvatarId())
 		sceneEntityAppearNotify := &proto.SceneEntityAppearNotify{
 			AppearType: proto.VisionType_VISION_REPLACE,
 			Param:      oldAvatarEntity.GetId(),

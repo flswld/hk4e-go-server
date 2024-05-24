@@ -191,7 +191,8 @@ func (g *GMCmd) GMKillMonster(userId uint32, entityId uint32) {
 		return
 	}
 	// 确保为怪物
-	if entity.GetEntityType() != constant.ENTITY_TYPE_MONSTER {
+	_, ok := entity.(*MonsterEntity)
+	if !ok {
 		return
 	}
 	// 杀死怪物
@@ -218,7 +219,8 @@ func (g *GMCmd) GMKillAllMonster(userId uint32) {
 	// 杀死视野内所有怪物实体
 	for _, entity := range GAME.GetVisionEntity(scene, GAME.GetPlayerPos(player)) {
 		// 确保为怪物
-		if entity.GetEntityType() != constant.ENTITY_TYPE_MONSTER {
+		_, ok := entity.(*MonsterEntity)
+		if !ok {
 			continue
 		}
 		// 杀死怪物
@@ -413,7 +415,7 @@ func (g *GMCmd) GMCreateGadget(userId uint32, gadgetId uint32, count uint32) {
 		return
 	}
 	for i := 0; i < int(count); i++ {
-		GAME.CreateGadget(player, nil, gadgetId, nil)
+		GAME.CreateGadget(player, nil, gadgetId, false, 0, 0)
 	}
 }
 

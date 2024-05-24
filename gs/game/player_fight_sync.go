@@ -194,10 +194,10 @@ func (g *Game) handleEvtBeingHit(player *model.Player, scene *Scene, hitInfo *pr
 		// logger.Error("not found def entity, DefenseId: %v", attackResult.DefenseId)
 		return
 	}
-	switch defEntity.GetEntityType() {
-	case constant.ENTITY_TYPE_AVATAR:
-		g.SubPlayerAvatarHp(player.PlayerId, defEntity.GetAvatarEntity().GetAvatarId(), attackResult.Damage, false, proto.ChangHpReason_CHANGE_HP_SUB_MONSTER)
-	case constant.ENTITY_TYPE_MONSTER:
+	switch defEntity.(type) {
+	case *AvatarEntity:
+		g.SubPlayerAvatarHp(player.PlayerId, defEntity.(*AvatarEntity).GetAvatarId(), attackResult.Damage, false, proto.ChangHpReason_CHANGE_HP_SUB_MONSTER)
+	case *MonsterEntity:
 		if scene.GetMonsterWudi() {
 			return
 		}
@@ -217,9 +217,9 @@ func (g *Game) handleEvtBeingHit(player *model.Player, scene *Scene, hitInfo *pr
 		if defEntity.GetGroupId() == 0 {
 			return
 		}
-		monsterDataConfig := gdconf.GetMonsterDataById(int32(defEntity.GetMonsterEntity().GetMonsterId()))
+		monsterDataConfig := gdconf.GetMonsterDataById(int32(defEntity.(*MonsterEntity).GetMonsterId()))
 		if monsterDataConfig == nil {
-			logger.Error("get monster data config is nil, monsterId: %v", defEntity.GetMonsterEntity().GetMonsterId())
+			logger.Error("get monster data config is nil, monsterId: %v", defEntity.(*MonsterEntity).GetMonsterId())
 			return
 		}
 		lastHpPercent := lastHp / maxHp * 100.0
@@ -229,9 +229,8 @@ func (g *Game) handleEvtBeingHit(player *model.Player, scene *Scene, hitInfo *pr
 				g.monsterDrop(player, MonsterDropTypeHp, hpDrop.Id, defEntity)
 			}
 		}
-	case constant.ENTITY_TYPE_GADGET:
-		gadgetEntity := defEntity.GetGadgetEntity()
-		gadgetDataConfig := gdconf.GetGadgetDataById(int32(gadgetEntity.GetGadgetId()))
+	case IGadgetEntity:
+		gadgetDataConfig := gdconf.GetGadgetDataById(int32(defEntity.(IGadgetEntity).GetGadgetId()))
 		if gadgetDataConfig == nil {
 			// logger.Error("get gadget data config is nil, gadgetId: %v", gadgetEntity.GetGadgetId())
 			return
@@ -246,9 +245,9 @@ func (g *Game) handleEntityMove(player *model.Player, world *World, scene *Scene
 	if entity == nil {
 		return
 	}
-	if entity.GetEntityType() == constant.ENTITY_TYPE_AVATAR {
+	avatarEntity, ok := entity.(*AvatarEntity)
+	if ok {
 		// 玩家实体在移动
-		avatarEntity := entity.GetAvatarEntity()
 		if avatarEntity.GetUid() != player.PlayerId {
 			return
 		}
@@ -301,8 +300,8 @@ func (g *Game) handleEntityMove(player *model.Player, world *World, scene *Scene
 	entity.SetRot(rot)
 	if !force {
 		motionInfo := moveInfo.MotionInfo
-		switch entity.GetEntityType() {
-		case constant.ENTITY_TYPE_AVATAR:
+		switch entity.(type) {
+		case *AvatarEntity:
 			switch motionInfo.State {
 			case proto.MotionState_MOTION_STANDBY, proto.MotionState_MOTION_WALK, proto.MotionState_MOTION_RUN, proto.MotionState_MOTION_DASH,
 				58, 59, 60, 64, 65, 66:
@@ -337,13 +336,13 @@ func (g *Game) handleEntityMove(player *model.Player, world *World, scene *Scene
 					}
 					fightProp := entity.GetFightProp()
 					maxHp := fightProp[constant.FIGHT_PROP_MAX_HP]
-					g.SubPlayerAvatarHp(player.PlayerId, entity.GetAvatarEntity().GetAvatarId(), maxHp*rate, false, proto.ChangHpReason_CHANGE_HP_SUB_FALL)
+					g.SubPlayerAvatarHp(player.PlayerId, avatarEntity.GetAvatarId(), maxHp*rate, false, proto.ChangHpReason_CHANGE_HP_SUB_FALL)
 				}
 			}
 			player.Speed = &model.Vector{X: float64(motionInfo.Speed.X), Y: float64(motionInfo.Speed.Y), Z: float64(motionInfo.Speed.Z)}
-		case constant.ENTITY_TYPE_GADGET:
-			gadgetEntity := entity.GetGadgetEntity()
-			if gadgetEntity.GetGadgetVehicleEntity() != nil {
+		case IGadgetEntity:
+			_, ok := entity.(*GadgetVehicleEntity)
+			if ok {
 				// 处理耐力消耗
 				g.ImmediateStamina(player, motionInfo.State)
 				// 处理载具销毁请求
@@ -418,12 +417,13 @@ func (g *Game) SceneBlockAoiPlayerMove(player *model.Player, world *World, scene
 		g.RemoveSceneEntityNotifyToPlayer(player, proto.VisionType_VISION_MISS, delEntityIdList)
 		for _, delEntityId := range delEntityIdList {
 			entity := scene.GetEntity(delEntityId)
-			if entity.GetEntityType() != constant.ENTITY_TYPE_AVATAR {
+			avatarEntity, ok := entity.(*AvatarEntity)
+			if !ok {
 				continue
 			}
-			otherPlayer := USER_MANAGER.GetOnlineUser(entity.GetAvatarEntity().GetUid())
+			otherPlayer := USER_MANAGER.GetOnlineUser(avatarEntity.GetUid())
 			if otherPlayer == nil {
-				logger.Error("get player is nil, target uid: %v, uid: %v", entity.GetAvatarEntity().GetUid(), player.PlayerId)
+				logger.Error("get player is nil, target uid: %v, uid: %v", avatarEntity.GetUid(), player.PlayerId)
 				continue
 			}
 			g.RemoveSceneEntityNotifyToPlayer(otherPlayer, proto.VisionType_VISION_MISS, []uint32{avatarEntityId})
@@ -433,15 +433,16 @@ func (g *Game) SceneBlockAoiPlayerMove(player *model.Player, world *World, scene
 		g.AddSceneEntityNotify(player, proto.VisionType_VISION_MEET, addEntityIdList, false, false)
 		for _, addEntityId := range addEntityIdList {
 			entity := scene.GetEntity(addEntityId)
-			if entity.GetEntityType() != constant.ENTITY_TYPE_AVATAR {
+			avatarEntity, ok := entity.(*AvatarEntity)
+			if !ok {
 				continue
 			}
-			otherPlayer := USER_MANAGER.GetOnlineUser(entity.GetAvatarEntity().GetUid())
+			otherPlayer := USER_MANAGER.GetOnlineUser(avatarEntity.GetUid())
 			if otherPlayer == nil {
-				logger.Error("get player is nil, target uid: %v, uid: %v", entity.GetAvatarEntity().GetUid(), player.PlayerId)
+				logger.Error("get player is nil, target uid: %v, uid: %v", avatarEntity.GetUid(), player.PlayerId)
 				continue
 			}
-			sceneEntityInfoAvatar := g.PacketSceneEntityInfoAvatar(scene, player, scene.GetEntity(avatarEntityId).GetAvatarEntity().GetAvatarId())
+			sceneEntityInfoAvatar := g.PacketSceneEntityInfoAvatar(scene, player, scene.GetEntity(avatarEntityId).(*AvatarEntity).GetAvatarId())
 			g.AddSceneEntityNotifyToPlayer(otherPlayer, proto.VisionType_VISION_MEET, []*proto.SceneEntityInfo{sceneEntityInfoAvatar})
 		}
 	}
@@ -553,7 +554,8 @@ func (g *Game) AiWorldAoiPlayerMove(player *model.Player, world *World, scene *S
 	newVisionEntityMap := g.GetVisionEntity(scene, newPos)
 	delEntityIdList := make([]uint32, 0)
 	for entityId, entity := range oldVisionEntityMap {
-		if entity.GetEntityType() == constant.ENTITY_TYPE_AVATAR {
+		_, ok := entity.(*AvatarEntity)
+		if ok {
 			continue
 		}
 		_, exist := newVisionEntityMap[entityId]
@@ -565,7 +567,8 @@ func (g *Game) AiWorldAoiPlayerMove(player *model.Player, world *World, scene *S
 	}
 	addEntityIdList := make([]uint32, 0)
 	for entityId, entity := range newVisionEntityMap {
-		if entity.GetEntityType() == constant.ENTITY_TYPE_AVATAR {
+		_, ok := entity.(*AvatarEntity)
+		if ok {
 			continue
 		}
 		_, exist := oldVisionEntityMap[entityId]
@@ -980,20 +983,20 @@ func (g *Game) EntityAiSyncNotify(player *model.Player, payloadMsg pb.Message) {
 
 // TODO 一些很low的解决方案 我本来是不想写的 有多low？要多low有多low！
 
-func (g *Game) handleGadgetEntityBeHitLow(player *model.Player, entity *Entity, hitElementType uint32) {
+func (g *Game) handleGadgetEntityBeHitLow(player *model.Player, entity IEntity, hitElementType uint32) {
 	world := WORLD_MANAGER.GetWorldById(player.WorldId)
 	if world == nil {
 		return
 	}
 	scene := world.GetSceneById(player.GetSceneId())
-	if entity.GetEntityType() != constant.ENTITY_TYPE_GADGET {
+	iGadgetEntity, ok := entity.(IGadgetEntity)
+	if !ok {
 		return
 	}
-	gadgetEntity := entity.GetGadgetEntity()
-	gadgetId := gadgetEntity.GetGadgetId()
+	gadgetId := iGadgetEntity.GetGadgetId()
 	gadgetDataConfig := gdconf.GetGadgetDataById(int32(gadgetId))
 	if gadgetDataConfig == nil {
-		logger.Error("get gadget data config is nil, gadgetId: %v", gadgetEntity.GetGadgetId())
+		logger.Error("get gadget data config is nil, gadgetId: %v", iGadgetEntity.GetGadgetId())
 		return
 	}
 	if strings.Contains(gadgetDataConfig.Name, "火把") ||
@@ -1052,17 +1055,17 @@ func (g *Game) handleGadgetEntityAbilityLow(player *model.Player, entityId uint3
 		if modifierChange.Action != proto.ModifierAction_REMOVED {
 			return
 		}
-		if entity.GetEntityType() != constant.ENTITY_TYPE_GADGET {
+		iGadgetEntity, ok := entity.(IGadgetEntity)
+		if !ok {
 			return
 		}
-		gadgetEntity := entity.GetGadgetEntity()
-		gadgetId := gadgetEntity.GetGadgetId()
+		gadgetId := iGadgetEntity.GetGadgetId()
 		if gadgetId == 0 {
 			return
 		}
 		gadgetDataConfig := gdconf.GetGadgetDataById(int32(gadgetId))
 		if gadgetDataConfig == nil {
-			logger.Error("get gadget data config is nil, gadgetId: %v", gadgetEntity.GetGadgetId())
+			logger.Error("get gadget data config is nil, gadgetId: %v", iGadgetEntity.GetGadgetId())
 			return
 		}
 		if strings.Contains(gadgetDataConfig.Name, "碎石堆") ||

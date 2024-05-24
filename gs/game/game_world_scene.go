@@ -17,7 +17,7 @@ type Scene struct {
 	id          uint32
 	world       *World
 	playerMap   map[uint32]*model.Player
-	entityMap   map[uint32]*Entity // 场景中全部的实体
+	entityMap   map[uint32]IEntity // 场景中全部的实体
 	groupMap    map[uint32]*Group  // 场景中按group->suite分类的实体
 	createTime  int64              // 场景创建时间
 	meeoIndex   uint32             // 客户端风元素染色同步协议的计数器
@@ -36,7 +36,7 @@ func (s *Scene) GetAllPlayer() map[uint32]*model.Player {
 	return s.playerMap
 }
 
-func (s *Scene) GetAllEntity() map[uint32]*Entity {
+func (s *Scene) GetAllEntity() map[uint32]IEntity {
 	return s.entityMap
 }
 
@@ -98,44 +98,46 @@ func (s *Scene) CreateEntityAvatar(player *model.Player, avatarId uint32) uint32
 		logger.Error("get avatar is nil, avatarId: %v", avatar)
 		return 0
 	}
-	entity := &Entity{
-		id:                  entityId,
-		scene:               s,
-		lifeState:           avatar.LifeState,
-		pos:                 player.GetPos(),
-		rot:                 player.GetRot(),
-		moveState:           uint16(proto.MotionState_MOTION_NONE),
-		lastMoveSceneTimeMs: 0,
-		lastMoveReliableSeq: 0,
-		fightProp:           avatar.FightPropMap, // 使用角色结构的数据
-		entityType:          constant.ENTITY_TYPE_AVATAR,
-		avatarEntity: &AvatarEntity{
-			uid:      player.PlayerId,
-			avatarId: avatarId,
+	entity := &AvatarEntity{
+		Entity: &Entity{
+			id:                  entityId,
+			scene:               s,
+			lifeState:           avatar.LifeState,
+			pos:                 player.GetPos(),
+			rot:                 player.GetRot(),
+			moveState:           uint16(proto.MotionState_MOTION_NONE),
+			lastMoveSceneTimeMs: 0,
+			lastMoveReliableSeq: 0,
+			fightProp:           avatar.FightPropMap, // 使用角色结构的数据
+			entityType:          constant.ENTITY_TYPE_AVATAR,
+			visionLevel:         constant.VISION_LEVEL_NORMAL,
 		},
-		visionLevel: constant.VISION_LEVEL_NORMAL,
+		uid:      player.PlayerId,
+		avatarId: avatarId,
 	}
 	return s.CreateEntity(entity)
 }
 
 func (s *Scene) CreateEntityWeapon(pos, rot *model.Vector) uint32 {
 	entityId := s.world.GetNextWorldEntityId(constant.ENTITY_TYPE_WEAPON)
-	entity := &Entity{
-		id:                  entityId,
-		scene:               s,
-		lifeState:           constant.LIFE_STATE_ALIVE,
-		pos:                 &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
-		rot:                 &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
-		moveState:           uint16(proto.MotionState_MOTION_NONE),
-		lastMoveSceneTimeMs: 0,
-		lastMoveReliableSeq: 0,
-		fightProp: map[uint32]float32{
-			constant.FIGHT_PROP_CUR_HP:  math.MaxFloat32,
-			constant.FIGHT_PROP_MAX_HP:  math.MaxFloat32,
-			constant.FIGHT_PROP_BASE_HP: float32(1),
+	entity := &WeaponEntity{
+		&Entity{
+			id:                  entityId,
+			scene:               s,
+			lifeState:           constant.LIFE_STATE_ALIVE,
+			pos:                 &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
+			rot:                 &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
+			moveState:           uint16(proto.MotionState_MOTION_NONE),
+			lastMoveSceneTimeMs: 0,
+			lastMoveReliableSeq: 0,
+			fightProp: map[uint32]float32{
+				constant.FIGHT_PROP_CUR_HP:  math.MaxFloat32,
+				constant.FIGHT_PROP_MAX_HP:  math.MaxFloat32,
+				constant.FIGHT_PROP_BASE_HP: float32(1),
+			},
+			entityType:  constant.ENTITY_TYPE_WEAPON,
+			visionLevel: constant.VISION_LEVEL_NORMAL,
 		},
-		entityType:  constant.ENTITY_TYPE_WEAPON,
-		visionLevel: constant.VISION_LEVEL_NORMAL,
 	}
 	return s.CreateEntity(entity)
 }
@@ -147,116 +149,118 @@ func (s *Scene) CreateEntityMonster(pos, rot *model.Vector, monsterId uint32, le
 	fightPropMap[constant.FIGHT_PROP_MAX_HP] = fightPropMap[constant.FIGHT_PROP_BASE_HP]
 	fightPropMap[constant.FIGHT_PROP_CUR_HP] = fightPropMap[constant.FIGHT_PROP_MAX_HP]
 	entityId := s.world.GetNextWorldEntityId(constant.ENTITY_TYPE_MONSTER)
-	entity := &Entity{
-		id:                  entityId,
-		scene:               s,
-		lifeState:           constant.LIFE_STATE_ALIVE,
-		pos:                 &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
-		rot:                 &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
-		moveState:           uint16(proto.MotionState_MOTION_NONE),
-		lastMoveSceneTimeMs: 0,
-		lastMoveReliableSeq: 0,
-		fightProp:           fightPropMap,
-		entityType:          constant.ENTITY_TYPE_MONSTER,
-		level:               level,
-		monsterEntity: &MonsterEntity{
-			monsterId: monsterId,
+	entity := &MonsterEntity{
+		Entity: &Entity{
+			id:                  entityId,
+			scene:               s,
+			lifeState:           constant.LIFE_STATE_ALIVE,
+			pos:                 &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
+			rot:                 &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
+			moveState:           uint16(proto.MotionState_MOTION_NONE),
+			lastMoveSceneTimeMs: 0,
+			lastMoveReliableSeq: 0,
+			fightProp:           fightPropMap,
+			level:               level,
+			entityType:          constant.ENTITY_TYPE_MONSTER,
+			configId:            configId,
+			groupId:             groupId,
+			visionLevel:         visionLevel,
 		},
-		configId:    configId,
-		groupId:     groupId,
-		visionLevel: visionLevel,
+		monsterId: monsterId,
 	}
 	return s.CreateEntity(entity)
 }
 
 func (s *Scene) CreateEntityNpc(pos, rot *model.Vector, npcId, roomId, parentQuestId, blockId, configId, groupId uint32) uint32 {
 	entityId := s.world.GetNextWorldEntityId(constant.ENTITY_TYPE_NPC)
-	entity := &Entity{
-		id:                  entityId,
-		scene:               s,
-		lifeState:           constant.LIFE_STATE_ALIVE,
-		pos:                 &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
-		rot:                 &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
-		moveState:           uint16(proto.MotionState_MOTION_NONE),
-		lastMoveSceneTimeMs: 0,
-		lastMoveReliableSeq: 0,
-		fightProp: map[uint32]float32{
-			constant.FIGHT_PROP_CUR_HP:  math.MaxFloat32,
-			constant.FIGHT_PROP_MAX_HP:  math.MaxFloat32,
-			constant.FIGHT_PROP_BASE_HP: float32(1),
+	entity := &NpcEntity{
+		Entity: &Entity{
+			id:                  entityId,
+			scene:               s,
+			lifeState:           constant.LIFE_STATE_ALIVE,
+			pos:                 &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
+			rot:                 &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
+			moveState:           uint16(proto.MotionState_MOTION_NONE),
+			lastMoveSceneTimeMs: 0,
+			lastMoveReliableSeq: 0,
+			fightProp: map[uint32]float32{
+				constant.FIGHT_PROP_CUR_HP:  math.MaxFloat32,
+				constant.FIGHT_PROP_MAX_HP:  math.MaxFloat32,
+				constant.FIGHT_PROP_BASE_HP: float32(1),
+			},
+			entityType:  constant.ENTITY_TYPE_NPC,
+			configId:    configId,
+			groupId:     groupId,
+			visionLevel: constant.VISION_LEVEL_NORMAL,
 		},
-		entityType: constant.ENTITY_TYPE_NPC,
-		npcEntity: &NpcEntity{
-			npcId:         npcId,
-			roomId:        roomId,
-			parentQuestId: parentQuestId,
-			blockId:       blockId,
-		},
-		configId:    configId,
-		groupId:     groupId,
-		visionLevel: constant.VISION_LEVEL_NORMAL,
+		npcId:         npcId,
+		roomId:        roomId,
+		parentQuestId: parentQuestId,
+		blockId:       blockId,
 	}
 	return s.CreateEntity(entity)
 }
 
-func (s *Scene) CreateEntityGadgetNormal(pos, rot *model.Vector, gadgetId, gadgetState uint32, gadgetNormalEntity *GadgetNormalEntity, configId, groupId uint32, visionLevel int) uint32 {
+func (s *Scene) CreateEntityGadgetNormal(pos, rot *model.Vector, gadgetId, gadgetState uint32, isDrop bool, itemId, count uint32, configId, groupId uint32, visionLevel int) uint32 {
 	entityId := s.world.GetNextWorldEntityId(constant.ENTITY_TYPE_GADGET)
-	entity := &Entity{
-		id:                  entityId,
-		scene:               s,
-		lifeState:           constant.LIFE_STATE_ALIVE,
-		pos:                 &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
-		rot:                 &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
-		moveState:           uint16(proto.MotionState_MOTION_NONE),
-		lastMoveSceneTimeMs: 0,
-		lastMoveReliableSeq: 0,
-		fightProp: map[uint32]float32{
-			constant.FIGHT_PROP_CUR_HP:  math.MaxFloat32,
-			constant.FIGHT_PROP_MAX_HP:  math.MaxFloat32,
-			constant.FIGHT_PROP_BASE_HP: float32(1),
+	entity := &GadgetNormalEntity{
+		GadgetEntity: &GadgetEntity{
+			Entity: &Entity{
+				id:                  entityId,
+				scene:               s,
+				lifeState:           constant.LIFE_STATE_ALIVE,
+				pos:                 &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
+				rot:                 &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
+				moveState:           uint16(proto.MotionState_MOTION_NONE),
+				lastMoveSceneTimeMs: 0,
+				lastMoveReliableSeq: 0,
+				fightProp: map[uint32]float32{
+					constant.FIGHT_PROP_CUR_HP:  math.MaxFloat32,
+					constant.FIGHT_PROP_MAX_HP:  math.MaxFloat32,
+					constant.FIGHT_PROP_BASE_HP: float32(1),
+				},
+				entityType:  constant.ENTITY_TYPE_GADGET,
+				configId:    configId,
+				groupId:     groupId,
+				visionLevel: visionLevel,
+			},
+			gadgetId:    gadgetId,
+			gadgetState: gadgetState,
 		},
-		entityType: constant.ENTITY_TYPE_GADGET,
-		gadgetEntity: &GadgetEntity{
-			gadgetId:           gadgetId,
-			gadgetState:        gadgetState,
-			gadgetType:         GADGET_TYPE_NORMAL,
-			gadgetNormalEntity: gadgetNormalEntity,
-		},
-		configId:    configId,
-		groupId:     groupId,
-		visionLevel: visionLevel,
+		isDrop: isDrop,
+		itemId: itemId,
+		count:  count,
 	}
 	return s.CreateEntity(entity)
 }
 
 func (s *Scene) CreateEntityGadgetClient(pos, rot *model.Vector, entityId, configId, campId, campType, ownerEntityId, targetEntityId, propOwnerEntityId uint32) bool {
-	entity := &Entity{
-		id:                  entityId,
-		scene:               s,
-		lifeState:           constant.LIFE_STATE_ALIVE,
-		pos:                 &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
-		rot:                 &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
-		moveState:           uint16(proto.MotionState_MOTION_NONE),
-		lastMoveSceneTimeMs: 0,
-		lastMoveReliableSeq: 0,
-		fightProp: map[uint32]float32{
-			constant.FIGHT_PROP_CUR_HP:  math.MaxFloat32,
-			constant.FIGHT_PROP_MAX_HP:  math.MaxFloat32,
-			constant.FIGHT_PROP_BASE_HP: float32(1),
-		},
-		entityType: constant.ENTITY_TYPE_GADGET,
-		gadgetEntity: &GadgetEntity{
-			gadgetType: GADGET_TYPE_CLIENT,
-			gadgetClientEntity: &GadgetClientEntity{
-				configId:          configId,
-				campId:            campId,
-				campType:          campType,
-				ownerEntityId:     ownerEntityId,
-				targetEntityId:    targetEntityId,
-				propOwnerEntityId: propOwnerEntityId,
+	entity := &GadgetClientEntity{
+		GadgetEntity: &GadgetEntity{
+			Entity: &Entity{
+				id:                  entityId,
+				scene:               s,
+				lifeState:           constant.LIFE_STATE_ALIVE,
+				pos:                 &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
+				rot:                 &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
+				moveState:           uint16(proto.MotionState_MOTION_NONE),
+				lastMoveSceneTimeMs: 0,
+				lastMoveReliableSeq: 0,
+				fightProp: map[uint32]float32{
+					constant.FIGHT_PROP_CUR_HP:  math.MaxFloat32,
+					constant.FIGHT_PROP_MAX_HP:  math.MaxFloat32,
+					constant.FIGHT_PROP_BASE_HP: float32(1),
+				},
+				entityType:  constant.ENTITY_TYPE_GADGET,
+				visionLevel: constant.VISION_LEVEL_NORMAL,
+				configId:    configId,
 			},
 		},
-		visionLevel: constant.VISION_LEVEL_NORMAL,
+		campId:            campId,
+		campType:          campType,
+		ownerEntityId:     ownerEntityId,
+		targetEntityId:    targetEntityId,
+		propOwnerEntityId: propOwnerEntityId,
 	}
 	if s.CreateEntity(entity) == 0 {
 		return false
@@ -272,46 +276,45 @@ func (s *Scene) CreateEntityGadgetVehicle(ownerUid uint32, pos, rot *model.Vecto
 		return 0
 	}
 	entityId := s.world.GetNextWorldEntityId(constant.ENTITY_TYPE_GADGET)
-	entity := &Entity{
-		id:                  entityId,
-		scene:               s,
-		lifeState:           constant.LIFE_STATE_ALIVE,
-		pos:                 &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
-		rot:                 &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
-		moveState:           uint16(proto.MotionState_MOTION_NONE),
-		lastMoveSceneTimeMs: 0,
-		lastMoveReliableSeq: 0,
-		fightProp: map[uint32]float32{
-			constant.FIGHT_PROP_BASE_DEFENSE: vehicleDataConfig.ConfigGadgetVehicle.Combat.Property.DefenseBase,
-			constant.FIGHT_PROP_CUR_HP:       vehicleDataConfig.ConfigGadgetVehicle.Combat.Property.HP,
-			constant.FIGHT_PROP_MAX_HP:       vehicleDataConfig.ConfigGadgetVehicle.Combat.Property.HP,
-			constant.FIGHT_PROP_CUR_ATTACK:   vehicleDataConfig.ConfigGadgetVehicle.Combat.Property.Attack,
-		},
-		entityType: constant.ENTITY_TYPE_GADGET,
-		gadgetEntity: &GadgetEntity{
-			gadgetType: GADGET_TYPE_VEHICLE,
-			gadgetVehicleEntity: &GadgetVehicleEntity{
-				vehicleId:    vehicleId,
-				worldId:      s.world.id,
-				ownerUid:     ownerUid,
-				maxStamina:   vehicleDataConfig.ConfigGadgetVehicle.Vehicle.Stamina.StaminaUpperLimit,
-				curStamina:   vehicleDataConfig.ConfigGadgetVehicle.Vehicle.Stamina.StaminaUpperLimit,
-				restoreDelay: 0,
-				memberMap:    make(map[uint32]*model.Player),
+	entity := &GadgetVehicleEntity{
+		GadgetEntity: &GadgetEntity{
+			Entity: &Entity{
+				id:                  entityId,
+				scene:               s,
+				lifeState:           constant.LIFE_STATE_ALIVE,
+				pos:                 &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
+				rot:                 &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
+				moveState:           uint16(proto.MotionState_MOTION_NONE),
+				lastMoveSceneTimeMs: 0,
+				lastMoveReliableSeq: 0,
+				fightProp: map[uint32]float32{
+					constant.FIGHT_PROP_BASE_DEFENSE: vehicleDataConfig.ConfigGadgetVehicle.Combat.Property.DefenseBase,
+					constant.FIGHT_PROP_CUR_HP:       vehicleDataConfig.ConfigGadgetVehicle.Combat.Property.HP,
+					constant.FIGHT_PROP_MAX_HP:       vehicleDataConfig.ConfigGadgetVehicle.Combat.Property.HP,
+					constant.FIGHT_PROP_CUR_ATTACK:   vehicleDataConfig.ConfigGadgetVehicle.Combat.Property.Attack,
+				},
+				entityType:  constant.ENTITY_TYPE_GADGET,
+				visionLevel: constant.VISION_LEVEL_NORMAL,
 			},
 		},
-		visionLevel: constant.VISION_LEVEL_NORMAL,
+		vehicleId:    vehicleId,
+		worldId:      s.world.id,
+		ownerUid:     ownerUid,
+		maxStamina:   vehicleDataConfig.ConfigGadgetVehicle.Vehicle.Stamina.StaminaUpperLimit,
+		curStamina:   vehicleDataConfig.ConfigGadgetVehicle.Vehicle.Stamina.StaminaUpperLimit,
+		restoreDelay: 0,
+		memberMap:    make(map[uint32]uint32),
 	}
 	return s.CreateEntity(entity)
 }
 
-func (s *Scene) CreateEntity(entity *Entity) uint32 {
+func (s *Scene) CreateEntity(entity IEntity) uint32 {
 	if len(s.entityMap) >= ENTITY_MAX_SEND_NUM && !ENTITY_NUM_UNLIMIT {
-		logger.Error("above max scene entity num limit: %v, id: %v, pos: %v", ENTITY_MAX_SEND_NUM, entity.id, entity.pos)
+		logger.Error("above max scene entity num limit: %v, id: %v, pos: %v", ENTITY_MAX_SEND_NUM, entity.GetId(), entity.GetPos())
 		return 0
 	}
-	s.entityMap[entity.id] = entity
-	return entity.id
+	s.entityMap[entity.GetId()] = entity
+	return entity.GetId()
 }
 
 func (s *Scene) DestroyEntity(entityId uint32) {
@@ -319,14 +322,14 @@ func (s *Scene) DestroyEntity(entityId uint32) {
 	if entity == nil {
 		return
 	}
-	delete(s.entityMap, entity.id)
+	delete(s.entityMap, entity.GetId())
 }
 
-func (s *Scene) GetEntity(entityId uint32) *Entity {
+func (s *Scene) GetEntity(entityId uint32) IEntity {
 	return s.entityMap[entityId]
 }
 
-func (s *Scene) AddGroupSuite(groupId uint32, suiteId uint8, entityMap map[uint32]*Entity) {
+func (s *Scene) AddGroupSuite(groupId uint32, suiteId uint8, entityMap map[uint32]IEntity) {
 	group, exist := s.groupMap[groupId]
 	if !exist {
 		group = &Group{
@@ -339,7 +342,7 @@ func (s *Scene) AddGroupSuite(groupId uint32, suiteId uint8, entityMap map[uint3
 	if !exist {
 		suite = &Suite{
 			id:        suiteId,
-			entityMap: make(map[uint32]*Entity),
+			entityMap: make(map[uint32]IEntity),
 		}
 		group.suiteMap[suiteId] = suite
 	}
@@ -360,7 +363,7 @@ func (s *Scene) RemoveGroupSuite(groupId uint32, suiteId uint8) {
 		return
 	}
 	for _, entity := range suite.entityMap {
-		s.DestroyEntity(entity.id)
+		s.DestroyEntity(entity.GetId())
 	}
 	delete(group.suiteMap, suiteId)
 	if len(group.suiteMap) == 0 {
@@ -375,7 +378,7 @@ type Group struct {
 
 type Suite struct {
 	id        uint8
-	entityMap map[uint32]*Entity
+	entityMap map[uint32]IEntity
 }
 
 func (g *Group) GetId() uint32 {
@@ -390,20 +393,20 @@ func (g *Group) GetAllSuite() map[uint8]*Suite {
 	return g.suiteMap
 }
 
-func (g *Group) GetAllEntity() map[uint32]*Entity {
-	entityMap := make(map[uint32]*Entity)
+func (g *Group) GetAllEntity() map[uint32]IEntity {
+	entityMap := make(map[uint32]IEntity)
 	for _, suite := range g.suiteMap {
 		for _, entity := range suite.entityMap {
-			entityMap[entity.id] = entity
+			entityMap[entity.GetId()] = entity
 		}
 	}
 	return entityMap
 }
 
-func (g *Group) GetEntityByConfigId(configId uint32) *Entity {
+func (g *Group) GetEntityByConfigId(configId uint32) IEntity {
 	for _, suite := range g.suiteMap {
 		for _, entity := range suite.entityMap {
-			if entity.configId == configId {
+			if entity.GetConfigId() == configId {
 				return entity
 			}
 		}
@@ -414,8 +417,8 @@ func (g *Group) GetEntityByConfigId(configId uint32) *Entity {
 func (g *Group) DestroyEntity(entityId uint32) {
 	for _, suite := range g.suiteMap {
 		for _, entity := range suite.entityMap {
-			if entity.id == entityId {
-				delete(suite.entityMap, entity.id)
+			if entity.GetId() == entityId {
+				delete(suite.entityMap, entity.GetId())
 				return
 			}
 		}
@@ -426,12 +429,40 @@ func (s *Suite) GetId() uint8 {
 	return s.id
 }
 
-func (s *Suite) GetEntityById(entityId uint32) *Entity {
+func (s *Suite) GetEntityById(entityId uint32) IEntity {
 	return s.entityMap[entityId]
 }
 
-func (s *Suite) GetAllEntity() map[uint32]*Entity {
+func (s *Suite) GetAllEntity() map[uint32]IEntity {
 	return s.entityMap
+}
+
+// IEntity 场景实体抽象接口
+type IEntity interface {
+	IsEntity()
+	GetId() uint32
+	GetScene() *Scene
+	GetLifeState() uint16
+	GetLastDieType() int32
+	GetPos() *model.Vector
+	GetRot() *model.Vector
+	GetMoveState() uint16
+	GetLastMoveSceneTimeMs() uint32
+	GetLastMoveReliableSeq() uint32
+	GetFightProp() map[uint32]float32
+	GetLevel() uint8
+	GetEntityType() uint8
+	GetConfigId() uint32
+	GetGroupId() uint32
+	GetVisionLevel() int
+	SetLifeState(lifeState uint16)
+	SetLastDieType(lastDieType int32)
+	SetPos(pos *model.Vector)
+	SetRot(rot *model.Vector)
+	SetMoveState(moveState uint16)
+	SetLastMoveSceneTimeMs(lastMoveSceneTimeMs uint32)
+	SetLastMoveReliableSeq(lastMoveReliableSeq uint32)
+	SetFightProp(fightProp map[uint32]float32)
 }
 
 // Entity 场景实体数据结构
@@ -448,14 +479,12 @@ type Entity struct {
 	fightProp           map[uint32]float32 // 战斗属性
 	level               uint8              // 等级
 	entityType          uint8              // 实体类型
-	// TODO 这堆东西变得有点答辩了 我觉得之后需要重构 做面向对象继承多态接口的设计
-	avatarEntity  *AvatarEntity
-	monsterEntity *MonsterEntity
-	npcEntity     *NpcEntity
-	gadgetEntity  *GadgetEntity
-	configId      uint32 // LUA配置相关
-	groupId       uint32
-	visionLevel   int
+	configId            uint32             // LUA配置相关
+	groupId             uint32
+	visionLevel         int
+}
+
+func (e *Entity) IsEntity() {
 }
 
 func (e *Entity) GetId() uint32 {
@@ -470,64 +499,32 @@ func (e *Entity) GetLifeState() uint16 {
 	return e.lifeState
 }
 
-func (e *Entity) SetLifeState(lifeState uint16) {
-	e.lifeState = lifeState
-}
-
 func (e *Entity) GetLastDieType() int32 {
 	return e.lastDieType
-}
-
-func (e *Entity) SetLastDieType(lastDieType int32) {
-	e.lastDieType = lastDieType
 }
 
 func (e *Entity) GetPos() *model.Vector {
 	return &model.Vector{X: e.pos.X, Y: e.pos.Y, Z: e.pos.Z}
 }
 
-func (e *Entity) SetPos(pos *model.Vector) {
-	e.pos.X, e.pos.Y, e.pos.Z = pos.X, pos.Y, pos.Z
-}
-
 func (e *Entity) GetRot() *model.Vector {
 	return &model.Vector{X: e.rot.X, Y: e.rot.Y, Z: e.rot.Z}
-}
-
-func (e *Entity) SetRot(rot *model.Vector) {
-	e.rot.X, e.rot.Y, e.rot.Z = rot.X, rot.Y, rot.Z
 }
 
 func (e *Entity) GetMoveState() uint16 {
 	return e.moveState
 }
 
-func (e *Entity) SetMoveState(moveState uint16) {
-	e.moveState = moveState
-}
-
 func (e *Entity) GetLastMoveSceneTimeMs() uint32 {
 	return e.lastMoveSceneTimeMs
-}
-
-func (e *Entity) SetLastMoveSceneTimeMs(lastMoveSceneTimeMs uint32) {
-	e.lastMoveSceneTimeMs = lastMoveSceneTimeMs
 }
 
 func (e *Entity) GetLastMoveReliableSeq() uint32 {
 	return e.lastMoveReliableSeq
 }
 
-func (e *Entity) SetLastMoveReliableSeq(lastMoveReliableSeq uint32) {
-	e.lastMoveReliableSeq = lastMoveReliableSeq
-}
-
 func (e *Entity) GetFightProp() map[uint32]float32 {
 	return e.fightProp
-}
-
-func (e *Entity) SetFightProp(fightProp map[uint32]float32) {
-	e.fightProp = fightProp
 }
 
 func (e *Entity) GetLevel() uint8 {
@@ -536,22 +533,6 @@ func (e *Entity) GetLevel() uint8 {
 
 func (e *Entity) GetEntityType() uint8 {
 	return e.entityType
-}
-
-func (e *Entity) GetAvatarEntity() *AvatarEntity {
-	return e.avatarEntity
-}
-
-func (e *Entity) GetMonsterEntity() *MonsterEntity {
-	return e.monsterEntity
-}
-
-func (e *Entity) GetNpcEntity() *NpcEntity {
-	return e.npcEntity
-}
-
-func (e *Entity) GetGadgetEntity() *GadgetEntity {
-	return e.gadgetEntity
 }
 
 func (e *Entity) GetConfigId() uint32 {
@@ -566,7 +547,40 @@ func (e *Entity) GetVisionLevel() int {
 	return e.visionLevel
 }
 
+func (e *Entity) SetLifeState(lifeState uint16) {
+	e.lifeState = lifeState
+}
+
+func (e *Entity) SetLastDieType(lastDieType int32) {
+	e.lastDieType = lastDieType
+}
+
+func (e *Entity) SetPos(pos *model.Vector) {
+	e.pos.X, e.pos.Y, e.pos.Z = pos.X, pos.Y, pos.Z
+}
+
+func (e *Entity) SetRot(rot *model.Vector) {
+	e.rot.X, e.rot.Y, e.rot.Z = rot.X, rot.Y, rot.Z
+}
+
+func (e *Entity) SetMoveState(moveState uint16) {
+	e.moveState = moveState
+}
+
+func (e *Entity) SetLastMoveSceneTimeMs(lastMoveSceneTimeMs uint32) {
+	e.lastMoveSceneTimeMs = lastMoveSceneTimeMs
+}
+
+func (e *Entity) SetLastMoveReliableSeq(lastMoveReliableSeq uint32) {
+	e.lastMoveReliableSeq = lastMoveReliableSeq
+}
+
+func (e *Entity) SetFightProp(fightProp map[uint32]float32) {
+	e.fightProp = fightProp
+}
+
 type AvatarEntity struct {
+	*Entity
 	uid      uint32
 	avatarId uint32
 }
@@ -579,7 +593,12 @@ func (a *AvatarEntity) GetAvatarId() uint32 {
 	return a.avatarId
 }
 
+type WeaponEntity struct {
+	*Entity
+}
+
 type MonsterEntity struct {
+	*Entity
 	monsterId uint32
 }
 
@@ -588,6 +607,7 @@ func (m *MonsterEntity) GetMonsterId() uint32 {
 }
 
 type NpcEntity struct {
+	*Entity
 	npcId         uint32
 	roomId        uint32
 	parentQuestId uint32
@@ -610,23 +630,16 @@ func (n *NpcEntity) GetBlockId() uint32 {
 	return n.blockId
 }
 
-const (
-	GADGET_TYPE_NORMAL = iota
-	GADGET_TYPE_CLIENT
-	GADGET_TYPE_VEHICLE // 载具
-)
-
-type GadgetEntity struct {
-	gadgetType          int
-	gadgetId            uint32
-	gadgetState         uint32
-	gadgetNormalEntity  *GadgetNormalEntity
-	gadgetClientEntity  *GadgetClientEntity
-	gadgetVehicleEntity *GadgetVehicleEntity
+type IGadgetEntity interface {
+	GetGadgetId() uint32
+	GetGadgetState() uint32
+	SetGadgetState(state uint32)
 }
 
-func (g *GadgetEntity) GetGadgetType() int {
-	return g.gadgetType
+type GadgetEntity struct {
+	*Entity
+	gadgetId    uint32
+	gadgetState uint32
 }
 
 func (g *GadgetEntity) GetGadgetId() uint32 {
@@ -641,19 +654,8 @@ func (g *GadgetEntity) SetGadgetState(state uint32) {
 	g.gadgetState = state
 }
 
-func (g *GadgetEntity) GetGadgetNormalEntity() *GadgetNormalEntity {
-	return g.gadgetNormalEntity
-}
-
-func (g *GadgetEntity) GetGadgetClientEntity() *GadgetClientEntity {
-	return g.gadgetClientEntity
-}
-
-func (g *GadgetEntity) GetGadgetVehicleEntity() *GadgetVehicleEntity {
-	return g.gadgetVehicleEntity
-}
-
 type GadgetNormalEntity struct {
+	*GadgetEntity
 	isDrop bool
 	itemId uint32
 	count  uint32
@@ -672,16 +674,12 @@ func (g *GadgetNormalEntity) GetCount() uint32 {
 }
 
 type GadgetClientEntity struct {
-	configId          uint32
+	*GadgetEntity
 	campId            uint32
 	campType          uint32
 	ownerEntityId     uint32
 	targetEntityId    uint32
 	propOwnerEntityId uint32
-}
-
-func (g *GadgetClientEntity) GetConfigId() uint32 {
-	return g.configId
 }
 
 func (g *GadgetClientEntity) GetCampId() uint32 {
@@ -705,13 +703,14 @@ func (g *GadgetClientEntity) GetPropOwnerEntityId() uint32 {
 }
 
 type GadgetVehicleEntity struct {
+	*GadgetEntity
 	vehicleId    uint32
 	worldId      uint64
 	ownerUid     uint32
 	maxStamina   float32
 	curStamina   float32
-	restoreDelay uint8                    // 载具耐力回复延时
-	memberMap    map[uint32]*model.Player // uint32 = pos
+	restoreDelay uint8             // 载具耐力回复延时
+	memberMap    map[uint32]uint32 // key:pos value:uid
 }
 
 func (g *GadgetVehicleEntity) GetVehicleId() uint32 {
@@ -734,16 +733,16 @@ func (g *GadgetVehicleEntity) GetCurStamina() float32 {
 	return g.curStamina
 }
 
-func (g *GadgetVehicleEntity) SetCurStamina(curStamina float32) {
-	g.curStamina = curStamina
+func (g *GadgetVehicleEntity) GetRestoreDelay() uint8 {
+	return g.restoreDelay
 }
 
-func (g *GadgetVehicleEntity) GetMemberMap() map[uint32]*model.Player {
+func (g *GadgetVehicleEntity) GetMemberMap() map[uint32]uint32 {
 	return g.memberMap
 }
 
-func (g *GadgetVehicleEntity) GetRestoreDelay() uint8 {
-	return g.restoreDelay
+func (g *GadgetVehicleEntity) SetCurStamina(curStamina float32) {
+	g.curStamina = curStamina
 }
 
 func (g *GadgetVehicleEntity) SetRestoreDelay(restoreDelay uint8) {

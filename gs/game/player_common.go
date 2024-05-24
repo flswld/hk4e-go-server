@@ -180,7 +180,8 @@ func (g *Game) ScenePlayerLocationNotify(world *World) {
 			for _, entityId := range scenePlayer.VehicleInfo.CreateEntityIdMap {
 				entity := scene.GetEntity(entityId)
 				// 确保实体类型是否为载具
-				if entity != nil && entity.GetEntityType() == constant.ENTITY_TYPE_GADGET && entity.GetGadgetEntity().GetGadgetVehicleEntity() != nil {
+				gadgetVehicleEntity, ok := entity.(*GadgetVehicleEntity)
+				if ok {
 					vehicleLocationInfo := &proto.VehicleLocationInfo{
 						Rot: &proto.Vector{
 							X: float32(entity.GetRot().X),
@@ -189,18 +190,18 @@ func (g *Game) ScenePlayerLocationNotify(world *World) {
 						},
 						EntityId: entity.GetId(),
 						CurHp:    entity.GetFightProp()[constant.FIGHT_PROP_CUR_HP],
-						OwnerUid: entity.GetGadgetEntity().GetGadgetVehicleEntity().GetOwnerUid(),
+						OwnerUid: gadgetVehicleEntity.GetOwnerUid(),
 						Pos: &proto.Vector{
 							X: float32(entity.GetPos().X),
 							Y: float32(entity.GetPos().Y),
 							Z: float32(entity.GetPos().Z),
 						},
-						UidList:  make([]uint32, 0, len(entity.GetGadgetEntity().GetGadgetVehicleEntity().GetMemberMap())),
-						GadgetId: entity.GetGadgetEntity().GetGadgetVehicleEntity().GetVehicleId(),
+						UidList:  make([]uint32, 0, len(gadgetVehicleEntity.GetMemberMap())),
+						GadgetId: gadgetVehicleEntity.GetVehicleId(),
 						MaxHp:    entity.GetFightProp()[constant.FIGHT_PROP_MAX_HP],
 					}
-					for _, p := range entity.GetGadgetEntity().GetGadgetVehicleEntity().GetMemberMap() {
-						vehicleLocationInfo.UidList = append(vehicleLocationInfo.UidList, p.PlayerId)
+					for _, uid := range gadgetVehicleEntity.GetMemberMap() {
+						vehicleLocationInfo.UidList = append(vehicleLocationInfo.UidList, uid)
 					}
 					ntf.VehicleLocList = append(ntf.VehicleLocList, vehicleLocationInfo)
 				}

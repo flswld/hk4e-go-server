@@ -3,7 +3,6 @@ package game
 import (
 	"time"
 
-	"hk4e/common/constant"
 	"hk4e/gdconf"
 	"hk4e/gs/model"
 	"hk4e/pkg/logger"
@@ -86,9 +85,9 @@ func (g *Game) VehicleInteractReq(player *model.Player, payloadMsg pb.Message) {
 		return
 	}
 	// 判断实体类型是否为载具
-	gadgetEntity := entity.GetGadgetEntity()
-	if gadgetEntity == nil || gadgetEntity.GetGadgetVehicleEntity() == nil {
-		logger.Error("vehicle entity error, entityType: %v", entity.GetEntityType())
+	_, ok := entity.(*GadgetVehicleEntity)
+	if ok {
+		logger.Error("vehicle entity error, entity: %v", entity)
 		g.SendError(cmd.VehicleInteractRsp, player, &proto.VehicleInteractRsp{}, proto.Retcode_RET_GADGET_NOT_VEHICLE)
 		return
 	}
@@ -110,7 +109,7 @@ func (g *Game) VehicleInteractReq(player *model.Player, payloadMsg pb.Message) {
 /************************************************** 游戏功能 **************************************************/
 
 // VehicleDestroyMotion 载具销毁动作
-func (g *Game) VehicleDestroyMotion(player *model.Player, entity *Entity, state proto.MotionState) {
+func (g *Game) VehicleDestroyMotion(player *model.Player, entity IEntity, state proto.MotionState) {
 	world := WORLD_MANAGER.GetWorldById(player.WorldId)
 	if world == nil {
 		logger.Error("get world is nil, worldId: %v, uid: %v", player.WorldId, player.PlayerId)
@@ -120,22 +119,19 @@ func (g *Game) VehicleDestroyMotion(player *model.Player, entity *Entity, state 
 
 	// 状态等于 MOTION_STATE_DESTROY_VEHICLE 代表请求销毁
 	if state == proto.MotionState_MOTION_DESTROY_VEHICLE {
-		gadgetEntity := entity.GetGadgetEntity()
-		g.DestroyVehicleEntity(player, scene, gadgetEntity.GetGadgetVehicleEntity().GetVehicleId(), entity.GetId())
+		gadgetVehicleEntity := entity.(*GadgetVehicleEntity)
+		g.DestroyVehicleEntity(player, scene, gadgetVehicleEntity.GetVehicleId(), entity.GetId())
 	}
 }
 
 // IsPlayerInVehicle 判断玩家是否在载具中
-func (g *Game) IsPlayerInVehicle(player *model.Player, entity *Entity) bool {
-	if entity.GetEntityType() != constant.ENTITY_TYPE_GADGET {
+func (g *Game) IsPlayerInVehicle(player *model.Player, entity IEntity) bool {
+	gadgetVehicleEntity, ok := entity.(*GadgetVehicleEntity)
+	if !ok {
 		return false
 	}
-	gadgetVehicleEntity := entity.GetGadgetEntity().GetGadgetVehicleEntity()
-	if gadgetVehicleEntity == nil {
-		return false
-	}
-	for _, p := range gadgetVehicleEntity.GetMemberMap() {
-		if p == player {
+	for _, uid := range gadgetVehicleEntity.GetMemberMap() {
+		if uid == player.PlayerId {
 			return true
 		}
 	}
@@ -149,17 +145,17 @@ func (g *Game) DestroyVehicleEntity(player *model.Player, scene *Scene, vehicleI
 		return
 	}
 	// 确保实体类型是否为载具
-	gadgetEntity := entity.GetGadgetEntity()
-	if gadgetEntity == nil || gadgetEntity.GetGadgetVehicleEntity() == nil {
+	gadgetVehicleEntity, ok := entity.(*GadgetVehicleEntity)
+	if !ok {
 		return
 	}
 	// 目前原神仅有一种载具 多载具目前理论上是兼容了 到时候有问题再改
 	// 确保载具Id为将要创建的 (每种载具允许存在1个)
-	if gadgetEntity.GetGadgetVehicleEntity().GetVehicleId() != vehicleId {
+	if gadgetVehicleEntity.GetVehicleId() != vehicleId {
 		return
 	}
 	// 该载具是否为此玩家的
-	if gadgetEntity.GetGadgetVehicleEntity().GetOwnerUid() != player.PlayerId {
+	if gadgetVehicleEntity.GetOwnerUid() != player.PlayerId {
 		return
 	}
 	// 如果玩家正在载具中
@@ -177,17 +173,20 @@ func (g *Game) DestroyVehicleEntity(player *model.Player, scene *Scene, vehicleI
 }
 
 // EnterVehicle 进入载具
-func (g *Game) EnterVehicle(player *model.Player, entity *Entity, avatarGuid uint64) {
-	gadgetEntity := entity.GetGadgetEntity()
+func (g *Game) EnterVehicle(player *model.Player, entity IEntity, avatarGuid uint64) {
+	gadgetVehicleEntity, ok := entity.(*GadgetVehicleEntity)
+	if !ok {
+		return
+	}
 	// 获取载具配置表
-	vehicleDataConfig := gdconf.GetVehicleDataById(int32(gadgetEntity.GetGadgetVehicleEntity().GetVehicleId()))
+	vehicleDataConfig := gdconf.GetVehicleDataById(int32(gadgetVehicleEntity.GetVehicleId()))
 	if vehicleDataConfig == nil {
-		logger.Error("vehicle config error, vehicleId: %v", gadgetEntity.GetGadgetVehicleEntity().GetVehicleId())
+		logger.Error("vehicle config error, vehicleId: %v", gadgetVehicleEntity.GetVehicleId())
 		return
 	}
 	maxSlot := int(vehicleDataConfig.ConfigGadgetVehicle.Vehicle.MaxSeatCount)
 	// 判断载具是否已满
-	if len(gadgetEntity.GetGadgetVehicleEntity().GetMemberMap()) >= maxSlot {
+	if len(gadgetVehicleEntity.GetMemberMap()) >= maxSlot {
 		g.SendError(cmd.VehicleInteractRsp, player, &proto.VehicleInteractRsp{}, proto.Retcode_RET_VEHICLE_SLOT_OCCUPIED)
 		return
 	}
@@ -195,11 +194,11 @@ func (g *Game) EnterVehicle(player *model.Player, entity *Entity, avatarGuid uin
 	// 找出载具空闲的位置
 	var freePos uint32
 	for i := uint32(0); i < uint32(maxSlot); i++ {
-		p := gadgetEntity.GetGadgetVehicleEntity().GetMemberMap()[i]
+		uid := gadgetVehicleEntity.GetMemberMap()[i]
 		// 玩家如果已进入载具重复记录不进行报错
-		if p == player || p == nil {
+		if uid == player.PlayerId || uid == 0 {
 			// 载具成员记录玩家
-			gadgetEntity.GetGadgetVehicleEntity().GetMemberMap()[i] = player
+			gadgetVehicleEntity.GetMemberMap()[i] = player.PlayerId
 			freePos = i
 		}
 	}
@@ -221,9 +220,12 @@ func (g *Game) EnterVehicle(player *model.Player, entity *Entity, avatarGuid uin
 }
 
 // ExitVehicle 离开载具
-func (g *Game) ExitVehicle(player *model.Player, entity *Entity, avatarGuid uint64) {
+func (g *Game) ExitVehicle(player *model.Player, entity IEntity, avatarGuid uint64) {
 	// 玩家是否进入载具
-	gadgetEntity := entity.GetGadgetEntity()
+	gadgetVehicleEntity, ok := entity.(*GadgetVehicleEntity)
+	if !ok {
+		return
+	}
 	if !g.IsPlayerInVehicle(player, entity) {
 		logger.Error("vehicle not has player, uid: %v", player.PlayerId)
 		g.SendError(cmd.VehicleInteractRsp, player, &proto.VehicleInteractRsp{}, proto.Retcode_RET_NOT_IN_VEHICLE)
@@ -231,9 +233,9 @@ func (g *Game) ExitVehicle(player *model.Player, entity *Entity, avatarGuid uint
 	}
 	// 载具成员删除玩家
 	var memberPos uint32
-	memberMap := gadgetEntity.GetGadgetVehicleEntity().GetMemberMap()
-	for pos, p := range memberMap {
-		if p == player {
+	memberMap := gadgetVehicleEntity.GetMemberMap()
+	for pos, uid := range memberMap {
+		if uid == player.PlayerId {
 			memberPos = pos
 			delete(memberMap, pos)
 		}

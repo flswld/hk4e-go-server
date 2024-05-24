@@ -586,7 +586,7 @@ func (w *World) GetPlayerAvatarIndexByAvatarId(player *model.Player, avatarId ui
 }
 
 // GetPlayerActiveAvatarEntity 获取玩家当前活跃角色场景实体
-func (w *World) GetPlayerActiveAvatarEntity(player *model.Player) *Entity {
+func (w *World) GetPlayerActiveAvatarEntity(player *model.Player) IEntity {
 	activeAvatarId := w.GetPlayerActiveAvatarId(player)
 	avatarEntityId := w.GetPlayerWorldAvatarEntityId(player, activeAvatarId)
 	scene := w.GetSceneById(player.GetSceneId())
@@ -872,7 +872,7 @@ func (w *World) CreateScene(sceneId uint32) *Scene {
 		id:         sceneId,
 		world:      w,
 		playerMap:  make(map[uint32]*model.Player),
-		entityMap:  make(map[uint32]*Entity),
+		entityMap:  make(map[uint32]IEntity),
 		groupMap:   make(map[uint32]*Group),
 		createTime: time.Now().UnixMilli(),
 		meeoIndex:  0,

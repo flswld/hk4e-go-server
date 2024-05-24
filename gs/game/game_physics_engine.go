@@ -65,13 +65,13 @@ func (p *PhysicsEngine) ShowAvatarCollider() {
 			entity := p.world.GetPlayerActiveAvatarEntity(player)
 			avatarPos := entity.GetPos()
 			avatarPos.Y += float64(p.avatarYOffset)
-			GAME.CreateGadget(p.world.GetOwner(), &model.Vector{X: avatarPos.X, Y: avatarPos.Y, Z: avatarPos.Z}, GADGET_GREEN, nil)
-			GAME.CreateGadget(p.world.GetOwner(), &model.Vector{X: avatarPos.X, Y: avatarPos.Y + AVATAR_HEIGHT/2.0, Z: avatarPos.Z}, GADGET_GREEN, nil)
-			GAME.CreateGadget(p.world.GetOwner(), &model.Vector{X: avatarPos.X, Y: avatarPos.Y - AVATAR_HEIGHT/2.0, Z: avatarPos.Z}, GADGET_GREEN, nil)
-			GAME.CreateGadget(p.world.GetOwner(), &model.Vector{X: avatarPos.X + AVATAR_RADIUS, Y: avatarPos.Y, Z: avatarPos.Z}, GADGET_GREEN, nil)
-			GAME.CreateGadget(p.world.GetOwner(), &model.Vector{X: avatarPos.X - AVATAR_RADIUS, Y: avatarPos.Y, Z: avatarPos.Z}, GADGET_GREEN, nil)
-			GAME.CreateGadget(p.world.GetOwner(), &model.Vector{X: avatarPos.X, Y: avatarPos.Y, Z: avatarPos.Z + AVATAR_RADIUS}, GADGET_GREEN, nil)
-			GAME.CreateGadget(p.world.GetOwner(), &model.Vector{X: avatarPos.X, Y: avatarPos.Y, Z: avatarPos.Z - AVATAR_RADIUS}, GADGET_GREEN, nil)
+			GAME.CreateGadget(p.world.GetOwner(), &model.Vector{X: avatarPos.X, Y: avatarPos.Y, Z: avatarPos.Z}, GADGET_GREEN, false, 0, 0)
+			GAME.CreateGadget(p.world.GetOwner(), &model.Vector{X: avatarPos.X, Y: avatarPos.Y + AVATAR_HEIGHT/2.0, Z: avatarPos.Z}, GADGET_GREEN, false, 0, 0)
+			GAME.CreateGadget(p.world.GetOwner(), &model.Vector{X: avatarPos.X, Y: avatarPos.Y - AVATAR_HEIGHT/2.0, Z: avatarPos.Z}, GADGET_GREEN, false, 0, 0)
+			GAME.CreateGadget(p.world.GetOwner(), &model.Vector{X: avatarPos.X + AVATAR_RADIUS, Y: avatarPos.Y, Z: avatarPos.Z}, GADGET_GREEN, false, 0, 0)
+			GAME.CreateGadget(p.world.GetOwner(), &model.Vector{X: avatarPos.X - AVATAR_RADIUS, Y: avatarPos.Y, Z: avatarPos.Z}, GADGET_GREEN, false, 0, 0)
+			GAME.CreateGadget(p.world.GetOwner(), &model.Vector{X: avatarPos.X, Y: avatarPos.Y, Z: avatarPos.Z + AVATAR_RADIUS}, GADGET_GREEN, false, 0, 0)
+			GAME.CreateGadget(p.world.GetOwner(), &model.Vector{X: avatarPos.X, Y: avatarPos.Y, Z: avatarPos.Z - AVATAR_RADIUS}, GADGET_GREEN, false, 0, 0)
 		}
 	}
 }
@@ -124,7 +124,7 @@ func (p *PhysicsEngine) Update(now int64) []*RigidBody {
 				X: float64(rigidBody.position.X),
 				Y: float64(rigidBody.position.Y),
 				Z: float64(rigidBody.position.Z),
-			}, GADGET_RED, nil)
+			}, GADGET_RED, false, 0, 0)
 		}
 	}
 	p.lastUpdateTime = now

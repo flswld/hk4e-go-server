@@ -254,7 +254,8 @@ func GetGroupMonsterCount(luaState *lua.LState) int {
 	}
 	monsterCount := 0
 	for _, entity := range group.GetAllEntity() {
-		if entity.GetEntityType() == constant.ENTITY_TYPE_MONSTER {
+		_, ok := entity.(*MonsterEntity)
+		if ok {
 			monsterCount++
 		}
 	}
@@ -287,7 +288,8 @@ func GetGroupMonsterCountByGroupId(luaState *lua.LState) int {
 	}
 	monsterCount := 0
 	for _, entity := range group.GetAllEntity() {
-		if entity.GetEntityType() == constant.ENTITY_TYPE_MONSTER {
+		_, ok := entity.(*MonsterEntity)
+		if ok {
 			monsterCount++
 		}
 	}
@@ -326,7 +328,8 @@ func CheckRemainGadgetCountByGroupId(luaState *lua.LState) int {
 	}
 	gadgetCount := 0
 	for _, entity := range group.GetAllEntity() {
-		if entity.GetEntityType() == constant.ENTITY_TYPE_GADGET {
+		_, ok := entity.(IGadgetEntity)
+		if ok {
 			gadgetCount++
 		}
 	}
@@ -396,12 +399,12 @@ func GetGadgetStateByConfigId(luaState *lua.LState) int {
 		luaState.Push(lua.LNumber(-1))
 		return 1
 	}
-	if entity.GetEntityType() != constant.ENTITY_TYPE_GADGET {
+	iGadgetEntity, ok := entity.(IGadgetEntity)
+	if !ok {
 		luaState.Push(lua.LNumber(-1))
 		return 1
 	}
-	gadgetEntity := entity.GetGadgetEntity()
-	luaState.Push(lua.LNumber(gadgetEntity.GetGadgetState()))
+	luaState.Push(lua.LNumber(iGadgetEntity.GetGadgetState()))
 	return 1
 }
 
@@ -958,21 +961,24 @@ func KillGroupEntity(luaState *lua.LState) int {
 		}
 	case constant.GROUP_KILL_MONSTER:
 		for _, entity := range entityMap {
-			if entity.GetEntityType() != constant.ENTITY_TYPE_MONSTER {
+			_, ok := entity.(*MonsterEntity)
+			if !ok {
 				continue
 			}
 			GAME.KillEntity(player, scene, entity.GetId(), proto.PlayerDieType_PLAYER_DIE_NONE)
 		}
 	case constant.GROUP_KILL_NPC:
 		for _, entity := range entityMap {
-			if entity.GetEntityType() != constant.ENTITY_TYPE_NPC {
+			_, ok := entity.(*NpcEntity)
+			if !ok {
 				continue
 			}
 			GAME.KillEntity(player, scene, entity.GetId(), proto.PlayerDieType_PLAYER_DIE_NONE)
 		}
 	case constant.GROUP_KILL_GADGET:
 		for _, entity := range entityMap {
-			if entity.GetEntityType() != constant.ENTITY_TYPE_GADGET {
+			_, ok := entity.(IGadgetEntity)
+			if !ok {
 				continue
 			}
 			GAME.KillEntity(player, scene, entity.GetId(), proto.PlayerDieType_PLAYER_DIE_NONE)
