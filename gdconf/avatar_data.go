@@ -24,12 +24,8 @@ type PropGrow struct {
 }
 
 type ConfigAvatar struct {
-	Abilities       []*ConfigAvatarAbility `json:"abilities"`
-	TargetAbilities []*ConfigAvatarAbility `json:"targetAbilities"`
-}
-
-type ConfigAvatarAbility struct {
-	AbilityName string `json:"abilityName"`
+	Abilities       []*ConfigAbility `json:"abilities"`
+	TargetAbilities []*ConfigAbility `json:"targetAbilities"`
 }
 
 // AvatarData 角色配置表

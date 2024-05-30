@@ -84,6 +84,9 @@ type GameDataConfig struct {
 	WeaponCurveDataMap         map[int32]*WeaponCurveData              // 武器曲线
 	ReliquaryLevelDataMap      map[int32]map[int32]*ReliquaryLevelData // 圣遗物等级
 	MonsterCurveDataMap        map[int32]*MonsterCurveData             // 怪物曲线
+	AbilityDataMap             map[string]*AbilityData                 // 能力
+	AbilityDataHashMap         map[uint32]*AbilityData                 // 能力哈希
+	ConfigGadgetMap            map[string]*ConfigGadget                // 物件JSON配置
 }
 
 func InitGameDataConfig() {
@@ -199,6 +202,8 @@ func (g *GameDataConfig) load(loadSceneLua bool) {
 	g.loadWeaponCurveData()            // 武器曲线
 	g.loadReliquaryLevelData()         // 圣遗物等级
 	g.loadMonsterCurveData()           // 怪物曲线
+	g.loadAbilityJsonConfig()          // 能力JSON配置
+	g.loadGadgetJsonConfig()           // 物件JSON配置
 }
 
 // CSV相关

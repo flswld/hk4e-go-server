@@ -54,6 +54,7 @@ require github.com/pierrec/lz4/v4 v4.1.17
 require github.com/gorilla/websocket v1.4.2
 
 require (
+	github.com/dengsgo/math-engine v0.0.0-20230823154425-78f211b48149
 	github.com/nats-io/nats-server/v2 v2.9.7
 	github.com/stretchr/testify v1.8.3
 	golang.org/x/net v0.10.0
