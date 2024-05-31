@@ -263,10 +263,10 @@ func (g *Game) SceneInitFinishReq(player *model.Player, payloadMsg pb.Message) {
 				WeaponGuid:     avatar.EquipWeapon.Guid,
 				WeaponEntityId: world.GetPlayerWorldAvatarWeaponEntityId(player, worldAvatar.GetAvatarId()),
 				AvatarAbilityInfo: &proto.AbilitySyncStateInfo{
-					IsInited:           len(worldAvatar.GetAbilityList()) != 0,
+					IsInited:           len(worldAvatar.PacketAbilityList()) != 0,
 					DynamicValueMap:    nil,
-					AppliedAbilities:   worldAvatar.GetAbilityList(),
-					AppliedModifiers:   worldAvatar.GetModifierList(),
+					AppliedAbilities:   worldAvatar.PacketAbilityList(),
+					AppliedModifiers:   worldAvatar.PacketModifierList(),
 					MixinRecoverInfos:  nil,
 					SgvDynamicValueMap: nil,
 				},
@@ -1812,10 +1812,10 @@ func (g *Game) PacketSceneEntityInfoAvatar(scene *Scene, player *model.Player, a
 		EntityClientData: new(proto.EntityClientData),
 		EntityAuthorityInfo: &proto.EntityAuthorityInfo{
 			AbilityInfo: &proto.AbilitySyncStateInfo{
-				IsInited:           len(worldAvatar.GetAbilityList()) != 0,
+				IsInited:           len(worldAvatar.PacketAbilityList()) != 0,
 				DynamicValueMap:    nil,
-				AppliedAbilities:   worldAvatar.GetAbilityList(),
-				AppliedModifiers:   worldAvatar.GetModifierList(),
+				AppliedAbilities:   worldAvatar.PacketAbilityList(),
+				AppliedModifiers:   worldAvatar.PacketModifierList(),
 				MixinRecoverInfos:  nil,
 				SgvDynamicValueMap: nil,
 			},

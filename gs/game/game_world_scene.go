@@ -1,6 +1,7 @@
 package game
 
 import (
+	"hk4e/pkg/endec"
 	"math"
 	"time"
 
@@ -314,6 +315,7 @@ func (s *Scene) CreateEntity(entity IEntity) uint32 {
 		return 0
 	}
 	s.entityMap[entity.GetId()] = entity
+	entity.InitAbility()
 	return entity.GetId()
 }
 
@@ -437,6 +439,20 @@ func (s *Suite) GetAllEntity() map[uint32]IEntity {
 	return s.entityMap
 }
 
+type Ability struct {
+	abilityName        string
+	abilityNameHash    uint32
+	instancedAbilityId uint32
+}
+
+type Modifier struct {
+	modifierLocalId       uint32
+	parentAbilityName     string
+	parentAbilityNameHash uint32
+	instancedAbilityId    uint32
+	instancedModifierId   uint32
+}
+
 // IEntity 场景实体抽象接口
 type IEntity interface {
 	IsEntity()
@@ -463,6 +479,13 @@ type IEntity interface {
 	SetLastMoveSceneTimeMs(lastMoveSceneTimeMs uint32)
 	SetLastMoveReliableSeq(lastMoveReliableSeq uint32)
 	SetFightProp(fightProp map[uint32]float32)
+	InitAbility()
+	AddAbility(abilityName string, instancedAbilityId uint32)
+	GetAbility(instancedAbilityId uint32) *Ability
+	GetAllAbility() []*Ability
+	AddModifier(ability *Ability, instancedModifierId uint32, modifierLocalId uint32)
+	GetAllModifier() []*Modifier
+	RemoveModifier(instancedModifierId uint32)
 }
 
 // Entity 场景实体数据结构
@@ -482,6 +505,8 @@ type Entity struct {
 	configId            uint32             // LUA配置相关
 	groupId             uint32
 	visionLevel         int
+	abilityMap          map[uint32]*Ability
+	modifierMap         map[uint32]*Modifier
 }
 
 func (e *Entity) IsEntity() {
@@ -579,6 +604,108 @@ func (e *Entity) SetFightProp(fightProp map[uint32]float32) {
 	e.fightProp = fightProp
 }
 
+func (e *Entity) InitAbility() {
+	logger.Error("parent entity init ability func can not be invoke, entityId: %v", e.GetId())
+}
+
+func (e *Entity) AddAbility(abilityName string, instancedAbilityId uint32) {
+	_, exist := e.abilityMap[instancedAbilityId]
+	if exist {
+		logger.Error("ability already exist, abilityName: %v, entityId: %v", abilityName, e.GetId())
+		return
+	}
+	e.abilityMap[instancedAbilityId] = &Ability{
+		abilityName:        abilityName,
+		abilityNameHash:    uint32(endec.Hk4eAbilityHashCode(abilityName)),
+		instancedAbilityId: instancedAbilityId,
+	}
+	abilityDataConfig := gdconf.GetAbilityDataByName(abilityName)
+	if abilityDataConfig == nil {
+		logger.Error("get ability data config is nil, abilityName: %v", abilityName)
+		return
+	}
+	for _, action := range abilityDataConfig.OnAdded {
+		e.AbilityAction(action)
+	}
+	logger.Debug("[AddAbility] abilityName: %v, entityId: %v", abilityName, e.GetId())
+}
+
+func (e *Entity) GetAbility(instancedAbilityId uint32) *Ability {
+	return e.abilityMap[instancedAbilityId]
+}
+
+func (e *Entity) GetAllAbility() []*Ability {
+	ret := make([]*Ability, 0)
+	for _, ability := range e.abilityMap {
+		ret = append(ret, ability)
+	}
+	return ret
+}
+
+func (e *Entity) AddModifier(ability *Ability, instancedModifierId uint32, modifierLocalId uint32) {
+	_, exist := e.modifierMap[instancedModifierId]
+	if exist {
+		logger.Error("modifier already exist, abilityName: %v, modifierLocalId: %v, entityId: %v", ability.abilityName, modifierLocalId, e.GetId())
+		return
+	}
+	e.modifierMap[instancedModifierId] = &Modifier{
+		modifierLocalId:       modifierLocalId,
+		parentAbilityName:     ability.abilityName,
+		parentAbilityNameHash: ability.abilityNameHash,
+		instancedAbilityId:    ability.instancedAbilityId,
+		instancedModifierId:   instancedModifierId,
+	}
+	abilityDataConfig := gdconf.GetAbilityDataByName(ability.abilityName)
+	if abilityDataConfig == nil {
+		logger.Error("get ability data config is nil, abilityName: %v", ability.abilityName)
+		return
+	}
+	abilityModifierConfig := abilityDataConfig.Modifiers.GetByLocalId(modifierLocalId)
+	if abilityModifierConfig == nil {
+		logger.Error("get ability modifier config is nil, modifierLocalId: %v", modifierLocalId)
+		return
+	}
+	for _, action := range abilityModifierConfig.OnAdded {
+		e.AbilityAction(action)
+	}
+	logger.Debug("[AddModifier] abilityName: %v, modifierLocalId: %v, entityId: %v", ability.abilityName, modifierLocalId, e.GetId())
+}
+
+func (e *Entity) GetAllModifier() []*Modifier {
+	ret := make([]*Modifier, 0)
+	for _, modifier := range e.modifierMap {
+		ret = append(ret, modifier)
+	}
+	return ret
+}
+
+func (e *Entity) RemoveModifier(instancedModifierId uint32) {
+	modifier, exist := e.modifierMap[instancedModifierId]
+	if !exist {
+		logger.Error("modifier not exist, instancedModifierId: %v, entityId: %v", instancedModifierId, e.GetId())
+		return
+	}
+	delete(e.modifierMap, instancedModifierId)
+	abilityDataConfig := gdconf.GetAbilityDataByName(modifier.parentAbilityName)
+	if abilityDataConfig == nil {
+		logger.Error("get ability data config is nil, abilityName: %v", modifier.parentAbilityName)
+		return
+	}
+	abilityModifierConfig := abilityDataConfig.Modifiers.GetByLocalId(modifier.modifierLocalId)
+	if abilityModifierConfig == nil {
+		logger.Error("get ability modifier config is nil, modifierLocalId: %v", modifier.modifierLocalId)
+		return
+	}
+	for _, action := range abilityModifierConfig.OnRemoved {
+		e.AbilityAction(action)
+	}
+	logger.Debug("[RemoveModifier] abilityName: %v, modifierLocalId: %v, entityId: %v", modifier.parentAbilityName, modifier.modifierLocalId, e.GetId())
+}
+
+func (e *Entity) AbilityAction(action *gdconf.AbilityAction) {
+	logger.Debug("[AbilityAction] type: %v, entityId: %v", action.Type, e.GetId())
+}
+
 type AvatarEntity struct {
 	*Entity
 	uid      uint32
@@ -593,8 +720,18 @@ func (a *AvatarEntity) GetAvatarId() uint32 {
 	return a.avatarId
 }
 
+func (a *AvatarEntity) InitAbility() {
+	a.abilityMap = make(map[uint32]*Ability)
+	a.modifierMap = make(map[uint32]*Modifier)
+}
+
 type WeaponEntity struct {
 	*Entity
+}
+
+func (w *WeaponEntity) InitAbility() {
+	w.abilityMap = make(map[uint32]*Ability)
+	w.modifierMap = make(map[uint32]*Modifier)
 }
 
 type MonsterEntity struct {
@@ -604,6 +741,11 @@ type MonsterEntity struct {
 
 func (m *MonsterEntity) GetMonsterId() uint32 {
 	return m.monsterId
+}
+
+func (m *MonsterEntity) InitAbility() {
+	m.abilityMap = make(map[uint32]*Ability)
+	m.modifierMap = make(map[uint32]*Modifier)
 }
 
 type NpcEntity struct {
@@ -630,10 +772,16 @@ func (n *NpcEntity) GetBlockId() uint32 {
 	return n.blockId
 }
 
+func (n *NpcEntity) InitAbility() {
+	n.abilityMap = make(map[uint32]*Ability)
+	n.modifierMap = make(map[uint32]*Modifier)
+}
+
 type IGadgetEntity interface {
 	GetGadgetId() uint32
 	GetGadgetState() uint32
 	SetGadgetState(state uint32)
+	InitAbility()
 }
 
 type GadgetEntity struct {
@@ -652,6 +800,33 @@ func (g *GadgetEntity) GetGadgetState() uint32 {
 
 func (g *GadgetEntity) SetGadgetState(state uint32) {
 	g.gadgetState = state
+}
+
+func (g *GadgetEntity) InitAbility() {
+	g.abilityMap = make(map[uint32]*Ability)
+	g.modifierMap = make(map[uint32]*Modifier)
+	gadgetDataConfig := gdconf.GetGadgetDataById(int32(g.GetGadgetId()))
+	if gadgetDataConfig == nil {
+		logger.Error("get gadget data config is nil, gadgetId: %v", g.GetGadgetId())
+		return
+	}
+	if gadgetDataConfig.JsonName == "" {
+		return
+	}
+	gadgetJsonConfig := gdconf.GetGadgetJsonConfigByName(gadgetDataConfig.JsonName)
+	if gadgetJsonConfig == nil {
+		logger.Error("get gadget json config is nil, name: %v", gadgetDataConfig.JsonName)
+		return
+	}
+	for abilityIndex, ability := range gadgetJsonConfig.Abilities {
+		abilityDataConfig := gdconf.GetAbilityDataByName(ability.AbilityName)
+		if abilityDataConfig == nil {
+			logger.Error("get ability data config is nil, abilityName: %v", gadgetDataConfig.JsonName)
+			return
+		}
+		instancedAbilityId := uint32(abilityIndex + 1)
+		g.AddAbility(abilityDataConfig.AbilityName, instancedAbilityId)
+	}
 }
 
 type GadgetNormalEntity struct {

@@ -442,7 +442,15 @@ func (w *WorldAvatar) SetWeaponEntityId(weaponEntityId uint32) {
 	w.weaponEntityId = weaponEntityId
 }
 
-func (w *WorldAvatar) GetAbilityList() []*proto.AbilityAppliedAbility {
+func (w *WorldAvatar) AddAbility(ability *proto.AbilityAppliedAbility) {
+	w.abilityMap[ability.InstancedAbilityId] = ability
+}
+
+func (w *WorldAvatar) GetAbilityByInstanceId(instanceId uint32) *proto.AbilityAppliedAbility {
+	return w.abilityMap[instanceId]
+}
+
+func (w *WorldAvatar) PacketAbilityList() []*proto.AbilityAppliedAbility {
 	abilityList := make([]*proto.AbilityAppliedAbility, 0)
 	for _, ability := range w.abilityMap {
 		abilityList = append(abilityList, ability)
@@ -450,24 +458,20 @@ func (w *WorldAvatar) GetAbilityList() []*proto.AbilityAppliedAbility {
 	return abilityList
 }
 
-func (w *WorldAvatar) GetAbilityByInstanceId(instanceId uint32) *proto.AbilityAppliedAbility {
-	return w.abilityMap[instanceId]
+func (w *WorldAvatar) AddModifier(modifier *proto.AbilityAppliedModifier) {
+	w.modifierMap[modifier.InstancedModifierId] = modifier
 }
 
-func (w *WorldAvatar) AddAbility(ability *proto.AbilityAppliedAbility) {
-	w.abilityMap[ability.InstancedAbilityId] = ability
+func (w *WorldAvatar) GetModifierByInstanceId(instanceId uint32) *proto.AbilityAppliedModifier {
+	return w.modifierMap[instanceId]
 }
 
-func (w *WorldAvatar) GetModifierList() []*proto.AbilityAppliedModifier {
+func (w *WorldAvatar) PacketModifierList() []*proto.AbilityAppliedModifier {
 	modifierList := make([]*proto.AbilityAppliedModifier, 0)
 	for _, modifier := range w.modifierMap {
 		modifierList = append(modifierList, modifier)
 	}
 	return modifierList
-}
-
-func (w *WorldAvatar) AddModifier(modifier *proto.AbilityAppliedModifier) {
-	w.modifierMap[modifier.InstancedModifierId] = modifier
 }
 
 // GetWorldAvatarList 获取世界队伍的全部角色列表

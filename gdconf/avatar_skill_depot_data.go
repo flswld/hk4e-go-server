@@ -61,7 +61,7 @@ func (g *GameDataConfig) loadAvatarSkillDepotData() {
 		info := fmt.Sprintf("open file error: %v", err)
 		panic(info)
 	}
-	playerAbilities := make(map[string]*ConfigAvatar)
+	playerAbilities := make(map[string]*AvatarJsonConfig)
 	err = hjson.Unmarshal(playerElementsFile, &playerAbilities)
 	if err != nil {
 		info := fmt.Sprintf("parse file error: %v", err)

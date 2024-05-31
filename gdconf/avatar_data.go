@@ -23,7 +23,7 @@ type PropGrow struct {
 	Curve int32 // 曲线
 }
 
-type ConfigAvatar struct {
+type AvatarJsonConfig struct {
 	Abilities       []*ConfigAbility `json:"abilities"`
 	TargetAbilities []*ConfigAbility `json:"targetAbilities"`
 }
@@ -89,17 +89,17 @@ func (g *GameDataConfig) loadAvatarData() {
 			info := fmt.Sprintf("open file error: %v, AvatarId: %v", err, avatarData.AvatarId)
 			panic(info)
 		}
-		configAvatar := new(ConfigAvatar)
-		err = hjson.Unmarshal(fileData, configAvatar)
+		avatarJsonConfig := new(AvatarJsonConfig)
+		err = hjson.Unmarshal(fileData, avatarJsonConfig)
 		if err != nil {
 			info := fmt.Sprintf("parse file error: %v, AvatarId: %v", err, avatarData.AvatarId)
 			panic(info)
 		}
-		if len(configAvatar.Abilities) == 0 {
+		if len(avatarJsonConfig.Abilities) == 0 {
 			logger.Info("can not find any ability of avatar, AvatarId: %v", avatarData.AvatarId)
 		}
-		for _, configAvatarAbility := range configAvatar.Abilities {
-			abilityHashCode := endec.Hk4eAbilityHashCode(configAvatarAbility.AbilityName)
+		for _, ability := range avatarJsonConfig.Abilities {
+			abilityHashCode := endec.Hk4eAbilityHashCode(ability.AbilityName)
 			avatarData.AbilityHashCodeList = append(avatarData.AbilityHashCodeList, abilityHashCode)
 		}
 		// 突破奖励转换列表

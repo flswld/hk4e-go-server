@@ -1,6 +1,8 @@
 package gdconf
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"hk4e/pkg/endec"
 	"hk4e/pkg/logger"
@@ -12,7 +14,6 @@ import (
 )
 
 type ConfigAbility struct {
-	AbilityID   string `json:"abilityID"`
 	AbilityName string `json:"abilityName"`
 }
 
@@ -20,46 +21,82 @@ type AbilityConfigData struct {
 	Default *AbilityData `json:"Default"`
 }
 
+type AbilityModifierOrderMap struct {
+	KeyOrder []string
+	Map      map[string]*AbilityModifier
+}
+
+func (a *AbilityModifierOrderMap) UnmarshalJSON(data []byte) error {
+	var formatJson bytes.Buffer
+	err := json.Indent(&formatJson, data, "", "\t")
+	if err != nil {
+		return err
+	}
+	for _, line := range strings.Split(formatJson.String(), "\n") {
+		if strings.Count(line, "\t") == 1 && strings.Count(line, "\"") == 2 {
+			key := strings.Split(line, "\"")[1]
+			a.KeyOrder = append(a.KeyOrder, key)
+		}
+	}
+	err = json.Unmarshal(data, &a.Map)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (a *AbilityModifierOrderMap) GetByName(modifierName string) *AbilityModifier {
+	return a.Map[modifierName]
+}
+
+func (a *AbilityModifierOrderMap) GetByLocalId(modifierLocalId uint32) *AbilityModifier {
+	if int(modifierLocalId) >= len(a.KeyOrder) {
+		return nil
+	}
+	key := a.KeyOrder[modifierLocalId]
+	return a.Map[key]
+}
+
 type AbilityData struct {
-	AbilityName        string                      `json:"abilityName"`
-	Modifiers          map[string]*AbilityModifier `json:"modifiers"`
-	AbilitySpecials    map[string]float32          `json:"abilitySpecials"`
-	OnAdded            []*AbilityModifierAction    `json:"onAdded"`
-	OnRemoved          []*AbilityModifierAction    `json:"onRemoved"`
-	OnAbilityStart     []*AbilityModifierAction    `json:"onAbilityStart"`
-	OnKill             []*AbilityModifierAction    `json:"onKill"`
-	OnFieldEnter       []*AbilityModifierAction    `json:"onFieldEnter"`
-	OnExit             []*AbilityModifierAction    `json:"onExit"`
-	OnAttach           []*AbilityModifierAction    `json:"onAttach"`
-	OnDetach           []*AbilityModifierAction    `json:"onDetach"`
-	OnAvatarIn         []*AbilityModifierAction    `json:"onAvatarIn"`
-	OnAvatarOut        []*AbilityModifierAction    `json:"onAvatarOut"`
-	OnTriggerAvatarRay []*AbilityModifierAction    `json:"onTriggerAvatarRay"`
-	OnVehicleIn        []*AbilityModifierAction    `json:"onVehicleIn"`
-	OnVehicleOut       []*AbilityModifierAction    `json:"onVehicleOut"`
-	AbilityMixins      []*AbilityMixinData         `json:"abilityMixins"`
+	AbilityName        string                   `json:"abilityName"`
+	Modifiers          *AbilityModifierOrderMap `json:"modifiers"`
+	AbilitySpecials    map[string]float32       `json:"abilitySpecials"`
+	OnAdded            []*AbilityAction         `json:"onAdded"`
+	OnRemoved          []*AbilityAction         `json:"onRemoved"`
+	OnAbilityStart     []*AbilityAction         `json:"onAbilityStart"`
+	OnKill             []*AbilityAction         `json:"onKill"`
+	OnFieldEnter       []*AbilityAction         `json:"onFieldEnter"`
+	OnExit             []*AbilityAction         `json:"onExit"`
+	OnAttach           []*AbilityAction         `json:"onAttach"`
+	OnDetach           []*AbilityAction         `json:"onDetach"`
+	OnAvatarIn         []*AbilityAction         `json:"onAvatarIn"`
+	OnAvatarOut        []*AbilityAction         `json:"onAvatarOut"`
+	OnTriggerAvatarRay []*AbilityAction         `json:"onTriggerAvatarRay"`
+	OnVehicleIn        []*AbilityAction         `json:"onVehicleIn"`
+	OnVehicleOut       []*AbilityAction         `json:"onVehicleOut"`
+	AbilityMixins      []*AbilityMixinData      `json:"abilityMixins"`
 }
 
 type AbilityModifier struct {
 	State             string                   `json:"state"`
-	OnAdded           []*AbilityModifierAction `json:"onAdded"`
-	OnThinkInterval   []*AbilityModifierAction `json:"onThinkInterval"`
-	OnRemoved         []*AbilityModifierAction `json:"onRemoved"`
-	OnBeingHit        []*AbilityModifierAction `json:"onBeingHit"`
-	OnAttackLanded    []*AbilityModifierAction `json:"onAttackLanded"`
-	OnHittingOther    []*AbilityModifierAction `json:"onHittingOther"`
-	OnKill            []*AbilityModifierAction `json:"onKill"`
-	OnCrash           []*AbilityModifierAction `json:"onCrash"`
-	OnAvatarIn        []*AbilityModifierAction `json:"onAvatarIn"`
-	OnAvatarOut       []*AbilityModifierAction `json:"onAvatarOut"`
-	OnReconnect       []*AbilityModifierAction `json:"onReconnect"`
-	OnChangeAuthority []*AbilityModifierAction `json:"onChangeAuthority"`
-	OnVehicleIn       []*AbilityModifierAction `json:"onVehicleIn"`
-	OnVehicleOut      []*AbilityModifierAction `json:"onVehicleOut"`
-	OnZoneEnter       []*AbilityModifierAction `json:"onZoneEnter"`
-	OnZoneExit        []*AbilityModifierAction `json:"onZoneExit"`
-	OnHeal            []*AbilityModifierAction `json:"onHeal"`
-	OnBeingHealed     []*AbilityModifierAction `json:"onBeingHealed"`
+	OnAdded           []*AbilityAction         `json:"onAdded"`
+	OnThinkInterval   []*AbilityAction         `json:"onThinkInterval"`
+	OnRemoved         []*AbilityAction         `json:"onRemoved"`
+	OnBeingHit        []*AbilityAction         `json:"onBeingHit"`
+	OnAttackLanded    []*AbilityAction         `json:"onAttackLanded"`
+	OnHittingOther    []*AbilityAction         `json:"onHittingOther"`
+	OnKill            []*AbilityAction         `json:"onKill"`
+	OnCrash           []*AbilityAction         `json:"onCrash"`
+	OnAvatarIn        []*AbilityAction         `json:"onAvatarIn"`
+	OnAvatarOut       []*AbilityAction         `json:"onAvatarOut"`
+	OnReconnect       []*AbilityAction         `json:"onReconnect"`
+	OnChangeAuthority []*AbilityAction         `json:"onChangeAuthority"`
+	OnVehicleIn       []*AbilityAction         `json:"onVehicleIn"`
+	OnVehicleOut      []*AbilityAction         `json:"onVehicleOut"`
+	OnZoneEnter       []*AbilityAction         `json:"onZoneEnter"`
+	OnZoneExit        []*AbilityAction         `json:"onZoneExit"`
+	OnHeal            []*AbilityAction         `json:"onHeal"`
+	OnBeingHealed     []*AbilityAction         `json:"onBeingHealed"`
 	Duration          DynamicFloat             `json:"duration"`
 	ThinkInterval     DynamicFloat             `json:"thinkInterval"`
 	Stacking          string                   `json:"stacking"`
@@ -69,59 +106,59 @@ type AbilityModifier struct {
 	ElementDurability DynamicFloat             `json:"elementDurability"`
 }
 
-type AbilityModifierAction struct {
-	Type                         string                   `json:"$type"`
-	Target                       string                   `json:"target"`
-	Amount                       DynamicFloat             `json:"amount"`
-	AmountByCasterAttackRatio    DynamicFloat             `json:"amountByCasterAttackRatio"`
-	AmountByCasterCurrentHPRatio DynamicFloat             `json:"amountByCasterCurrentHPRatio"`
-	AmountByCasterMaxHPRatio     DynamicFloat             `json:"amountByCasterMaxHPRatio"`
-	AmountByGetDamage            DynamicFloat             `json:"amountByGetDamage"`
-	AmountByTargetCurrentHPRatio DynamicFloat             `json:"amountByTargetCurrentHPRatio"`
-	AmountByTargetMaxHPRatio     DynamicFloat             `json:"amountByTargetMaxHPRatio"`
-	LimboByTargetMaxHPRatio      DynamicFloat             `json:"limboByTargetMaxHPRatio"`
-	HealRatio                    DynamicFloat             `json:"healRatio"`
-	IgnoreAbilityProperty        bool                     `json:"ignoreAbilityProperty"`
-	ModifierName                 string                   `json:"modifierName"`
-	EnableLockHP                 bool                     `json:"enableLockHP"`
-	DisableWhenLoading           bool                     `json:"disableWhenLoading"`
-	Lethal                       bool                     `json:"lethal"`
-	MuteHealEffect               bool                     `json:"muteHealEffect"`
-	ByServer                     bool                     `json:"byServer"`
-	LifeByOwnerIsAlive           bool                     `json:"lifeByOwnerIsAlive"`
-	CampTargetType               string                   `json:"campTargetType"`
-	CampID                       int32                    `json:"campID"`
-	GadgetID                     int32                    `json:"gadgetID"`
-	OwnerIsTarget                bool                     `json:"ownerIsTarget"`
-	IsFromOwner                  bool                     `json:"isFromOwner"`
-	Key                          string                   `json:"key"`
-	GlobalValueKey               string                   `json:"globalValueKey"`
-	AbilityFormula               string                   `json:"abilityFormula"`
-	SrcTarget                    string                   `json:"srcTarget"`
-	DstTarget                    string                   `json:"dstTarget"`
-	SrcKey                       string                   `json:"srcKey"`
-	DstKey                       string                   `json:"dstKey"`
-	SkillID                      int32                    `json:"skillID"`
-	ResistanceListID             int32                    `json:"resistanceListID"`
-	MonsterID                    int32                    `json:"monsterID"`
-	SummonTag                    int32                    `json:"summonTag"`
-	Actions                      []*AbilityModifierAction `json:"actions"`
-	SuccessActions               []*AbilityModifierAction `json:"successActions"`
-	FailActions                  []*AbilityModifierAction `json:"failActions"`
-	DropType                     string                   `json:"dropType"`
-	BaseEnergy                   DynamicFloat             `json:"baseEnergy"`
-	Ratio                        DynamicFloat             `json:"ratio"`
-	ConfigID                     int32                    `json:"configID"`
-	ValueRangeMin                DynamicFloat             `json:"valueRangeMin"`
-	ValueRangeMax                DynamicFloat             `json:"valueRangeMax"`
-	OverrideMapKey               string                   `json:"overrideMapKey"`
-	Param1                       int32                    `json:"param1"`
-	Param2                       int32                    `json:"param2"`
-	Param3                       int32                    `json:"param3"`
-	FuncName                     string                   `json:"funcName"`
-	LuaCallType                  string                   `json:"luaCallType"`
-	CallParamList                []int32                  `json:"callParamList"`
-	Content                      string                   `json:"content"`
+type AbilityAction struct {
+	Type                         string           `json:"$type"`
+	Target                       string           `json:"target"`
+	Amount                       DynamicFloat     `json:"amount"`
+	AmountByCasterAttackRatio    DynamicFloat     `json:"amountByCasterAttackRatio"`
+	AmountByCasterCurrentHPRatio DynamicFloat     `json:"amountByCasterCurrentHPRatio"`
+	AmountByCasterMaxHPRatio     DynamicFloat     `json:"amountByCasterMaxHPRatio"`
+	AmountByGetDamage            DynamicFloat     `json:"amountByGetDamage"`
+	AmountByTargetCurrentHPRatio DynamicFloat     `json:"amountByTargetCurrentHPRatio"`
+	AmountByTargetMaxHPRatio     DynamicFloat     `json:"amountByTargetMaxHPRatio"`
+	LimboByTargetMaxHPRatio      DynamicFloat     `json:"limboByTargetMaxHPRatio"`
+	HealRatio                    DynamicFloat     `json:"healRatio"`
+	IgnoreAbilityProperty        bool             `json:"ignoreAbilityProperty"`
+	ModifierName                 string           `json:"modifierName"`
+	EnableLockHP                 bool             `json:"enableLockHP"`
+	DisableWhenLoading           bool             `json:"disableWhenLoading"`
+	Lethal                       bool             `json:"lethal"`
+	MuteHealEffect               bool             `json:"muteHealEffect"`
+	ByServer                     bool             `json:"byServer"`
+	LifeByOwnerIsAlive           bool             `json:"lifeByOwnerIsAlive"`
+	CampTargetType               string           `json:"campTargetType"`
+	CampID                       int32            `json:"campID"`
+	GadgetID                     int32            `json:"gadgetID"`
+	OwnerIsTarget                bool             `json:"ownerIsTarget"`
+	IsFromOwner                  bool             `json:"isFromOwner"`
+	Key                          string           `json:"key"`
+	GlobalValueKey               string           `json:"globalValueKey"`
+	AbilityFormula               string           `json:"abilityFormula"`
+	SrcTarget                    string           `json:"srcTarget"`
+	DstTarget                    string           `json:"dstTarget"`
+	SrcKey                       string           `json:"srcKey"`
+	DstKey                       string           `json:"dstKey"`
+	SkillID                      int32            `json:"skillID"`
+	ResistanceListID             int32            `json:"resistanceListID"`
+	MonsterID                    int32            `json:"monsterID"`
+	SummonTag                    int32            `json:"summonTag"`
+	Actions                      []*AbilityAction `json:"actions"`
+	SuccessActions               []*AbilityAction `json:"successActions"`
+	FailActions                  []*AbilityAction `json:"failActions"`
+	DropType                     string           `json:"dropType"`
+	BaseEnergy                   DynamicFloat     `json:"baseEnergy"`
+	Ratio                        DynamicFloat     `json:"ratio"`
+	ConfigID                     int32            `json:"configID"`
+	ValueRangeMin                DynamicFloat     `json:"valueRangeMin"`
+	ValueRangeMax                DynamicFloat     `json:"valueRangeMax"`
+	OverrideMapKey               string           `json:"overrideMapKey"`
+	Param1                       int32            `json:"param1"`
+	Param2                       int32            `json:"param2"`
+	Param3                       int32            `json:"param3"`
+	FuncName                     string           `json:"funcName"`
+	LuaCallType                  string           `json:"luaCallType"`
+	CallParamList                []int32          `json:"callParamList"`
+	Content                      string           `json:"content"`
 }
 
 type AbilityMixinData struct {
@@ -229,6 +266,6 @@ func GetAbilityDataByName(abilityName string) *AbilityData {
 	return CONF.AbilityDataMap[abilityName]
 }
 
-func GetAbilityDataByHash(abilityHashCode uint32) *AbilityData {
-	return CONF.AbilityDataHashMap[abilityHashCode]
+func GetAbilityDataByHash(abilityNameHash uint32) *AbilityData {
+	return CONF.AbilityDataHashMap[abilityNameHash]
 }

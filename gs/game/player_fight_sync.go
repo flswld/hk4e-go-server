@@ -122,7 +122,6 @@ func (g *Game) CombatInvocationsNotify(player *model.Player, payloadMsg pb.Messa
 				logger.Error("parse EvtBeingHitInfo error: %v", err)
 				break
 			}
-			// logger.Debug("EvtBeingHitInfo: %+v, ForwardType: %v", evtBeingHitInfo, entry.ForwardType)
 			g.handleEvtBeingHit(player, scene, evtBeingHitInfo)
 		case proto.CombatTypeArgument_ENTITY_MOVE:
 			entityMoveInfo := new(proto.EntityMoveInfo)
@@ -131,7 +130,6 @@ func (g *Game) CombatInvocationsNotify(player *model.Player, payloadMsg pb.Messa
 				logger.Error("parse EntityMoveInfo error: %v", err)
 				break
 			}
-			// logger.Debug("EntityMoveInfo: %+v, ForwardType: %v", entityMoveInfo, entry.ForwardType)
 			motionInfo := entityMoveInfo.MotionInfo
 			if motionInfo == nil || motionInfo.Pos == nil || motionInfo.Rot == nil {
 				break
@@ -157,7 +155,6 @@ func (g *Game) CombatInvocationsNotify(player *model.Player, payloadMsg pb.Messa
 				logger.Error("parse EvtAnimatorParameterInfo error: %v", err)
 				break
 			}
-			// logger.Debug("EvtAnimatorParameterInfo: %+v, ForwardType: %v", evtAnimatorParameterInfo, entry.ForwardType)
 		case proto.CombatTypeArgument_COMBAT_ANIMATOR_STATE_CHANGED:
 			evtAnimatorStateChangedInfo := new(proto.EvtAnimatorStateChangedInfo)
 			err := pb.Unmarshal(entry.CombatData, evtAnimatorStateChangedInfo)
@@ -165,7 +162,6 @@ func (g *Game) CombatInvocationsNotify(player *model.Player, payloadMsg pb.Messa
 				logger.Error("parse EvtAnimatorStateChangedInfo error: %v", err)
 				break
 			}
-			// logger.Debug("EvtAnimatorStateChangedInfo: %+v, ForwardType: %v", evtAnimatorStateChangedInfo, entry.ForwardType)
 		}
 		player.CombatInvokeHandler.AddEntry(entry.ForwardType, entry)
 	}
@@ -183,7 +179,6 @@ func (g *Game) handleEvtBeingHit(player *model.Player, scene *Scene, hitInfo *pr
 
 	attackResult := hitInfo.AttackResult
 	if attackResult == nil {
-		logger.Error("attackResult is nil")
 		return
 	}
 	if attackResultTemplate == nil {
@@ -191,13 +186,14 @@ func (g *Game) handleEvtBeingHit(player *model.Player, scene *Scene, hitInfo *pr
 	}
 	defEntity := scene.GetEntity(attackResult.DefenseId)
 	if defEntity == nil {
-		// logger.Error("not found def entity, DefenseId: %v", attackResult.DefenseId)
 		return
 	}
 	switch defEntity.(type) {
 	case *AvatarEntity:
-		g.SubPlayerAvatarHp(player.PlayerId, defEntity.(*AvatarEntity).GetAvatarId(), attackResult.Damage, false, proto.ChangHpReason_CHANGE_HP_SUB_MONSTER)
+		avatarEntity := defEntity.(*AvatarEntity)
+		g.SubPlayerAvatarHp(player.PlayerId, avatarEntity.GetAvatarId(), attackResult.Damage, false, proto.ChangHpReason_CHANGE_HP_SUB_MONSTER)
 	case *MonsterEntity:
+		monsterEntity := defEntity.(*MonsterEntity)
 		if scene.GetMonsterWudi() {
 			return
 		}
@@ -217,9 +213,9 @@ func (g *Game) handleEvtBeingHit(player *model.Player, scene *Scene, hitInfo *pr
 		if defEntity.GetGroupId() == 0 {
 			return
 		}
-		monsterDataConfig := gdconf.GetMonsterDataById(int32(defEntity.(*MonsterEntity).GetMonsterId()))
+		monsterDataConfig := gdconf.GetMonsterDataById(int32(monsterEntity.GetMonsterId()))
 		if monsterDataConfig == nil {
-			logger.Error("get monster data config is nil, monsterId: %v", defEntity.(*MonsterEntity).GetMonsterId())
+			logger.Error("get monster data config is nil, monsterId: %v", monsterEntity.GetMonsterId())
 			return
 		}
 		lastHpPercent := lastHp / maxHp * 100.0
@@ -230,13 +226,14 @@ func (g *Game) handleEvtBeingHit(player *model.Player, scene *Scene, hitInfo *pr
 			}
 		}
 	case IGadgetEntity:
-		gadgetDataConfig := gdconf.GetGadgetDataById(int32(defEntity.(IGadgetEntity).GetGadgetId()))
+		iGadgetEntity := defEntity.(IGadgetEntity)
+		gadgetDataConfig := gdconf.GetGadgetDataById(int32(iGadgetEntity.GetGadgetId()))
 		if gadgetDataConfig == nil {
-			// logger.Error("get gadget data config is nil, gadgetId: %v", gadgetEntity.GetGadgetId())
+			logger.Error("get gadget data config is nil, gadgetId: %v", iGadgetEntity.GetGadgetId())
 			return
 		}
 		logger.Debug("[EvtBeingHit] GadgetData: %+v, EntityId: %v, uid: %v", gadgetDataConfig, defEntity.GetId(), player.PlayerId)
-		g.handleGadgetEntityBeHitLow(player, defEntity, attackResult.ElementType)
+		// g.handleGadgetEntityBeHitLow(player, defEntity, attackResult.ElementType)
 	}
 }
 
@@ -594,37 +591,30 @@ func (g *Game) AbilityInvocationsNotify(player *model.Player, payloadMsg pb.Mess
 	}
 	for _, entry := range ntf.Invokes {
 		player.AbilityInvokeHandler.AddEntry(entry.ForwardType, entry)
-		switch entry.ArgumentType {
-		case proto.AbilityInvokeArgument_ABILITY_META_MODIFIER_CHANGE:
-			modifierChange := new(proto.AbilityMetaModifierChange)
-			err := pb.Unmarshal(entry.AbilityData, modifierChange)
-			if err != nil {
-				logger.Error("parse AbilityMetaModifierChange error: %v", err)
-				continue
-			}
-			// logger.Debug("EntityId: %v, ModifierChange: %+v", entry.EntityId, modifierChange)
-			// 处理耐力消耗
-			g.HandleAbilityStamina(player, entry)
-			g.handleGadgetEntityAbilityLow(player, entry.EntityId, entry.ArgumentType, modifierChange)
-		case proto.AbilityInvokeArgument_ABILITY_MIXIN_COST_STAMINA:
-			costStamina := new(proto.AbilityMixinCostStamina)
-			err := pb.Unmarshal(entry.AbilityData, costStamina)
-			if err != nil {
-				logger.Error("parse AbilityMixinCostStamina error: %v", err)
-				continue
-			}
-			// logger.Debug("EntityId: %v, MixinCostStamina: %+v", entry.EntityId, costStamina)
-			// 处理耐力消耗
-			g.HandleAbilityStamina(player, entry)
-		case proto.AbilityInvokeArgument_ABILITY_META_MODIFIER_DURABILITY_CHANGE:
-			modifierDurabilityChange := new(proto.AbilityMetaModifierDurabilityChange)
-			err := pb.Unmarshal(entry.AbilityData, modifierDurabilityChange)
-			if err != nil {
-				logger.Error("parse AbilityMetaModifierDurabilityChange error: %v", err)
-				continue
-			}
-			// logger.Debug("EntityId: %v, DurabilityChange: %+v", entry.EntityId, modifierDurabilityChange)
-		}
+	}
+	for _, entry := range ntf.Invokes {
+		g.handleAbilityInvoke(player, entry)
+		// switch entry.ArgumentType {
+		// case proto.AbilityInvokeArgument_ABILITY_META_MODIFIER_CHANGE:
+		// 	modifierChange := new(proto.AbilityMetaModifierChange)
+		// 	err := pb.Unmarshal(entry.AbilityData, modifierChange)
+		// 	if err != nil {
+		// 		logger.Error("parse AbilityMetaModifierChange error: %v", err)
+		// 		continue
+		// 	}
+		// 	// 处理耐力消耗
+		// 	g.HandleAbilityStamina(player, entry)
+		// 	g.handleGadgetEntityAbilityLow(player, entry.EntityId, entry.ArgumentType, modifierChange)
+		// case proto.AbilityInvokeArgument_ABILITY_MIXIN_COST_STAMINA:
+		// 	costStamina := new(proto.AbilityMixinCostStamina)
+		// 	err := pb.Unmarshal(entry.AbilityData, costStamina)
+		// 	if err != nil {
+		// 		logger.Error("parse AbilityMixinCostStamina error: %v", err)
+		// 		continue
+		// 	}
+		// 	// 处理耐力消耗
+		// 	g.HandleAbilityStamina(player, entry)
+		// }
 	}
 }
 
@@ -635,12 +625,14 @@ func (g *Game) ClientAbilityInitFinishNotify(player *model.Player, payloadMsg pb
 	}
 	invokeHandler := model.NewInvokeHandler[proto.AbilityInvokeEntry]()
 	for _, entry := range ntf.Invokes {
-		// logger.Debug("ClientAbilityInitFinishNotify: %+v", entry)
 		invokeHandler.AddEntry(entry.ForwardType, entry)
 	}
 	DoForward[proto.AbilityInvokeEntry](player, invokeHandler,
 		cmd.ClientAbilityInitFinishNotify, new(proto.ClientAbilityInitFinishNotify), "Invokes",
 		ntf, []string{"EntityId"})
+	for _, entry := range ntf.Invokes {
+		g.handleAbilityInvoke(player, entry)
+	}
 }
 
 func (g *Game) ClientAbilityChangeNotify(player *model.Player, payloadMsg pb.Message) {
@@ -650,27 +642,27 @@ func (g *Game) ClientAbilityChangeNotify(player *model.Player, payloadMsg pb.Mes
 	}
 	invokeHandler := model.NewInvokeHandler[proto.AbilityInvokeEntry]()
 	for _, entry := range ntf.Invokes {
-		// logger.Debug("ClientAbilityChangeNotify: %+v", entry)
 		invokeHandler.AddEntry(entry.ForwardType, entry)
 	}
 	DoForward[proto.AbilityInvokeEntry](player, invokeHandler,
 		cmd.ClientAbilityChangeNotify, new(proto.ClientAbilityChangeNotify), "Invokes",
 		ntf, []string{"IsInitHash", "EntityId"})
-	world := WORLD_MANAGER.GetWorldById(player.WorldId)
-	if world == nil {
-		return
-	}
-	for _, abilityInvokeEntry := range ntf.Invokes {
-		switch abilityInvokeEntry.ArgumentType {
+	for _, entry := range ntf.Invokes {
+		g.handleAbilityInvoke(player, entry)
+		world := WORLD_MANAGER.GetWorldById(player.WorldId)
+		if world == nil {
+			continue
+		}
+		worldAvatar := world.GetWorldAvatarByEntityId(entry.EntityId)
+		if worldAvatar == nil {
+			continue
+		}
+		switch entry.ArgumentType {
 		case proto.AbilityInvokeArgument_ABILITY_META_ADD_NEW_ABILITY:
 			abilityMetaAddAbility := new(proto.AbilityMetaAddAbility)
-			err := pb.Unmarshal(abilityInvokeEntry.AbilityData, abilityMetaAddAbility)
+			err := pb.Unmarshal(entry.AbilityData, abilityMetaAddAbility)
 			if err != nil {
 				logger.Error("parse AbilityMetaAddAbility error: %v", err)
-				continue
-			}
-			worldAvatar := world.GetWorldAvatarByEntityId(abilityInvokeEntry.EntityId)
-			if worldAvatar == nil {
 				continue
 			}
 			if abilityMetaAddAbility.Ability == nil {
@@ -679,29 +671,21 @@ func (g *Game) ClientAbilityChangeNotify(player *model.Player, payloadMsg pb.Mes
 			worldAvatar.AddAbility(abilityMetaAddAbility.Ability)
 		case proto.AbilityInvokeArgument_ABILITY_META_MODIFIER_CHANGE:
 			abilityMetaModifierChange := new(proto.AbilityMetaModifierChange)
-			err := pb.Unmarshal(abilityInvokeEntry.AbilityData, abilityMetaModifierChange)
+			err := pb.Unmarshal(entry.AbilityData, abilityMetaModifierChange)
 			if err != nil {
 				logger.Error("parse AbilityMetaModifierChange error: %v", err)
 				continue
 			}
 			abilityAppliedModifier := &proto.AbilityAppliedModifier{
 				ModifierLocalId:           abilityMetaModifierChange.ModifierLocalId,
-				ParentAbilityEntityId:     0,
 				ParentAbilityName:         abilityMetaModifierChange.ParentAbilityName,
 				ParentAbilityOverride:     abilityMetaModifierChange.ParentAbilityOverride,
-				InstancedAbilityId:        abilityInvokeEntry.Head.InstancedAbilityId,
-				InstancedModifierId:       abilityInvokeEntry.Head.InstancedModifierId,
-				ExistDuration:             0,
+				InstancedAbilityId:        entry.Head.InstancedAbilityId,
+				InstancedModifierId:       entry.Head.InstancedModifierId,
 				AttachedInstancedModifier: abilityMetaModifierChange.AttachedInstancedModifier,
 				ApplyEntityId:             abilityMetaModifierChange.ApplyEntityId,
 				IsAttachedParentAbility:   abilityMetaModifierChange.IsAttachedParentAbility,
-				ModifierDurability:        nil,
-				SbuffUid:                  0,
-				IsServerbuffModifier:      abilityInvokeEntry.Head.IsServerbuffModifier,
-			}
-			worldAvatar := world.GetWorldAvatarByEntityId(abilityInvokeEntry.EntityId)
-			if worldAvatar == nil {
-				continue
+				IsServerbuffModifier:      entry.Head.IsServerbuffModifier,
 			}
 			worldAvatar.AddModifier(abilityAppliedModifier)
 		}
@@ -979,6 +963,55 @@ func (g *Game) EntityAiSyncNotify(player *model.Player, payloadMsg pb.Message) {
 		})
 	}
 	g.SendMsg(cmd.EntityAiSyncNotify, player.PlayerId, player.ClientSeq, entityAiSyncNotify)
+}
+
+func (g *Game) handleAbilityInvoke(player *model.Player, entry *proto.AbilityInvokeEntry) {
+	world := WORLD_MANAGER.GetWorldById(player.WorldId)
+	if world == nil {
+		return
+	}
+	scene := world.GetSceneById(player.GetSceneId())
+	entity := scene.GetEntity(entry.EntityId)
+	if entity == nil {
+		return
+	}
+	switch entry.ArgumentType {
+	case proto.AbilityInvokeArgument_ABILITY_META_ADD_NEW_ABILITY:
+		addAbility := new(proto.AbilityMetaAddAbility)
+		err := pb.Unmarshal(entry.AbilityData, addAbility)
+		if err != nil {
+			logger.Error("parse AbilityMetaAddAbility error: %v", err)
+			return
+		}
+		abilityNameHash := addAbility.Ability.AbilityName.GetHash()
+		if abilityNameHash == 0 {
+			logger.Debug("ability name hash is 0, ability: %+v, entityId: %v, uid: %v", addAbility.Ability, entity.GetId(), player.PlayerId)
+			return
+		}
+		abilityDataConfig := gdconf.GetAbilityDataByHash(abilityNameHash)
+		if abilityDataConfig == nil {
+			logger.Error("get abilityDataConfig is nil, abilityNameHash: %v", abilityNameHash)
+			return
+		}
+		entity.AddAbility(abilityDataConfig.AbilityName, addAbility.Ability.InstancedAbilityId)
+	case proto.AbilityInvokeArgument_ABILITY_META_MODIFIER_CHANGE:
+		modifierChange := new(proto.AbilityMetaModifierChange)
+		err := pb.Unmarshal(entry.AbilityData, modifierChange)
+		if err != nil {
+			logger.Error("parse AbilityMetaModifierChange error: %v", err)
+			return
+		}
+		if modifierChange.Action == proto.ModifierAction_ADDED {
+			ability := entity.GetAbility(entry.Head.InstancedAbilityId)
+			if ability == nil {
+				logger.Error("get ability is nil, instancedAbilityId: %v, entityId: %v, uid: %v", entry.Head.InstancedAbilityId, entity.GetId(), player.PlayerId)
+				return
+			}
+			entity.AddModifier(ability, entry.Head.InstancedModifierId, uint32(entry.Head.ModifierConfigLocalId))
+		} else if modifierChange.Action == proto.ModifierAction_REMOVED {
+			entity.RemoveModifier(entry.Head.InstancedModifierId)
+		}
+	}
 }
 
 // TODO 一些很low的解决方案 我本来是不想写的 有多low？要多low有多low！

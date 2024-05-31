@@ -433,10 +433,10 @@ func (g *Game) PacketSceneTeamUpdateNotify(world *World, player *model.Player) *
 			IsPlayerCurAvatar: world.IsPlayerActiveAvatarEntity(worldPlayer, worldAvatar.GetAvatarEntityId()),
 			IsOnScene:         world.IsPlayerActiveAvatarEntity(worldPlayer, worldAvatar.GetAvatarEntityId()),
 			AvatarAbilityInfo: &proto.AbilitySyncStateInfo{
-				IsInited:           len(worldAvatar.GetAbilityList()) != 0,
+				IsInited:           len(worldAvatar.PacketAbilityList()) != 0,
 				DynamicValueMap:    nil,
-				AppliedAbilities:   worldAvatar.GetAbilityList(),
-				AppliedModifiers:   worldAvatar.GetModifierList(),
+				AppliedAbilities:   worldAvatar.PacketAbilityList(),
+				AppliedModifiers:   worldAvatar.PacketModifierList(),
 				MixinRecoverInfos:  nil,
 				SgvDynamicValueMap: nil,
 			},

@@ -86,7 +86,7 @@ type GameDataConfig struct {
 	MonsterCurveDataMap        map[int32]*MonsterCurveData             // 怪物曲线
 	AbilityDataMap             map[string]*AbilityData                 // 能力
 	AbilityDataHashMap         map[uint32]*AbilityData                 // 能力哈希
-	ConfigGadgetMap            map[string]*ConfigGadget                // 物件JSON配置
+	GadgetJsonConfigMap        map[string]*GadgetJsonConfig            // 物件JSON配置
 }
 
 func InitGameDataConfig() {
