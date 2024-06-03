@@ -975,6 +975,36 @@ func (g *Game) handleAbilityInvoke(player *model.Player, entry *proto.AbilityInv
 	if entity == nil {
 		return
 	}
+	if entry.Head.LocalId != 0 {
+		logger.Debug("[LocalAbilityInvoke] type: %v, localId: %v, entityId: %v, uid: %v", entry.ArgumentType, entry.Head.LocalId, entity.GetId(), player.PlayerId)
+		ability := entity.GetAbility(entry.Head.InstancedAbilityId)
+		if ability == nil {
+			logger.Error("get ability is nil, instancedAbilityId: %v, entityId: %v, uid: %v", entry.Head.InstancedAbilityId, entity.GetId(), player.PlayerId)
+			return
+		}
+		abilityDataConfig := gdconf.GetAbilityDataByName(ability.abilityName)
+		if abilityDataConfig == nil {
+			logger.Error("get ability data config is nil, abilityName: %v", ability.abilityName)
+			return
+		}
+		if entry.ArgumentType == proto.AbilityInvokeArgument_ABILITY_NONE || strings.Contains(entry.ArgumentType.String(), "ACTION") {
+			actionDataConfig := abilityDataConfig.GetActionDataByLocalId(entry.Head.LocalId)
+			if actionDataConfig == nil {
+				logger.Error("get action data config is nil, localId: %v", entry.Head.LocalId)
+				return
+			}
+			entity.AbilityAction(actionDataConfig)
+		} else if strings.Contains(entry.ArgumentType.String(), "MIXIN") {
+			mixinDataConfig := abilityDataConfig.GetMixinDataByLocalId(entry.Head.LocalId)
+			if mixinDataConfig == nil {
+				logger.Error("get mixin data config is nil, localId: %v", entry.Head.LocalId)
+				return
+			}
+		} else {
+			logger.Error("???")
+		}
+		return
+	}
 	switch entry.ArgumentType {
 	case proto.AbilityInvokeArgument_ABILITY_META_ADD_NEW_ABILITY:
 		addAbility := new(proto.AbilityMetaAddAbility)

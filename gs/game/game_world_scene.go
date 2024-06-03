@@ -486,6 +486,7 @@ type IEntity interface {
 	AddModifier(ability *Ability, instancedModifierId uint32, modifierLocalId uint32)
 	GetAllModifier() []*Modifier
 	RemoveModifier(instancedModifierId uint32)
+	AbilityAction(action *gdconf.ActionData)
 }
 
 // Entity 场景实体数据结构
@@ -609,6 +610,7 @@ func (e *Entity) InitAbility() {
 }
 
 func (e *Entity) AddAbility(abilityName string, instancedAbilityId uint32) {
+	logger.Debug("[AddAbility] abilityName: %v, entityId: %v", abilityName, e.GetId())
 	_, exist := e.abilityMap[instancedAbilityId]
 	if exist {
 		logger.Error("ability already exist, abilityName: %v, entityId: %v", abilityName, e.GetId())
@@ -627,7 +629,6 @@ func (e *Entity) AddAbility(abilityName string, instancedAbilityId uint32) {
 	for _, action := range abilityDataConfig.OnAdded {
 		e.AbilityAction(action)
 	}
-	logger.Debug("[AddAbility] abilityName: %v, entityId: %v", abilityName, e.GetId())
 }
 
 func (e *Entity) GetAbility(instancedAbilityId uint32) *Ability {
@@ -643,6 +644,7 @@ func (e *Entity) GetAllAbility() []*Ability {
 }
 
 func (e *Entity) AddModifier(ability *Ability, instancedModifierId uint32, modifierLocalId uint32) {
+	logger.Debug("[AddModifier] abilityName: %v, modifierLocalId: %v, entityId: %v", ability.abilityName, modifierLocalId, e.GetId())
 	_, exist := e.modifierMap[instancedModifierId]
 	if exist {
 		logger.Error("modifier already exist, abilityName: %v, modifierLocalId: %v, entityId: %v", ability.abilityName, modifierLocalId, e.GetId())
@@ -660,15 +662,14 @@ func (e *Entity) AddModifier(ability *Ability, instancedModifierId uint32, modif
 		logger.Error("get ability data config is nil, abilityName: %v", ability.abilityName)
 		return
 	}
-	abilityModifierConfig := abilityDataConfig.Modifiers.GetByLocalId(modifierLocalId)
-	if abilityModifierConfig == nil {
-		logger.Error("get ability modifier config is nil, modifierLocalId: %v", modifierLocalId)
+	modifierDataConfig := abilityDataConfig.Modifiers.GetByLocalId(modifierLocalId)
+	if modifierDataConfig == nil {
+		logger.Error("get modifier data config is nil, modifierLocalId: %v", modifierLocalId)
 		return
 	}
-	for _, action := range abilityModifierConfig.OnAdded {
+	for _, action := range modifierDataConfig.OnAdded {
 		e.AbilityAction(action)
 	}
-	logger.Debug("[AddModifier] abilityName: %v, modifierLocalId: %v, entityId: %v", ability.abilityName, modifierLocalId, e.GetId())
 }
 
 func (e *Entity) GetAllModifier() []*Modifier {
@@ -685,25 +686,25 @@ func (e *Entity) RemoveModifier(instancedModifierId uint32) {
 		logger.Error("modifier not exist, instancedModifierId: %v, entityId: %v", instancedModifierId, e.GetId())
 		return
 	}
+	logger.Debug("[RemoveModifier] abilityName: %v, modifierLocalId: %v, entityId: %v", modifier.parentAbilityName, modifier.modifierLocalId, e.GetId())
 	delete(e.modifierMap, instancedModifierId)
 	abilityDataConfig := gdconf.GetAbilityDataByName(modifier.parentAbilityName)
 	if abilityDataConfig == nil {
 		logger.Error("get ability data config is nil, abilityName: %v", modifier.parentAbilityName)
 		return
 	}
-	abilityModifierConfig := abilityDataConfig.Modifiers.GetByLocalId(modifier.modifierLocalId)
-	if abilityModifierConfig == nil {
-		logger.Error("get ability modifier config is nil, modifierLocalId: %v", modifier.modifierLocalId)
+	modifierDataConfig := abilityDataConfig.Modifiers.GetByLocalId(modifier.modifierLocalId)
+	if modifierDataConfig == nil {
+		logger.Error("get modifier data config is nil, modifierLocalId: %v", modifier.modifierLocalId)
 		return
 	}
-	for _, action := range abilityModifierConfig.OnRemoved {
+	for _, action := range modifierDataConfig.OnRemoved {
 		e.AbilityAction(action)
 	}
-	logger.Debug("[RemoveModifier] abilityName: %v, modifierLocalId: %v, entityId: %v", modifier.parentAbilityName, modifier.modifierLocalId, e.GetId())
 }
 
-func (e *Entity) AbilityAction(action *gdconf.AbilityAction) {
-	logger.Debug("[AbilityAction] type: %v, entityId: %v", action.Type, e.GetId())
+func (e *Entity) AbilityAction(action *gdconf.ActionData) {
+	logger.Debug("[AbilityAction] type: %v, param1: %v, entityId: %v", action.Type, action.Param1, e.GetId())
 }
 
 type AvatarEntity struct {
