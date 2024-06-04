@@ -17,7 +17,7 @@ func (g *GameDataConfig) loadAvatarLevelData() {
 	for _, avatarLevelData := range avatarLevelDataList {
 		g.AvatarLevelDataMap[avatarLevelData.Level] = avatarLevelData
 	}
-	logger.Info("AvatarLevelData count: %v", len(g.AvatarLevelDataMap))
+	logger.Info("AvatarLevelData Count: %v", len(g.AvatarLevelDataMap))
 }
 
 func GetAvatarLevelDataByLevel(level int32) *AvatarLevelData {

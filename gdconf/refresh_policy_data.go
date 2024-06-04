@@ -61,7 +61,7 @@ func (g *GameDataConfig) loadRefreshPolicyData() {
 		}
 		g.RefreshPolicyDataMap[refreshPolicyData.RefreshId] = refreshPolicyData
 	}
-	logger.Info("RefreshPolicyData count: %v", len(g.RefreshPolicyDataMap))
+	logger.Info("RefreshPolicyData Count: %v", len(g.RefreshPolicyDataMap))
 }
 
 func GetRefreshPolicyDataById(refreshId int32) *RefreshPolicyData {

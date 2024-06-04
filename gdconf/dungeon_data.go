@@ -17,7 +17,7 @@ func (g *GameDataConfig) loadDungeonData() {
 	for _, dungeonData := range dungeonDataList {
 		g.DungeonDataMap[dungeonData.DungeonId] = dungeonData
 	}
-	logger.Info("DungeonData count: %v", len(g.DungeonDataMap))
+	logger.Info("DungeonData Count: %v", len(g.DungeonDataMap))
 }
 
 func GetDungeonDataById(dungeonId int32) *DungeonData {

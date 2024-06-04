@@ -41,7 +41,7 @@ const (
 	PointTypeOther
 )
 
-type ScenePoint struct {
+type ScenePointJsonConfig struct {
 	Points   map[string]*PointData `json:"points"`
 	PointMap map[int32]*PointData  `json:"-"`
 }
@@ -64,8 +64,8 @@ type Position struct {
 	Z float64 `json:"z"`
 }
 
-func (g *GameDataConfig) loadScenePoint() {
-	g.ScenePointMap = make(map[int32]*ScenePoint)
+func (g *GameDataConfig) loadScenePointJsonConfig() {
+	g.ScenePointJsonConfigMap = make(map[int32]*ScenePointJsonConfig)
 	sceneLuaPrefix := g.luaPrefix + "scene/"
 	for _, sceneData := range g.SceneDataMap {
 		sceneId := sceneData.SceneId
@@ -75,14 +75,14 @@ func (g *GameDataConfig) loadScenePoint() {
 			logger.Info("open file error: %v, sceneId: %v", err, sceneId)
 			continue
 		}
-		scenePoint := new(ScenePoint)
-		err = json.Unmarshal(fileData, scenePoint)
+		scenePointJsonConfig := new(ScenePointJsonConfig)
+		err = json.Unmarshal(fileData, scenePointJsonConfig)
 		if err != nil {
 			logger.Error("parse file error: %v", err)
 			continue
 		}
-		scenePoint.PointMap = make(map[int32]*PointData)
-		for pointIdStr, pointData := range scenePoint.Points {
+		scenePointJsonConfig.PointMap = make(map[int32]*PointData)
+		for pointIdStr, pointData := range scenePointJsonConfig.Points {
 			pointId, err := strconv.Atoi(pointIdStr)
 			if err != nil {
 				logger.Error("parse file error: %v", err)
@@ -118,19 +118,19 @@ func (g *GameDataConfig) loadScenePoint() {
 				logger.Info("unknown scene point type: %v", pointData.PointTypeStr)
 				pointData.PointType = PointTypeOther
 			}
-			scenePoint.PointMap[int32(pointId)] = pointData
+			scenePointJsonConfig.PointMap[int32(pointId)] = pointData
 		}
-		g.ScenePointMap[sceneId] = scenePoint
+		g.ScenePointJsonConfigMap[sceneId] = scenePointJsonConfig
 	}
 	scenePointCount := 0
-	for _, scenePoint := range g.ScenePointMap {
+	for _, scenePoint := range g.ScenePointJsonConfigMap {
 		scenePointCount += len(scenePoint.PointMap)
 	}
-	logger.Info("ScenePoint count: %v", scenePointCount)
+	logger.Info("ScenePointJsonConfig Count: %v", scenePointCount)
 }
 
 func GetScenePointBySceneIdAndPointId(sceneId int32, pointId int32) *PointData {
-	value, exist := CONF.ScenePointMap[sceneId]
+	value, exist := CONF.ScenePointJsonConfigMap[sceneId]
 	if !exist {
 		return nil
 	}
@@ -138,7 +138,7 @@ func GetScenePointBySceneIdAndPointId(sceneId int32, pointId int32) *PointData {
 }
 
 func GetScenePointMapBySceneId(sceneId int32) map[int32]*PointData {
-	value, exist := CONF.ScenePointMap[sceneId]
+	value, exist := CONF.ScenePointJsonConfigMap[sceneId]
 	if !exist {
 		return nil
 	}

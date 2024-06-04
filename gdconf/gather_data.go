@@ -21,7 +21,7 @@ func (g *GameDataConfig) loadGatherData() {
 		g.GatherDataMap[gatherData.GatherId] = gatherData
 		g.GatherDataPointTypeMap[gatherData.PointType] = gatherData
 	}
-	logger.Info("GatherData count: %v", len(g.GatherDataMap))
+	logger.Info("GatherData Count: %v", len(g.GatherDataMap))
 }
 
 func GetGatherDataById(gatherId int32) *GatherData {

@@ -19,7 +19,7 @@ func (g *GameDataConfig) loadTriggerData() {
 	for _, triggerData := range triggerDataList {
 		g.TriggerDataMap[triggerData.TriggerId] = triggerData
 	}
-	logger.Info("TriggerData count: %v", len(g.TriggerDataMap))
+	logger.Info("TriggerData Count: %v", len(g.TriggerDataMap))
 }
 
 func GetTriggerDataById(triggerId int32) *TriggerData {

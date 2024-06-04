@@ -17,7 +17,7 @@ func (g *GameDataConfig) loadPlayerLevelData() {
 	for _, playerLevelData := range playerLevelDataList {
 		g.PlayerLevelDataMap[playerLevelData.Level] = playerLevelData
 	}
-	logger.Info("PlayerLevelData count: %v", len(g.PlayerLevelDataMap))
+	logger.Info("PlayerLevelData Count: %v", len(g.PlayerLevelDataMap))
 }
 
 func GetPlayerLevelDataByLevel(level int32) *PlayerLevelData {

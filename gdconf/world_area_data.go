@@ -19,7 +19,7 @@ func (g *GameDataConfig) loadWorldAreaData() {
 	for _, worldAreaData := range worldAreaDataList {
 		g.WorldAreaDataMap[worldAreaData.WorldAreaId] = worldAreaData
 	}
-	logger.Info("WorldAreaData count: %v", len(g.WorldAreaDataMap))
+	logger.Info("WorldAreaData Count: %v", len(g.WorldAreaDataMap))
 }
 
 func GetWorldAreaDataById(worldAreaId int32) *WorldAreaData {

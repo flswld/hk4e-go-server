@@ -58,7 +58,7 @@ func (g *GameDataConfig) loadOpenStateData() {
 		}
 		g.OpenStateDataMap[openStateData.OpenStateId] = openStateData
 	}
-	logger.Info("OpenStateData count: %v", len(g.OpenStateDataMap))
+	logger.Info("OpenStateData Count: %v", len(g.OpenStateDataMap))
 }
 
 func GetOpenStateDataById(openStateId int32) *OpenStateData {

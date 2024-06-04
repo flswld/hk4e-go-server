@@ -18,7 +18,7 @@ func (g *GameDataConfig) loadMonsterRelationshipData() {
 	for _, monsterRelationshipData := range monsterRelationshipDataList {
 		g.MonsterRelationshipDataMap[monsterRelationshipData.MonsterRelationshipId] = monsterRelationshipData
 	}
-	logger.Info("MonsterRelationshipData count: %v", len(g.MonsterRelationshipDataMap))
+	logger.Info("MonsterRelationshipData Count: %v", len(g.MonsterRelationshipDataMap))
 }
 
 func GetMonsterRelationshipDataById(monsterRelationshipId int32) *MonsterRelationshipData {

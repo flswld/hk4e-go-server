@@ -24,7 +24,7 @@ func (g *GameDataConfig) loadReliquaryMainData() {
 		}
 		g.ReliquaryMainDataMap[reliquaryMainData.MainPropDepotId][reliquaryMainData.MainPropId] = reliquaryMainData
 	}
-	logger.Info("ReliquaryMainData count: %v", len(g.ReliquaryMainDataMap))
+	logger.Info("ReliquaryMainData Count: %v", len(g.ReliquaryMainDataMap))
 }
 
 func GetReliquaryMainDataByDepotIdAndPropId(mainPropDepotId int32, mainPropId int32) *ReliquaryMainData {

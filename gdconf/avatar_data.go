@@ -273,7 +273,7 @@ func (g *GameDataConfig) loadAvatarData() {
 		avatarData.PropGrowList = propGrowList
 		g.AvatarDataMap[avatarData.AvatarId] = avatarData
 	}
-	logger.Info("AvatarData count: %v", len(g.AvatarDataMap))
+	logger.Info("AvatarData Count: %v", len(g.AvatarDataMap))
 }
 
 func GetAvatarDataById(avatarId int32) *AvatarData {

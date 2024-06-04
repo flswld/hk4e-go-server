@@ -38,7 +38,7 @@ func (g *GameDataConfig) loadGadgetData() {
 			g.GadgetDataMap[gadgetData.GadgetId] = gadgetData
 		}
 	}
-	logger.Info("GadgetData count: %v", len(g.GadgetDataMap))
+	logger.Info("GadgetData Count: %v", len(g.GadgetDataMap))
 }
 
 func GetGadgetDataById(gadgetId int32) *GadgetData {

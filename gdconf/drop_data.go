@@ -260,7 +260,7 @@ func (g *GameDataConfig) loadDropData() {
 			}
 		}
 	}
-	logger.Info("DropData count: %v", len(g.DropDataMap))
+	logger.Info("DropData Count: %v", len(g.DropDataMap))
 }
 
 func GetDropDataById(dropId int32) *DropData {

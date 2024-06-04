@@ -189,7 +189,7 @@ func (g *GameDataConfig) loadReliquaryLevelData() {
 		// 通过突破等级找到突破数据
 		g.ReliquaryLevelDataMap[reliquaryLevelData.Stage][reliquaryLevelData.Level] = reliquaryLevelData
 	}
-	logger.Info("ReliquaryLevelData count: %v", len(g.ReliquaryLevelDataMap))
+	logger.Info("ReliquaryLevelData Count: %v", len(g.ReliquaryLevelDataMap))
 }
 
 func GetReliquaryLevelDataByStageAndLevel(stage int32, level int32) *ReliquaryLevelData {

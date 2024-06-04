@@ -17,7 +17,7 @@ func (g *GameDataConfig) loadAvatarFlycloakData() {
 	for _, avatarFlycloakData := range avatarFlycloakDataList {
 		g.AvatarFlycloakDataMap[avatarFlycloakData.FlycloakID] = avatarFlycloakData
 	}
-	logger.Info("AvatarFlycloakData count: %v", len(g.AvatarFlycloakDataMap))
+	logger.Info("AvatarFlycloakData Count: %v", len(g.AvatarFlycloakDataMap))
 }
 
 func GetAvatarFlycloakDataById(flycloakId int32) *AvatarFlycloakData {

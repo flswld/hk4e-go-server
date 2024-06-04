@@ -241,7 +241,7 @@ func (g *GameDataConfig) loadMonsterData() {
 		}
 		g.MonsterDataMap[monsterData.MonsterId] = monsterData
 	}
-	logger.Info("MonsterData count: %v", len(g.MonsterDataMap))
+	logger.Info("MonsterData Count: %v", len(g.MonsterDataMap))
 }
 
 func GetMonsterDataById(monsterId int32) *MonsterData {

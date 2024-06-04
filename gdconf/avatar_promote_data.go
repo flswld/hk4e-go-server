@@ -92,7 +92,7 @@ func (g *GameDataConfig) loadAvatarPromoteData() {
 		// 通过突破等级找到突破数据
 		g.AvatarPromoteDataMap[avatarPromoteData.PromoteId][avatarPromoteData.PromoteLevel] = avatarPromoteData
 	}
-	logger.Info("AvatarPromoteData count: %v", len(g.AvatarPromoteDataMap))
+	logger.Info("AvatarPromoteData Count: %v", len(g.AvatarPromoteDataMap))
 }
 
 func GetAvatarPromoteDataByIdAndLevel(promoteId int32, promoteLevel int32) *AvatarPromoteData {

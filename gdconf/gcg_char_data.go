@@ -37,7 +37,7 @@ func (g *GameDataConfig) loadGCGCharData() {
 		}
 		g.GCGCharDataMap[gcgCharData.CharId] = gcgCharData
 	}
-	logger.Info("GCGCharData count: %v", len(g.GCGCharDataMap))
+	logger.Info("GCGCharData Count: %v", len(g.GCGCharDataMap))
 }
 
 func GetGCGCharDataById(charId int32) *GCGCharData {

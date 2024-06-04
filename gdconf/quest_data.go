@@ -384,7 +384,7 @@ func (g *GameDataConfig) loadQuestData() {
 		}
 		questMap[questData.QuestId] = questData
 	}
-	logger.Info("QuestData count: %v", len(g.QuestDataMap))
+	logger.Info("QuestData Count: %v", len(g.QuestDataMap))
 }
 
 func GetQuestDataById(questId int32) *QuestData {

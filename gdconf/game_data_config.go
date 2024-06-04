@@ -32,61 +32,61 @@ type GameDataConfig struct {
 	luaPrefix  string
 	extPrefix  string
 	// 配置表数据
-	SceneDataMap               map[int32]*SceneData                    // 场景
-	SceneLuaConfigMap          map[int32]*SceneLuaConfig               // 场景LUA配置
-	GroupMap                   map[int32]*Group                        // 场景LUA区块group索引
-	LuaStateLruMap             map[int32]*LuaStateLru                  // 场景LUA虚拟机LRU内存淘汰
-	TriggerDataMap             map[int32]*TriggerData                  // 场景区域触发器
-	ScenePointMap              map[int32]*ScenePoint                   // 场景传送点
-	SceneTagDataMap            map[int32]*SceneTagData                 // 场景标签
-	GatherDataMap              map[int32]*GatherData                   // 采集物
-	GatherDataPointTypeMap     map[int32]*GatherData                   // 采集物场景节点索引
-	WorldAreaDataMap           map[int32]*WorldAreaData                // 世界区域
-	AvatarDataMap              map[int32]*AvatarData                   // 角色
-	AvatarSkillDataMap         map[int32]*AvatarSkillData              // 角色技能
-	AvatarSkillDepotDataMap    map[int32]*AvatarSkillDepotData         // 角色技能库
-	FetterDataMap              map[int32]*FetterData                   // 角色资料解锁
-	FetterDataAvatarIdMap      map[int32][]int32                       // 角色资料解锁角色id索引
-	ItemDataMap                map[int32]*ItemData                     // 统一道具
-	AvatarLevelDataMap         map[int32]*AvatarLevelData              // 角色等级
-	AvatarPromoteDataMap       map[int32]map[int32]*AvatarPromoteData  // 角色突破
-	PlayerLevelDataMap         map[int32]*PlayerLevelData              // 玩家等级
-	WeaponLevelDataMap         map[int32]*WeaponLevelData              // 武器等级
-	WeaponPromoteDataMap       map[int32]map[int32]*WeaponPromoteData  // 角色突破
-	RewardDataMap              map[int32]*RewardData                   // 奖励
-	AvatarCostumeDataMap       map[int32]*AvatarCostumeData            // 角色时装
-	AvatarFlycloakDataMap      map[int32]*AvatarFlycloakData           // 角色风之翼
-	ReliquaryMainDataMap       map[int32]map[int32]*ReliquaryMainData  // 圣遗物主属性
-	ReliquaryAffixDataMap      map[int32]map[int32]*ReliquaryAffixData // 圣遗物追加属性
-	QuestDataMap               map[int32]*QuestData                    // 任务
-	ParentQuestMap             map[int32]map[int32]*QuestData          // 父任务索引
-	DropDataMap                map[int32]*DropData                     // 掉落
-	MonsterDropDataMap         map[string]map[int32]*MonsterDropData   // 怪物掉落
-	ChestDropDataMap           map[string]map[int32]*ChestDropData     // 宝箱掉落
-	DungeonDataMap             map[int32]*DungeonData                  // 地牢
-	GadgetDataMap              map[int32]*GadgetData                   // 物件
-	RefreshPolicyDataMap       map[int32]*RefreshPolicyData            // 刷新策略
-	GCGCharDataMap             map[int32]*GCGCharData                  // 七圣召唤角色卡牌
-	GCGSkillDataMap            map[int32]*GCGSkillData                 // 七圣召唤卡牌技能
-	GachaDropGroupDataMap      map[int32]*GachaDropGroupData           // 卡池掉落组 临时的
-	SkillStaminaDataMap        map[int32]*SkillStaminaData             // 角色技能消耗体力 临时的
-	VehicleDataMap             map[int32]*VehicleData                  // 载具
-	OpenStateDataMap           map[int32]*OpenStateData                // 开放状态
-	WeatherDataMap             map[int32]*WeatherData                  // 天气
-	WeatherDataJsonMap         map[int32]map[int32]*WeatherData        // 天气 json的天气区域id格式
-	WeatherTemplateMap         map[string]map[int32]*WeatherTemplate   // 天气模版
-	SceneWeatherAreaMap        map[int32]map[int32]*SceneWeatherArea   // 天气区域
-	PubgWorldGadgetDataMap     map[int32]*PubgWorldGadgetData          // pubg世界物件
-	MonsterRelationshipDataMap map[int32]*MonsterRelationshipData      // 怪物关联
-	MonsterDataMap             map[int32]*MonsterData                  // 怪物
-	ProudSkillDataMap          map[int32]map[int32]*ProudSkillData     // 天赋
-	AvatarCurveDataMap         map[int32]*AvatarCurveData              // 角色曲线
-	WeaponCurveDataMap         map[int32]*WeaponCurveData              // 武器曲线
-	ReliquaryLevelDataMap      map[int32]map[int32]*ReliquaryLevelData // 圣遗物等级
-	MonsterCurveDataMap        map[int32]*MonsterCurveData             // 怪物曲线
-	AbilityDataMap             map[string]*AbilityData                 // 能力
-	AbilityDataHashMap         map[uint32]*AbilityData                 // 能力哈希
-	GadgetJsonConfigMap        map[string]*GadgetJsonConfig            // 物件JSON配置
+	SceneDataMap               map[int32]*SceneData                       // 场景
+	SceneLuaConfigMap          map[int32]*SceneLuaConfig                  // 场景LUA配置
+	SceneLuaGroupMap           map[int32]*Group                           // 场景LUA区块group索引
+	SceneLuaStateLruMap        map[int32]*LuaStateLru                     // 场景LUA虚拟机LRU内存淘汰
+	TriggerDataMap             map[int32]*TriggerData                     // 场景区域触发器
+	ScenePointJsonConfigMap    map[int32]*ScenePointJsonConfig            // 场景传送点JSON配置
+	SceneTagDataMap            map[int32]*SceneTagData                    // 场景标签
+	GatherDataMap              map[int32]*GatherData                      // 采集物
+	GatherDataPointTypeMap     map[int32]*GatherData                      // 采集物场景节点索引
+	WorldAreaDataMap           map[int32]*WorldAreaData                   // 世界区域
+	AvatarDataMap              map[int32]*AvatarData                      // 角色
+	AvatarSkillDataMap         map[int32]*AvatarSkillData                 // 角色技能
+	AvatarSkillDepotDataMap    map[int32]*AvatarSkillDepotData            // 角色技能库
+	FetterDataMap              map[int32]*FetterData                      // 角色资料解锁
+	FetterDataAvatarIdMap      map[int32][]int32                          // 角色资料解锁角色id索引
+	ItemDataMap                map[int32]*ItemData                        // 统一道具
+	AvatarLevelDataMap         map[int32]*AvatarLevelData                 // 角色等级
+	AvatarPromoteDataMap       map[int32]map[int32]*AvatarPromoteData     // 角色突破
+	PlayerLevelDataMap         map[int32]*PlayerLevelData                 // 玩家等级
+	WeaponLevelDataMap         map[int32]*WeaponLevelData                 // 武器等级
+	WeaponPromoteDataMap       map[int32]map[int32]*WeaponPromoteData     // 角色突破
+	RewardDataMap              map[int32]*RewardData                      // 奖励
+	AvatarCostumeDataMap       map[int32]*AvatarCostumeData               // 角色时装
+	AvatarFlycloakDataMap      map[int32]*AvatarFlycloakData              // 角色风之翼
+	ReliquaryMainDataMap       map[int32]map[int32]*ReliquaryMainData     // 圣遗物主属性
+	ReliquaryAffixDataMap      map[int32]map[int32]*ReliquaryAffixData    // 圣遗物追加属性
+	QuestDataMap               map[int32]*QuestData                       // 任务
+	ParentQuestMap             map[int32]map[int32]*QuestData             // 父任务索引
+	DropDataMap                map[int32]*DropData                        // 掉落
+	MonsterDropDataMap         map[string]map[int32]*MonsterDropData      // 怪物掉落
+	ChestDropDataMap           map[string]map[int32]*ChestDropData        // 宝箱掉落
+	DungeonDataMap             map[int32]*DungeonData                     // 地牢
+	GadgetDataMap              map[int32]*GadgetData                      // 物件
+	RefreshPolicyDataMap       map[int32]*RefreshPolicyData               // 刷新策略
+	GCGCharDataMap             map[int32]*GCGCharData                     // 七圣召唤角色卡牌
+	GCGSkillDataMap            map[int32]*GCGSkillData                    // 七圣召唤卡牌技能
+	GachaDropGroupDataMap      map[int32]*GachaDropGroupData              // 卡池掉落组 临时的
+	VehicleDataMap             map[int32]*VehicleData                     // 载具
+	OpenStateDataMap           map[int32]*OpenStateData                   // 开放状态
+	WeatherDataMap             map[int32]*WeatherData                     // 天气
+	WeatherDataJsonMap         map[int32]map[int32]*WeatherData           // 天气 json的天气区域id格式
+	WeatherTemplateDataMap     map[string]map[int32]*WeatherTemplateData  // 天气模版
+	WeatherAreaJsonConfigMap   map[int32]map[int32]*WeatherAreaJsonConfig // 天气区域JSON配置
+	PubgWorldGadgetDataMap     map[int32]*PubgWorldGadgetData             // pubg世界物件
+	MonsterRelationshipDataMap map[int32]*MonsterRelationshipData         // 怪物关联
+	MonsterDataMap             map[int32]*MonsterData                     // 怪物
+	ProudSkillDataMap          map[int32]map[int32]*ProudSkillData        // 天赋
+	AvatarCurveDataMap         map[int32]*AvatarCurveData                 // 角色曲线
+	WeaponCurveDataMap         map[int32]*WeaponCurveData                 // 武器曲线
+	ReliquaryLevelDataMap      map[int32]map[int32]*ReliquaryLevelData    // 圣遗物等级
+	MonsterCurveDataMap        map[int32]*MonsterCurveData                // 怪物曲线
+	AbilityDataMap             map[string]*AbilityData                    // 能力
+	AbilityDataHashMap         map[uint32]*AbilityData                    // 能力哈希
+	GadgetJsonConfigMap        map[string]*GadgetJsonConfig               // 物件JSON配置
+	GadgetLuaConfigMap         map[string]*GadgetLuaConfig                // 物件LUA配置
 }
 
 func InitGameDataConfig() {
@@ -159,7 +159,7 @@ func (g *GameDataConfig) load(loadSceneLua bool) {
 	g.loadSceneData()                  // 场景
 	g.loadSceneLuaConfig(loadSceneLua) // 场景LUA配置
 	g.loadTriggerData()                // 场景区域触发器
-	g.loadScenePoint()                 // 场景传送点
+	g.loadScenePointJsonConfig()       // 场景传送点JSON配置
 	g.loadSceneTagData()               // 场景标签
 	g.loadGatherData()                 // 采集物
 	g.loadWorldAreaData()              // 世界区域
@@ -188,12 +188,11 @@ func (g *GameDataConfig) load(loadSceneLua bool) {
 	g.loadGCGCharData()                // 七圣召唤角色卡牌
 	g.loadGCGSkillData()               // 七圣召唤卡牌技能
 	g.loadGachaDropGroupData()         // 卡池掉落组 临时的
-	g.loadSkillStaminaData()           // 角色技能消耗体力 临时的
 	g.loadVehicleData()                // 载具
 	g.loadOpenStateData()              // 开放状态
 	g.loadWeatherData()                // 天气
 	g.loadWeatherTemplateData()        // 天气模版
-	g.loadSceneWeatherArea()           // 天气区域
+	g.loadWeatherAreaJsonConfig()      // 天气区域JSON配置
 	g.loadPubgWorldGadgetData()        // pubg世界物件
 	g.loadMonsterRelationshipData()    // 怪物关联
 	g.loadMonsterData()                // 怪物
@@ -204,6 +203,7 @@ func (g *GameDataConfig) load(loadSceneLua bool) {
 	g.loadMonsterCurveData()           // 怪物曲线
 	g.loadAbilityJsonConfig()          // 能力JSON配置
 	g.loadGadgetJsonConfig()           // 物件JSON配置
+	g.loadGadgetLuaConfig()            // 物件LUA配置
 }
 
 // CSV相关
@@ -377,6 +377,17 @@ func initLuaState(luaState *lua.LState) {
 	luaState.SetField(groupKillPolicy, "GROUP_KILL_MONSTER", lua.LNumber(constant.GROUP_KILL_MONSTER))
 	luaState.SetField(groupKillPolicy, "GROUP_KILL_NPC", lua.LNumber(constant.GROUP_KILL_NPC))
 	luaState.SetField(groupKillPolicy, "GROUP_KILL_GADGET", lua.LNumber(constant.GROUP_KILL_GADGET))
+
+	elementType := luaState.NewTable()
+	luaState.SetGlobal("ElementType", elementType)
+	luaState.SetField(elementType, "None", lua.LNumber(constant.ELEMENT_TYPE_NONE))
+	luaState.SetField(elementType, "Fire", lua.LNumber(constant.ELEMENT_TYPE_FIRE))
+	luaState.SetField(elementType, "Water", lua.LNumber(constant.ELEMENT_TYPE_WATER))
+	luaState.SetField(elementType, "Grass", lua.LNumber(constant.ELEMENT_TYPE_GRASS))
+	luaState.SetField(elementType, "Electric", lua.LNumber(constant.ELEMENT_TYPE_ELEC))
+	luaState.SetField(elementType, "Ice", lua.LNumber(constant.ELEMENT_TYPE_ICE))
+	luaState.SetField(elementType, "Wind", lua.LNumber(constant.ELEMENT_TYPE_WIND))
+	luaState.SetField(elementType, "Rock", lua.LNumber(constant.ELEMENT_TYPE_ROCK))
 }
 
 func newLuaState(luaStr string) *lua.LState {

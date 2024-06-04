@@ -311,8 +311,8 @@ func (g *GameDataConfig) loadGroup(group *Group, block *Block, sceneId int32, bl
 
 func (g *GameDataConfig) loadSceneLuaConfig(loadSceneLua bool) {
 	g.SceneLuaConfigMap = make(map[int32]*SceneLuaConfig)
-	g.GroupMap = make(map[int32]*Group)
-	g.LuaStateLruMap = make(map[int32]*LuaStateLru)
+	g.SceneLuaGroupMap = make(map[int32]*Group)
+	g.SceneLuaStateLruMap = make(map[int32]*LuaStateLru)
 	if !loadSceneLua {
 		return
 	}
@@ -388,7 +388,7 @@ func (g *GameDataConfig) loadSceneLuaConfig(loadSceneLua bool) {
 					<-wc
 					wg.Done()
 				}()
-				g.GroupMap[group.Id] = group
+				g.SceneLuaGroupMap[group.Id] = group
 			}
 			wg.Wait()
 			sceneLuaConfig.BlockMap[block.Id] = block
@@ -413,7 +413,7 @@ func (g *GameDataConfig) loadSceneLuaConfig(loadSceneLua bool) {
 		}
 		sceneCount++
 	}
-	logger.Info("Scene count: %v, Block count: %v, Group count: %v, Monster count: %v, Npc count: %v, Gadget count: %v",
+	logger.Info("Scene Count: %v, Block Count: %v, Group Count: %v, Monster Count: %v, Npc Count: %v, Gadget Count: %v",
 		sceneCount, blockCount, groupCount, monsterCount, npcCount, gadgetCount)
 }
 
@@ -426,7 +426,7 @@ func GetSceneLuaConfigMap() map[int32]*SceneLuaConfig {
 }
 
 func GetSceneGroup(groupId int32) *Group {
-	groupConfig, exist := CONF.GroupMap[groupId]
+	groupConfig, exist := CONF.SceneLuaGroupMap[groupId]
 	if !exist {
 		return nil
 	}
@@ -453,12 +453,12 @@ func (l LuaStateLruList) Swap(i, j int) {
 }
 
 func LuaStateLruRemove() {
-	removeNum := len(CONF.LuaStateLruMap) - LuaStateLruKeepNum
+	removeNum := len(CONF.SceneLuaStateLruMap) - LuaStateLruKeepNum
 	if removeNum <= 0 {
 		return
 	}
 	luaStateLruList := make(LuaStateLruList, 0)
-	for _, luaStateLru := range CONF.LuaStateLruMap {
+	for _, luaStateLru := range CONF.SceneLuaStateLruMap {
 		luaStateLruList = append(luaStateLruList, luaStateLru)
 	}
 	sort.Stable(luaStateLruList)
@@ -466,23 +466,24 @@ func LuaStateLruRemove() {
 		luaStateLru := luaStateLruList[i]
 		group := GetSceneGroup(luaStateLru.GroupId)
 		group.LuaState = nil
-		delete(CONF.LuaStateLruMap, luaStateLru.GroupId)
+		delete(CONF.SceneLuaStateLruMap, luaStateLru.GroupId)
 	}
 	logger.Info("lua state lru remove finish, remove num: %v", removeNum)
 }
 
 func (g *Group) GetLuaState() *lua.LState {
-	CONF.LuaStateLruMap[g.Id] = &LuaStateLru{
+	CONF.SceneLuaStateLruMap[g.Id] = &LuaStateLru{
 		GroupId:    g.Id,
 		AccessTime: time.Now().UnixMilli(),
 	}
 	if g.LuaState == nil {
-		g.LuaState = newLuaState(g.LuaStr)
-		scriptLib := g.LuaState.NewTable()
-		g.LuaState.SetGlobal("ScriptLib", scriptLib)
+		luaState := newLuaState(g.LuaStr)
+		scriptLib := luaState.NewTable()
+		luaState.SetGlobal("ScriptLib", scriptLib)
 		for _, scriptLibFunc := range SCRIPT_LIB_FUNC_LIST {
-			g.LuaState.SetField(scriptLib, scriptLibFunc.fnName, g.LuaState.NewFunction(scriptLibFunc.fn))
+			luaState.SetField(scriptLib, scriptLibFunc.fnName, luaState.NewFunction(scriptLibFunc.fn))
 		}
+		g.LuaState = luaState
 	}
 	return g.LuaState
 }

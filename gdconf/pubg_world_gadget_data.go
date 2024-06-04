@@ -29,7 +29,7 @@ func (g *GameDataConfig) loadPubgWorldGadgetData() {
 	for _, pubgWorldGadgetData := range pubgWorldGadgetDataList {
 		g.PubgWorldGadgetDataMap[pubgWorldGadgetData.WorldGadgetId] = pubgWorldGadgetData
 	}
-	logger.Info("PubgWorldGadgetData count: %v", len(g.PubgWorldGadgetDataMap))
+	logger.Info("PubgWorldGadgetData Count: %v", len(g.PubgWorldGadgetDataMap))
 }
 
 func GetPubgWorldGadgetDataById(worldGadgetId int32) *PubgWorldGadgetData {

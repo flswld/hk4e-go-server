@@ -145,7 +145,7 @@ func (g *GameDataConfig) loadAvatarSkillDepotData() {
 		}
 		g.AvatarSkillDepotDataMap[avatarSkillDepotData.AvatarSkillDepotId] = avatarSkillDepotData
 	}
-	logger.Info("AvatarSkillDepotData count: %v", len(g.AvatarSkillDepotDataMap))
+	logger.Info("AvatarSkillDepotData Count: %v", len(g.AvatarSkillDepotDataMap))
 }
 
 func GetAvatarSkillDepotDataById(avatarSkillDepotId int32) *AvatarSkillDepotData {

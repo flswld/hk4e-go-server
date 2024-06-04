@@ -27,7 +27,7 @@ func (g *GameDataConfig) loadReliquaryAffixData() {
 		}
 		g.ReliquaryAffixDataMap[reliquaryAffixData.AppendPropDepotId][reliquaryAffixData.AppendPropId] = reliquaryAffixData
 	}
-	logger.Info("ReliquaryAffixData count: %v", len(g.ReliquaryAffixDataMap))
+	logger.Info("ReliquaryAffixData Count: %v", len(g.ReliquaryAffixDataMap))
 }
 
 func GetReliquaryAffixDataByDepotIdAndPropId(appendPropDepotId int32, appendPropId int32) *ReliquaryAffixData {

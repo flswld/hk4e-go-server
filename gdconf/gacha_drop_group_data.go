@@ -38,7 +38,7 @@ func (g *GameDataConfig) loadGachaDropGroupData() {
 			gachaDropGroupData.DropConfig = append(gachaDropGroupData.DropConfig, gachaDrop)
 		}
 	}
-	logger.Info("GachaDropGroupData count: %v", len(g.GachaDropGroupDataMap))
+	logger.Info("GachaDropGroupData Count: %v", len(g.GachaDropGroupDataMap))
 }
 
 func GetGachaDropGroupDataByDropId(dropId int32) *GachaDropGroupData {

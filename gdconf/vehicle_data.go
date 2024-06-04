@@ -88,7 +88,7 @@ func (g *GameDataConfig) loadVehicleData() {
 
 		g.VehicleDataMap[vehicleData.VehicleId] = vehicleData
 	}
-	logger.Info("VehicleData count: %v", len(g.VehicleDataMap))
+	logger.Info("VehicleData Count: %v", len(g.VehicleDataMap))
 }
 
 func GetVehicleDataById(vehicleId int32) *VehicleData {

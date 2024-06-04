@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/dengsgo/math-engine/engine"
 	"github.com/hjson/hjson-go/v4"
 )
 
@@ -24,7 +23,7 @@ type ConfigAbility struct {
 	AbilityName string `json:"abilityName"`
 }
 
-type AbilityConfigData struct {
+type AbilityJsonConfig struct {
 	Default *AbilityData `json:"Default"`
 }
 
@@ -134,6 +133,7 @@ type ActionData struct {
 	LuaCallType                  string       `json:"luaCallType"`
 	CallParamList                []int32      `json:"callParamList"`
 	Content                      string       `json:"content"`
+	CostStaminaRatio             DynamicFloat `json:"costStaminaRatio"`
 
 	Actions        []*ActionData `json:"actions"`
 	SuccessActions []*ActionData `json:"successActions"`
@@ -185,60 +185,11 @@ func (m *ModifierOrderMap) GetByLocalId(modifierLocalId uint32) *ModifierData {
 type DynamicFloat interface {
 }
 
-func (a *AbilityData) GetDynamicFloat(dynamicFloat DynamicFloat) float32 {
-	switch dynamicFloat.(type) {
-	case float64:
-		return float32(dynamicFloat.(float64))
-	case string:
-		rawExp := dynamicFloat.(string)
-		exp := ""
-		for i := 0; i < len(rawExp); i++ {
-			c := string(rawExp[i])
-			if c == "%" {
-				for j := i + 1; j < len(rawExp); j++ {
-					cc := string(rawExp[j])
-					end := j == len(rawExp)-1
-					if cc == "+" || cc == "-" || cc == "*" || cc == "/" || end {
-						key := ""
-						if end {
-							key = rawExp[i+1 : j+1]
-						} else {
-							key = rawExp[i+1 : j]
-						}
-						value, exist := a.AbilitySpecials[key]
-						if !exist {
-							logger.Error("ability special key not exist, key: %v", key)
-							return 0.0
-						}
-						exp += fmt.Sprintf("%f", value)
-						if end {
-							i = j
-						} else {
-							i = j - 1
-						}
-						break
-					}
-				}
-			} else {
-				exp += c
-			}
-		}
-		r, err := engine.ParseAndExec(exp)
-		if err != nil {
-			logger.Error("calc dynamic float error: %v", err)
-			return 0.0
-		}
-		return float32(r)
-	default:
-		return 0.0
-	}
-}
-
 func (g *GameDataConfig) loadAbilityJsonConfig() {
 	g.AbilityDataMap = make(map[string]*AbilityData)
 	g.AbilityDataHashMap = make(map[uint32]*AbilityData)
 	g.loadAbilityJsonConfigLoop(g.jsonPrefix + "ability")
-	logger.Info("AbilityDataMap Count: %v, AbilityDataHashMap Count: %v", len(g.AbilityDataMap), len(g.AbilityDataHashMap))
+	logger.Info("AbilityData Count: %v, AbilityDataHash Count: %v", len(g.AbilityDataMap), len(g.AbilityDataHashMap))
 }
 
 func (g *GameDataConfig) loadAbilityJsonConfigLoop(path string) {
@@ -260,14 +211,14 @@ func (g *GameDataConfig) loadAbilityJsonConfigLoop(path string) {
 			info := fmt.Sprintf("open file error: %v, path: %v", err, path+"/"+fileName)
 			panic(info)
 		}
-		var abilityConfigDataList []*AbilityConfigData = nil
-		err = hjson.Unmarshal(fileData, &abilityConfigDataList)
+		var abilityJsonConfigList []*AbilityJsonConfig = nil
+		err = hjson.Unmarshal(fileData, &abilityJsonConfigList)
 		if err != nil {
 			logger.Info("parse file error: %v, path: %v", err, path+"/"+fileName)
 			continue
 		}
-		for _, abilityConfigData := range abilityConfigDataList {
-			abilityData := abilityConfigData.Default
+		for _, abilityJsonConfig := range abilityJsonConfigList {
+			abilityData := abilityJsonConfig.Default
 			abilityData.genLocalId()
 			g.AbilityDataMap[abilityData.AbilityName] = abilityData
 			g.AbilityDataHashMap[uint32(endec.Hk4eAbilityHashCode(abilityData.AbilityName))] = abilityData

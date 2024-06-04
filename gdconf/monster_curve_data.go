@@ -141,7 +141,7 @@ func (g *GameDataConfig) loadMonsterCurveData() {
 		monsterCurveData.CurveList = curveList
 		g.MonsterCurveDataMap[monsterCurveData.Level] = monsterCurveData
 	}
-	logger.Info("MonsterCurveData count: %v", len(g.MonsterCurveDataMap))
+	logger.Info("MonsterCurveData Count: %v", len(g.MonsterCurveDataMap))
 }
 
 func GetMonsterCurveByLevelAndType(level int32, curveType int32) *Curve {

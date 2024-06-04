@@ -99,7 +99,7 @@ func (g *GameDataConfig) loadGCGSkillData() {
 		}
 		g.GCGSkillDataMap[gcgSkillData.SkillId] = gcgSkillData
 	}
-	logger.Info("GCGSkillData count: %v", len(g.GCGSkillDataMap))
+	logger.Info("GCGSkillData Count: %v", len(g.GCGSkillDataMap))
 }
 
 func GetGCGSkillDataById(skillId int32) *GCGSkillData {

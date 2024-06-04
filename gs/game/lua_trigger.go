@@ -101,7 +101,7 @@ func (g *Game) SceneRegionTriggerCheck(player *model.Player, oldPos *model.Vecto
 						continue
 					}
 					if triggerConfig.Condition != "" {
-						cond := CallLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
+						cond := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
 							&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
 							&LuaEvt{param1: regionConfig.ConfigId, targetEntityId: entityId, sourceEntityId: uint32(regionConfig.ConfigId)})
 						if !cond {
@@ -111,7 +111,7 @@ func (g *Game) SceneRegionTriggerCheck(player *model.Player, oldPos *model.Vecto
 					logger.Debug("scene group trigger fire, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)
 					if triggerConfig.Action != "" {
 						logger.Debug("scene group trigger do action, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)
-						ok := CallLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
+						ok := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
 							&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
 							&LuaEvt{})
 						if !ok {
@@ -132,7 +132,7 @@ func (g *Game) SceneRegionTriggerCheck(player *model.Player, oldPos *model.Vecto
 						continue
 					}
 					if triggerConfig.Condition != "" {
-						cond := CallLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
+						cond := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
 							&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
 							&LuaEvt{param1: regionConfig.ConfigId, targetEntityId: entityId, sourceEntityId: uint32(regionConfig.ConfigId)})
 						if !cond {
@@ -142,7 +142,7 @@ func (g *Game) SceneRegionTriggerCheck(player *model.Player, oldPos *model.Vecto
 					logger.Debug("scene group trigger fire, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)
 					if triggerConfig.Action != "" {
 						logger.Debug("scene group trigger do action, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)
-						ok := CallLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
+						ok := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
 							&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
 							&LuaEvt{})
 						if !ok {
@@ -162,7 +162,7 @@ func (g *Game) QuestStartTriggerCheck(player *model.Player, questId uint32) {
 			return
 		}
 		if triggerConfig.Condition != "" {
-			cond := CallLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
+			cond := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
 				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
 				&LuaEvt{param1: int32(questId)})
 			if !cond {
@@ -171,7 +171,7 @@ func (g *Game) QuestStartTriggerCheck(player *model.Player, questId uint32) {
 		}
 		if triggerConfig.Action != "" {
 			logger.Debug("scene group trigger do action, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)
-			ok := CallLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
+			ok := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
 				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
 				&LuaEvt{})
 			if !ok {
@@ -188,7 +188,7 @@ func (g *Game) MonsterCreateTriggerCheck(player *model.Player, group *Group, con
 			return
 		}
 		if triggerConfig.Condition != "" {
-			cond := CallLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
+			cond := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
 				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
 				&LuaEvt{param1: int32(configId)})
 			if !cond {
@@ -197,7 +197,7 @@ func (g *Game) MonsterCreateTriggerCheck(player *model.Player, group *Group, con
 		}
 		if triggerConfig.Action != "" {
 			logger.Debug("scene group trigger do action, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)
-			ok := CallLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
+			ok := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
 				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
 				&LuaEvt{})
 			if !ok {
@@ -214,7 +214,7 @@ func (g *Game) MonsterDieTriggerCheck(player *model.Player, group *Group) {
 			return
 		}
 		if triggerConfig.Condition != "" {
-			cond := CallLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
+			cond := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
 				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
 				&LuaEvt{})
 			if !cond {
@@ -223,7 +223,7 @@ func (g *Game) MonsterDieTriggerCheck(player *model.Player, group *Group) {
 		}
 		if triggerConfig.Action != "" {
 			logger.Debug("scene group trigger do action, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)
-			ok := CallLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
+			ok := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
 				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
 				&LuaEvt{})
 			if !ok {
@@ -240,7 +240,7 @@ func (g *Game) GadgetCreateTriggerCheck(player *model.Player, group *Group, conf
 			return
 		}
 		if triggerConfig.Condition != "" {
-			cond := CallLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
+			cond := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
 				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
 				&LuaEvt{param1: int32(configId)})
 			if !cond {
@@ -249,7 +249,7 @@ func (g *Game) GadgetCreateTriggerCheck(player *model.Player, group *Group, conf
 		}
 		if triggerConfig.Action != "" {
 			logger.Debug("scene group trigger do action, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)
-			ok := CallLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
+			ok := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
 				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
 				&LuaEvt{})
 			if !ok {
@@ -266,7 +266,7 @@ func (g *Game) GadgetStateChangeTriggerCheck(player *model.Player, group *Group,
 			return
 		}
 		if triggerConfig.Condition != "" {
-			cond := CallLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
+			cond := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
 				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
 				&LuaEvt{param1: int32(state), param2: int32(configId)})
 			if !cond {
@@ -275,7 +275,7 @@ func (g *Game) GadgetStateChangeTriggerCheck(player *model.Player, group *Group,
 		}
 		if triggerConfig.Action != "" {
 			logger.Debug("scene group trigger do action, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)
-			ok := CallLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
+			ok := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
 				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
 				&LuaEvt{})
 			if !ok {
@@ -292,7 +292,7 @@ func (g *Game) GadgetDieTriggerCheck(player *model.Player, group *Group, configI
 			return
 		}
 		if triggerConfig.Condition != "" {
-			cond := CallLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
+			cond := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
 				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
 				&LuaEvt{param1: int32(configId)})
 			if !cond {
@@ -301,7 +301,7 @@ func (g *Game) GadgetDieTriggerCheck(player *model.Player, group *Group, configI
 		}
 		if triggerConfig.Action != "" {
 			logger.Debug("scene group trigger do action, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)
-			ok := CallLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
+			ok := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
 				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
 				&LuaEvt{})
 			if !ok {
@@ -318,7 +318,7 @@ func (g *Game) GroupLoadTriggerCheck(player *model.Player, group *Group) {
 			return
 		}
 		if triggerConfig.Condition != "" {
-			cond := CallLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
+			cond := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
 				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
 				&LuaEvt{})
 			if !cond {
@@ -327,7 +327,7 @@ func (g *Game) GroupLoadTriggerCheck(player *model.Player, group *Group) {
 		}
 		if triggerConfig.Action != "" {
 			logger.Debug("scene group trigger do action, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)
-			ok := CallLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
+			ok := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
 				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
 				&LuaEvt{})
 			if !ok {
@@ -349,7 +349,7 @@ func (g *Game) TimerEventTriggerCheck(player *model.Player, group *Group, source
 			}
 		}
 		if triggerConfig.Condition != "" {
-			cond := CallLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
+			cond := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
 				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
 				&LuaEvt{sourceName: source})
 			if !cond {
@@ -358,7 +358,7 @@ func (g *Game) TimerEventTriggerCheck(player *model.Player, group *Group, source
 		}
 		if triggerConfig.Action != "" {
 			logger.Debug("scene group trigger do action, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)
-			ok := CallLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
+			ok := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
 				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
 				&LuaEvt{})
 			if !ok {

@@ -23,7 +23,7 @@ func (g *GameDataConfig) loadChestDropData() {
 		}
 		g.ChestDropDataMap[chestDropData.DropTag][chestDropData.MinLevel] = chestDropData
 	}
-	logger.Info("ChestDropData count: %v", len(g.ChestDropDataMap))
+	logger.Info("ChestDropData Count: %v", len(g.ChestDropDataMap))
 }
 
 func GetChestDropDataByDropTagAndLevel(dropTag string, level int32) *ChestDropData {

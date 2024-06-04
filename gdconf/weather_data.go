@@ -32,7 +32,7 @@ func (g *GameDataConfig) loadWeatherData() {
 		}
 		g.WeatherDataJsonMap[weatherData.JsonWeatherAreaId][weatherData.WeatherAreaId] = weatherData
 	}
-	logger.Info("WeatherData count: %v", len(g.WeatherDataMap))
+	logger.Info("WeatherData Count: %v", len(g.WeatherDataMap))
 }
 
 func GetWeatherDataMapByJsonWeatherAreaId(jsonWeatherAreaId int32) map[int32]*WeatherData {

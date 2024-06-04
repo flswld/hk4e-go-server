@@ -21,7 +21,7 @@ func (g *GameDataConfig) loadAvatarSkillData() {
 	for _, avatarSkillData := range avatarSkillDataList {
 		g.AvatarSkillDataMap[avatarSkillData.AvatarSkillId] = avatarSkillData
 	}
-	logger.Info("AvatarSkillData count: %v", len(g.AvatarSkillDataMap))
+	logger.Info("AvatarSkillData Count: %v", len(g.AvatarSkillDataMap))
 }
 
 func GetAvatarSkillDataById(avatarSkillId int32) *AvatarSkillData {

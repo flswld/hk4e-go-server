@@ -44,7 +44,7 @@ func (g *GameDataConfig) loadWeaponPromoteData() {
 		// 通过突破等级找到突破数据
 		g.WeaponPromoteDataMap[weaponPromoteData.PromoteId][weaponPromoteData.PromoteLevel] = weaponPromoteData
 	}
-	logger.Info("WeaponPromoteData count: %v", len(g.WeaponPromoteDataMap))
+	logger.Info("WeaponPromoteData Count: %v", len(g.WeaponPromoteDataMap))
 }
 
 func GetWeaponPromoteDataByIdAndLevel(promoteId int32, promoteLevel int32) *WeaponPromoteData {

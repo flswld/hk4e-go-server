@@ -201,7 +201,7 @@ func (g *GameDataConfig) loadWeaponCurveData() {
 		weaponCurveData.CurveList = curveList
 		g.WeaponCurveDataMap[weaponCurveData.Level] = weaponCurveData
 	}
-	logger.Info("WeaponCurveData count: %v", len(g.WeaponCurveDataMap))
+	logger.Info("WeaponCurveData Count: %v", len(g.WeaponCurveDataMap))
 }
 
 func GetWeaponCurveByLevelAndType(level int32, curveType int32) *Curve {

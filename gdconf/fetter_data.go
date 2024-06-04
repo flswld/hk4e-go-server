@@ -27,7 +27,7 @@ func (g *GameDataConfig) loadFetterData() {
 			g.FetterDataAvatarIdMap[fetterData.AvatarId] = fetterIdList
 		}
 	}
-	logger.Info("FetterData count: %v", len(g.FetterDataMap))
+	logger.Info("FetterData Count: %v", len(g.FetterDataMap))
 }
 
 func GetFetterDataByFetterId(fetterId int32) *FetterData {

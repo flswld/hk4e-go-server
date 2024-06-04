@@ -54,7 +54,7 @@ func (g *GameDataConfig) loadRewardData() {
 		}
 		g.RewardDataMap[rewardData.RewardId] = rewardData
 	}
-	logger.Info("RewardData count: %v", len(g.RewardDataMap))
+	logger.Info("RewardData Count: %v", len(g.RewardDataMap))
 }
 
 func GetRewardDataById(rewardID int32) *RewardData {

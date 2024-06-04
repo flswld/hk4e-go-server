@@ -23,7 +23,7 @@ func (g *GameDataConfig) loadMonsterDropData() {
 		}
 		g.MonsterDropDataMap[monsterDropData.DropTag][monsterDropData.MinLevel] = monsterDropData
 	}
-	logger.Info("MonsterDropData count: %v", len(g.MonsterDropDataMap))
+	logger.Info("MonsterDropData Count: %v", len(g.MonsterDropDataMap))
 }
 
 func GetMonsterDropDataByDropTagAndLevel(dropTag string, level int32) *MonsterDropData {

@@ -1,6 +1,7 @@
 package constant
 
 const (
+	ELEMENT_TYPE_NONE  = 0
 	ELEMENT_TYPE_FIRE  = 1
 	ELEMENT_TYPE_WATER = 2
 	ELEMENT_TYPE_GRASS = 3

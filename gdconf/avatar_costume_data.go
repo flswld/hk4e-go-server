@@ -21,7 +21,7 @@ func (g *GameDataConfig) loadAvatarCostumeData() {
 		}
 		g.AvatarCostumeDataMap[avatarCostumeData.CostumeID] = avatarCostumeData
 	}
-	logger.Info("AvatarCostumeData count: %v", len(g.AvatarCostumeDataMap))
+	logger.Info("AvatarCostumeData Count: %v", len(g.AvatarCostumeDataMap))
 }
 
 func GetAvatarCostumeDataById(costumeId int32) *AvatarCostumeData {

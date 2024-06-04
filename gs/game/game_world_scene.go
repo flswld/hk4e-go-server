@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"hk4e/pkg/endec"
 	"math"
 	"time"
@@ -11,6 +12,8 @@ import (
 	"hk4e/gs/model"
 	"hk4e/pkg/logger"
 	"hk4e/protocol/proto"
+
+	"github.com/dengsgo/math-engine/engine"
 )
 
 // Scene 场景数据结构
@@ -440,9 +443,10 @@ func (s *Suite) GetAllEntity() map[uint32]IEntity {
 }
 
 type Ability struct {
-	abilityName        string
-	abilityNameHash    uint32
-	instancedAbilityId uint32
+	abilityName               string
+	abilityNameHash           uint32
+	instancedAbilityId        uint32
+	abilitySpecialOverrideMap map[uint32]float32
 }
 
 type Modifier struct {
@@ -486,7 +490,7 @@ type IEntity interface {
 	AddModifier(ability *Ability, instancedModifierId uint32, modifierLocalId uint32)
 	GetAllModifier() []*Modifier
 	RemoveModifier(instancedModifierId uint32)
-	AbilityAction(action *gdconf.ActionData)
+	AbilityAction(ability *Ability, action *gdconf.ActionData, entity IEntity)
 }
 
 // Entity 场景实体数据结构
@@ -610,24 +614,22 @@ func (e *Entity) InitAbility() {
 }
 
 func (e *Entity) AddAbility(abilityName string, instancedAbilityId uint32) {
-	logger.Debug("[AddAbility] abilityName: %v, entityId: %v", abilityName, e.GetId())
+	logger.Debug("[AddAbility] abilityName: %v, instancedAbilityId: %v, entityId: %v", abilityName, instancedAbilityId, e.GetId())
 	_, exist := e.abilityMap[instancedAbilityId]
 	if exist {
 		logger.Error("ability already exist, abilityName: %v, entityId: %v", abilityName, e.GetId())
 		return
 	}
 	e.abilityMap[instancedAbilityId] = &Ability{
-		abilityName:        abilityName,
-		abilityNameHash:    uint32(endec.Hk4eAbilityHashCode(abilityName)),
-		instancedAbilityId: instancedAbilityId,
+		abilityName:               abilityName,
+		abilityNameHash:           uint32(endec.Hk4eAbilityHashCode(abilityName)),
+		instancedAbilityId:        instancedAbilityId,
+		abilitySpecialOverrideMap: make(map[uint32]float32),
 	}
 	abilityDataConfig := gdconf.GetAbilityDataByName(abilityName)
 	if abilityDataConfig == nil {
 		logger.Error("get ability data config is nil, abilityName: %v", abilityName)
 		return
-	}
-	for _, action := range abilityDataConfig.OnAdded {
-		e.AbilityAction(action)
 	}
 }
 
@@ -644,7 +646,8 @@ func (e *Entity) GetAllAbility() []*Ability {
 }
 
 func (e *Entity) AddModifier(ability *Ability, instancedModifierId uint32, modifierLocalId uint32) {
-	logger.Debug("[AddModifier] abilityName: %v, modifierLocalId: %v, entityId: %v", ability.abilityName, modifierLocalId, e.GetId())
+	logger.Debug("[AddModifier] abilityName: %v, instancedModifierId: %v, modifierLocalId: %v, entityId: %v",
+		ability.abilityName, instancedModifierId, modifierLocalId, e.GetId())
 	_, exist := e.modifierMap[instancedModifierId]
 	if exist {
 		logger.Error("modifier already exist, abilityName: %v, modifierLocalId: %v, entityId: %v", ability.abilityName, modifierLocalId, e.GetId())
@@ -666,9 +669,6 @@ func (e *Entity) AddModifier(ability *Ability, instancedModifierId uint32, modif
 	if modifierDataConfig == nil {
 		logger.Error("get modifier data config is nil, modifierLocalId: %v", modifierLocalId)
 		return
-	}
-	for _, action := range modifierDataConfig.OnAdded {
-		e.AbilityAction(action)
 	}
 }
 
@@ -698,13 +698,97 @@ func (e *Entity) RemoveModifier(instancedModifierId uint32) {
 		logger.Error("get modifier data config is nil, modifierLocalId: %v", modifier.modifierLocalId)
 		return
 	}
-	for _, action := range modifierDataConfig.OnRemoved {
-		e.AbilityAction(action)
+}
+
+func (a *Ability) GetDynamicFloat(abilityData *gdconf.AbilityData, dynamicFloat gdconf.DynamicFloat) float32 {
+	switch dynamicFloat.(type) {
+	case float64:
+		return float32(dynamicFloat.(float64))
+	case string:
+		rawExp := dynamicFloat.(string)
+		exp := ""
+		for i := 0; i < len(rawExp); i++ {
+			c := string(rawExp[i])
+			if c == "%" {
+				for j := i + 1; j < len(rawExp); j++ {
+					cc := string(rawExp[j])
+					end := j == len(rawExp)-1
+					if cc == "+" || cc == "-" || cc == "*" || cc == "/" || end {
+						key := ""
+						if end {
+							key = rawExp[i+1 : j+1]
+						} else {
+							key = rawExp[i+1 : j]
+						}
+						value := float32(0.0)
+						v1, exist := abilityData.AbilitySpecials[key]
+						if !exist {
+							logger.Error("ability special key not exist, key: %v", key)
+							return 0.0
+						}
+						value = v1
+						v2, exist := a.abilitySpecialOverrideMap[uint32(endec.Hk4eAbilityHashCode(key))]
+						if exist {
+							value = v2
+						}
+						exp += fmt.Sprintf("%f", value)
+						if end {
+							i = j
+						} else {
+							i = j - 1
+						}
+						break
+					}
+				}
+			} else {
+				exp += c
+			}
+		}
+		r, err := engine.ParseAndExec(exp)
+		if err != nil {
+			logger.Error("calc dynamic float error: %v", err)
+			return 0.0
+		}
+		return float32(r)
+	default:
+		return 0.0
 	}
 }
 
-func (e *Entity) AbilityAction(action *gdconf.ActionData) {
-	logger.Debug("[AbilityAction] type: %v, param1: %v, entityId: %v", action.Type, action.Param1, e.GetId())
+func (e *Entity) AbilityAction(ability *Ability, action *gdconf.ActionData, entity IEntity) {
+	logger.Debug("[AbilityAction] type: %v, entityId: %v", action.Type, entity.GetId())
+	owner := entity.GetScene().GetWorld().GetOwner()
+	switch action.Type {
+	case "ExecuteGadgetLua":
+		iGadgetEntity, ok := entity.(IGadgetEntity)
+		if !ok {
+			logger.Error("entity is not gadget, entityId: %v", entity.GetId())
+			return
+		}
+		gadgetDataConfig := gdconf.GetGadgetDataById(int32(iGadgetEntity.GetGadgetId()))
+		if gadgetDataConfig == nil {
+			logger.Error("get gadget data config is nil, gadgetId: %v", iGadgetEntity.GetGadgetId())
+			return
+		}
+		if gadgetDataConfig.ServerLuaScript != "" {
+			gadgetLuaConfig := gdconf.GetGadgetLuaConfigByName(gadgetDataConfig.ServerLuaScript)
+			if gadgetLuaConfig == nil {
+				logger.Error("get gadget lua config is nil, name: %v", gadgetDataConfig.ServerLuaScript)
+				return
+			}
+			CallGadgetLuaFunc(gadgetLuaConfig.LuaState, "OnClientExecuteReq", &LuaCtx{uid: owner.PlayerId}, action.Param1, action.Param2, action.Param3)
+		}
+	case "KillSelf":
+		GAME.KillEntity(owner, entity.GetScene(), entity.GetId(), proto.PlayerDieType_PLAYER_DIE_NONE)
+	case "AvatarSkillStart":
+		abilityDataConfig := gdconf.GetAbilityDataByName(ability.abilityName)
+		if abilityDataConfig == nil {
+			logger.Error("get ability data config is nil, abilityName: %v", ability.abilityName)
+			return
+		}
+		staminaCost := ability.GetDynamicFloat(abilityDataConfig, action.CostStaminaRatio)
+		GAME.UpdatePlayerStamina(owner, int32(staminaCost)*-100)
+	}
 }
 
 type AvatarEntity struct {

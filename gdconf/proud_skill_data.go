@@ -64,7 +64,7 @@ func (g *GameDataConfig) loadProudSkillData() {
 		}
 		g.ProudSkillDataMap[proudSkillData.ProudSkillGroupId][proudSkillData.Level] = proudSkillData
 	}
-	logger.Info("ProudSkillData count: %v", len(g.ProudSkillDataMap))
+	logger.Info("ProudSkillData Count: %v", len(g.ProudSkillDataMap))
 }
 
 func GetProudSkillDataByGroupIdAndLevel(groupId int32, level int32) *ProudSkillData {

@@ -138,7 +138,7 @@ func (g *GameDataConfig) loadItemData() {
 			g.ItemDataMap[itemData.ItemId] = itemData
 		}
 	}
-	logger.Info("ItemData count: %v", len(g.ItemDataMap))
+	logger.Info("ItemData Count: %v", len(g.ItemDataMap))
 }
 
 func GetItemDataById(itemId int32) *ItemData {

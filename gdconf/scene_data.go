@@ -17,7 +17,7 @@ func (g *GameDataConfig) loadSceneData() {
 	for _, sceneData := range sceneDataList {
 		g.SceneDataMap[sceneData.SceneId] = sceneData
 	}
-	logger.Info("SceneData count: %v", len(g.SceneDataMap))
+	logger.Info("SceneData Count: %v", len(g.SceneDataMap))
 }
 
 func GetSceneDataById(sceneId int32) *SceneData {

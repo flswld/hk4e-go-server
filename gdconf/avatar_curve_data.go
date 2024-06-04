@@ -68,7 +68,7 @@ func (g *GameDataConfig) loadAvatarCurveData() {
 		avatarCurveData.CurveList = curveList
 		g.AvatarCurveDataMap[avatarCurveData.Level] = avatarCurveData
 	}
-	logger.Info("AvatarCurveData count: %v", len(g.AvatarCurveDataMap))
+	logger.Info("AvatarCurveData Count: %v", len(g.AvatarCurveDataMap))
 }
 
 func GetAvatarCurveByLevelAndType(level int32, curveType int32) *Curve {

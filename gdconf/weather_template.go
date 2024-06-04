@@ -4,8 +4,8 @@ import (
 	"hk4e/pkg/logger"
 )
 
-// WeatherTemplate 天气模版配置表
-type WeatherTemplate struct {
+// WeatherTemplateData 天气模版配置表
+type WeatherTemplateData struct {
 	TemplateName string `csv:"天气模板名"`
 	Weather      int32  `csv:"天气,omitempty"`
 	Sunny        int32  `csv:"晴,omitempty"`
@@ -18,27 +18,27 @@ type WeatherTemplate struct {
 }
 
 func (g *GameDataConfig) loadWeatherTemplateData() {
-	g.WeatherTemplateMap = make(map[string]map[int32]*WeatherTemplate)
-	weatherTemplateList := make([]*WeatherTemplate, 0)
-	readTable[WeatherTemplate](g.txtPrefix+"WeatherTemplate.txt", &weatherTemplateList)
-	for _, weatherTemplate := range weatherTemplateList {
-		_, exist := g.WeatherTemplateMap[weatherTemplate.TemplateName]
+	g.WeatherTemplateDataMap = make(map[string]map[int32]*WeatherTemplateData)
+	weatherTemplateDataList := make([]*WeatherTemplateData, 0)
+	readTable[WeatherTemplateData](g.txtPrefix+"WeatherTemplate.txt", &weatherTemplateDataList)
+	for _, weatherTemplateData := range weatherTemplateDataList {
+		_, exist := g.WeatherTemplateDataMap[weatherTemplateData.TemplateName]
 		if !exist {
-			g.WeatherTemplateMap[weatherTemplate.TemplateName] = make(map[int32]*WeatherTemplate)
+			g.WeatherTemplateDataMap[weatherTemplateData.TemplateName] = make(map[int32]*WeatherTemplateData)
 		}
-		g.WeatherTemplateMap[weatherTemplate.TemplateName][weatherTemplate.Weather] = weatherTemplate
+		g.WeatherTemplateDataMap[weatherTemplateData.TemplateName][weatherTemplateData.Weather] = weatherTemplateData
 	}
-	logger.Info("WeatherTemplate count: %v", len(g.WeatherTemplateMap))
+	logger.Info("WeatherTemplateData Count: %v", len(g.WeatherTemplateDataMap))
 }
 
-func GetWeatherTemplateByTemplateNameAndWeather(templateName string, weather int32) *WeatherTemplate {
-	value, exist := CONF.WeatherTemplateMap[templateName]
+func GetWeatherTemplateDataByTemplateNameAndWeather(templateName string, weather int32) *WeatherTemplateData {
+	value, exist := CONF.WeatherTemplateDataMap[templateName]
 	if !exist {
 		return nil
 	}
 	return value[weather]
 }
 
-func GetWeatherTemplateMap() map[string]map[int32]*WeatherTemplate {
-	return CONF.WeatherTemplateMap
+func GetWeatherTemplateDataMap() map[string]map[int32]*WeatherTemplateData {
+	return CONF.WeatherTemplateDataMap
 }
