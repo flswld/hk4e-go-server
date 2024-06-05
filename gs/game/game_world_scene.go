@@ -491,6 +491,7 @@ type IEntity interface {
 	GetAllModifier() []*Modifier
 	RemoveModifier(instancedModifierId uint32)
 	AbilityAction(ability *Ability, action *gdconf.ActionData, entity IEntity)
+	AbilityMixin(ability *Ability, mixin *gdconf.MixinData, entity IEntity)
 }
 
 // Entity 场景实体数据结构
@@ -776,7 +777,9 @@ func (e *Entity) AbilityAction(ability *Ability, action *gdconf.ActionData, enti
 				logger.Error("get gadget lua config is nil, name: %v", gadgetDataConfig.ServerLuaScript)
 				return
 			}
-			CallGadgetLuaFunc(gadgetLuaConfig.LuaState, "OnClientExecuteReq", &LuaCtx{uid: owner.PlayerId}, action.Param1, action.Param2, action.Param3)
+			CallGadgetLuaFunc(gadgetLuaConfig.LuaState, "OnClientExecuteReq",
+				&LuaCtx{uid: owner.PlayerId, targetEntityId: entity.GetId(), groupId: entity.GetGroupId()},
+				action.Param1, action.Param2, action.Param3)
 		}
 	case "KillSelf":
 		GAME.KillEntity(owner, entity.GetScene(), entity.GetId(), proto.PlayerDieType_PLAYER_DIE_NONE)
@@ -787,6 +790,21 @@ func (e *Entity) AbilityAction(ability *Ability, action *gdconf.ActionData, enti
 			return
 		}
 		staminaCost := ability.GetDynamicFloat(abilityDataConfig, action.CostStaminaRatio)
+		GAME.UpdatePlayerStamina(owner, int32(staminaCost)*-100)
+	}
+}
+
+func (e *Entity) AbilityMixin(ability *Ability, mixin *gdconf.MixinData, entity IEntity) {
+	logger.Debug("[AbilityMixin] type: %v, entityId: %v", mixin.Type, entity.GetId())
+	owner := entity.GetScene().GetWorld().GetOwner()
+	switch mixin.Type {
+	case "CostStaminaMixin":
+		abilityDataConfig := gdconf.GetAbilityDataByName(ability.abilityName)
+		if abilityDataConfig == nil {
+			logger.Error("get ability data config is nil, abilityName: %v", ability.abilityName)
+			return
+		}
+		staminaCost := ability.GetDynamicFloat(abilityDataConfig, mixin.CostStaminaDelta)
 		GAME.UpdatePlayerStamina(owner, int32(staminaCost)*-100)
 	}
 }
@@ -831,6 +849,23 @@ func (m *MonsterEntity) GetMonsterId() uint32 {
 func (m *MonsterEntity) InitAbility() {
 	m.abilityMap = make(map[uint32]*Ability)
 	m.modifierMap = make(map[uint32]*Modifier)
+	monsterDataConfig := gdconf.GetMonsterDataById(int32(m.GetMonsterId()))
+	if monsterDataConfig == nil {
+		logger.Error("get monster data config is nil, monsterId: %v", m.GetMonsterId())
+		return
+	}
+	if monsterDataConfig.ConfigAbility == nil {
+		return
+	}
+	for configAbilityIndex, configAbility := range monsterDataConfig.ConfigAbility.Abilities {
+		abilityDataConfig := gdconf.GetAbilityDataByName(configAbility.AbilityName)
+		if abilityDataConfig == nil {
+			logger.Error("get ability data config is nil, abilityName: %v", configAbility.AbilityName)
+			continue
+		}
+		instancedAbilityId := uint32(configAbilityIndex + 1)
+		m.AddAbility(abilityDataConfig.AbilityName, instancedAbilityId)
+	}
 }
 
 type NpcEntity struct {
@@ -903,13 +938,13 @@ func (g *GadgetEntity) InitAbility() {
 		logger.Error("get gadget json config is nil, name: %v", gadgetDataConfig.JsonName)
 		return
 	}
-	for abilityIndex, ability := range gadgetJsonConfig.Abilities {
-		abilityDataConfig := gdconf.GetAbilityDataByName(ability.AbilityName)
+	for configAbilityIndex, configAbility := range gadgetJsonConfig.Abilities {
+		abilityDataConfig := gdconf.GetAbilityDataByName(configAbility.AbilityName)
 		if abilityDataConfig == nil {
 			logger.Error("get ability data config is nil, abilityName: %v", gadgetDataConfig.JsonName)
-			return
+			continue
 		}
-		instancedAbilityId := uint32(abilityIndex + 1)
+		instancedAbilityId := uint32(configAbilityIndex + 1)
 		g.AddAbility(abilityDataConfig.AbilityName, instancedAbilityId)
 	}
 }

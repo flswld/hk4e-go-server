@@ -937,7 +937,9 @@ func (g *Game) KillEntity(player *model.Player, scene *Scene, entityId uint32, d
 				logger.Error("get gadget lua config is nil, name: %v", gadgetDataConfig.ServerLuaScript)
 				return
 			}
-			CallGadgetLuaFunc(gadgetLuaConfig.LuaState, "OnDie", &LuaCtx{uid: player.PlayerId}, 0, 0)
+			CallGadgetLuaFunc(gadgetLuaConfig.LuaState, "OnDie",
+				&LuaCtx{uid: player.PlayerId, targetEntityId: entity.GetId(), groupId: entity.GetGroupId()},
+				0, 0)
 		}
 
 	}

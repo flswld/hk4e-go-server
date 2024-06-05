@@ -23,6 +23,11 @@ type ConfigAbility struct {
 	AbilityName string `json:"abilityName"`
 }
 
+type ConfigAbilityJson struct {
+	Abilities       []*ConfigAbility `json:"abilities"`
+	TargetAbilities []*ConfigAbility `json:"targetAbilities"`
+}
+
 type AbilityJsonConfig struct {
 	Default *AbilityData `json:"Default"`
 }
@@ -141,8 +146,9 @@ type ActionData struct {
 }
 
 type MixinData struct {
-	Type         string `json:"$type"`
-	ModifierName string `json:"modifierName"`
+	Type             string       `json:"$type"`
+	ModifierName     string       `json:"modifierName"`
+	CostStaminaDelta DynamicFloat `json:"costStaminaDelta"`
 }
 
 type PropertyData struct {

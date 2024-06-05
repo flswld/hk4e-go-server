@@ -9,12 +9,8 @@ import (
 	"github.com/hjson/hjson-go/v4"
 )
 
-type GadgetJsonConfig struct {
-	Abilities []*ConfigAbility `json:"abilities"`
-}
-
 func (g *GameDataConfig) loadGadgetJsonConfig() {
-	g.GadgetJsonConfigMap = make(map[string]*GadgetJsonConfig)
+	g.GadgetJsonConfigMap = make(map[string]*ConfigAbilityJson)
 	g.loadGadgetJsonConfigLoop(g.jsonPrefix + "gadget")
 	logger.Info("GadgetJsonConfig Count: %v", len(g.GadgetJsonConfigMap))
 }
@@ -38,7 +34,7 @@ func (g *GameDataConfig) loadGadgetJsonConfigLoop(path string) {
 			info := fmt.Sprintf("open file error: %v, path: %v", err, path+"/"+fileName)
 			panic(info)
 		}
-		var gadgetJsonConfigMap map[string]*GadgetJsonConfig = nil
+		var gadgetJsonConfigMap map[string]*ConfigAbilityJson = nil
 		err = hjson.Unmarshal(fileData, &gadgetJsonConfigMap)
 		if err != nil {
 			logger.Info("parse file error: %v, path: %v", err, path+"/"+fileName)
@@ -50,6 +46,6 @@ func (g *GameDataConfig) loadGadgetJsonConfigLoop(path string) {
 	}
 }
 
-func GetGadgetJsonConfigByName(name string) *GadgetJsonConfig {
+func GetGadgetJsonConfigByName(name string) *ConfigAbilityJson {
 	return CONF.GadgetJsonConfigMap[name]
 }

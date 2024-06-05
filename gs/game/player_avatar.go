@@ -666,11 +666,11 @@ func (g *Game) ChangePlayerAvatarSkillDepot(userId uint32, avatarId uint32, chan
 			return
 		}
 		for _, skillDepotId := range avatarDataConfig.SkillDepotIdList {
-			skillDepotDataConfig := gdconf.GetAvatarSkillDepotDataById(skillDepotId)
-			if skillDepotDataConfig == nil {
+			avatarSkillDepotDataConfig := gdconf.GetAvatarSkillDepotDataById(skillDepotId)
+			if avatarSkillDepotDataConfig == nil {
 				continue
 			}
-			avatarSkillDataConfig := gdconf.GetAvatarSkillDataById(skillDepotDataConfig.EnergySkill)
+			avatarSkillDataConfig := gdconf.GetAvatarSkillDataById(avatarSkillDepotDataConfig.EnergySkill)
 			if avatarSkillDataConfig == nil {
 				continue
 			}

@@ -85,7 +85,7 @@ type GameDataConfig struct {
 	MonsterCurveDataMap        map[int32]*MonsterCurveData                // 怪物曲线
 	AbilityDataMap             map[string]*AbilityData                    // 能力
 	AbilityDataHashMap         map[uint32]*AbilityData                    // 能力哈希
-	GadgetJsonConfigMap        map[string]*GadgetJsonConfig               // 物件JSON配置
+	GadgetJsonConfigMap        map[string]*ConfigAbilityJson              // 物件JSON配置
 	GadgetLuaConfigMap         map[string]*GadgetLuaConfig                // 物件LUA配置
 }
 
@@ -361,6 +361,11 @@ func initLuaState(luaState *lua.LState) {
 	luaState.SetField(gadgetState, "ChestLocked", lua.LNumber(constant.GADGET_STATE_CHEST_LOCKED))
 	luaState.SetField(gadgetState, "GearStart", lua.LNumber(constant.GADGET_STATE_GEAR_START))
 	luaState.SetField(gadgetState, "GearStop", lua.LNumber(constant.GADGET_STATE_GEAR_STOP))
+	luaState.SetField(gadgetState, "GearAction1", lua.LNumber(constant.GADGET_STATE_GEAR_ACTION1))
+	luaState.SetField(gadgetState, "GearAction2", lua.LNumber(constant.GADGET_STATE_GEAR_ACTION2))
+	luaState.SetField(gadgetState, "Action01", lua.LNumber(constant.GADGET_STATE_ACTION01))
+	luaState.SetField(gadgetState, "Action02", lua.LNumber(constant.GADGET_STATE_ACTION02))
+	luaState.SetField(gadgetState, "Action03", lua.LNumber(constant.GADGET_STATE_ACTION03))
 
 	visionLevelType := luaState.NewTable()
 	luaState.SetGlobal("VisionLevelType", visionLevelType)

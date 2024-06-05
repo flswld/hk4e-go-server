@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"hk4e/pkg/endec"
 	"hk4e/pkg/logger"
 
 	"github.com/hjson/hjson-go/v4"
@@ -43,7 +42,7 @@ type AvatarSkillDepotData struct {
 	Skills                  []int32                    // 其他战斗天赋
 	Talents                 []int32                    // 命座
 	InherentProudSkillOpens []*InherentProudSkillOpens // 固有天赋
-	AbilityHashCodeList     []int32
+	ConfigAbility           *ConfigAbilityJson         // 能力配置
 }
 
 type InherentProudSkillOpens struct {
@@ -61,7 +60,7 @@ func (g *GameDataConfig) loadAvatarSkillDepotData() {
 		info := fmt.Sprintf("open file error: %v", err)
 		panic(info)
 	}
-	playerAbilities := make(map[string]*AvatarJsonConfig)
+	playerAbilities := make(map[string]*ConfigAbilityJson)
 	err = hjson.Unmarshal(playerElementsFile, &playerAbilities)
 	if err != nil {
 		info := fmt.Sprintf("parse file error: %v", err)
@@ -134,14 +133,9 @@ func (g *GameDataConfig) loadAvatarSkillDepotData() {
 				NeedAvatarPromoteLevel: avatarSkillDepotData.ProudSkill5NeedAvatarPromoteLevel,
 			})
 		}
-		avatarSkillDepotData.AbilityHashCodeList = make([]int32, 0)
 		if avatarSkillDepotData.SkillDepotAbilityGroup != "" {
-			config := playerAbilities[avatarSkillDepotData.SkillDepotAbilityGroup]
-			if config != nil {
-				for _, targetAbility := range config.TargetAbilities {
-					avatarSkillDepotData.AbilityHashCodeList = append(avatarSkillDepotData.AbilityHashCodeList, endec.Hk4eAbilityHashCode(targetAbility.AbilityName))
-				}
-			}
+			configAbilityJson := playerAbilities[avatarSkillDepotData.SkillDepotAbilityGroup]
+			avatarSkillDepotData.ConfigAbility = configAbilityJson
 		}
 		g.AvatarSkillDepotDataMap[avatarSkillDepotData.AvatarSkillDepotId] = avatarSkillDepotData
 	}

@@ -10,6 +10,7 @@ import (
 )
 
 type GadgetLuaConfig struct {
+	LuaStr   string
 	LuaState *lua.LState
 }
 
@@ -46,18 +47,25 @@ func (g *GameDataConfig) loadGadgetLuaConfigLoop(path string) {
 		if fileData[0] == 0xEF && fileData[1] == 0xBB && fileData[2] == 0xBF {
 			fileData = fileData[3:]
 		}
-		luaState := newLuaState(string(fileData))
-		scriptLib := luaState.NewTable()
-		luaState.SetGlobal("ScriptLib", scriptLib)
-		for _, scriptLibFunc := range SCRIPT_LIB_FUNC_LIST {
-			luaState.SetField(scriptLib, scriptLibFunc.fnName, luaState.NewFunction(scriptLibFunc.fn))
-		}
 		gadgetLuaConfig := new(GadgetLuaConfig)
-		gadgetLuaConfig.LuaState = luaState
+		gadgetLuaConfig.LuaStr = string(fileData)
 		g.GadgetLuaConfigMap[gadgetLuaName] = gadgetLuaConfig
 	}
 }
 
 func GetGadgetLuaConfigByName(name string) *GadgetLuaConfig {
-	return CONF.GadgetLuaConfigMap[name]
+	gadgetLuaConfig := CONF.GadgetLuaConfigMap[name]
+	if gadgetLuaConfig == nil {
+		return nil
+	}
+	if gadgetLuaConfig.LuaState == nil {
+		luaState := newLuaState(gadgetLuaConfig.LuaStr)
+		scriptLib := luaState.NewTable()
+		luaState.SetGlobal("ScriptLib", scriptLib)
+		for _, scriptLibFunc := range SCRIPT_LIB_FUNC_LIST {
+			luaState.SetField(scriptLib, scriptLibFunc.fnName, luaState.NewFunction(scriptLibFunc.fn))
+		}
+		gadgetLuaConfig.LuaState = luaState
+	}
+	return gadgetLuaConfig
 }

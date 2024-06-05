@@ -75,6 +75,7 @@ func CallSceneLuaFunc(luaState *lua.LState, luaFuncName string, luaCtx *LuaCtx, 
 	}
 }
 
+// CallGadgetLuaFunc 调用物件LUA方法
 func CallGadgetLuaFunc(luaState *lua.LState, luaFuncName string, luaCtx *LuaCtx, param ...any) bool {
 	GAME.EndlessLoopCheck(EndlessLoopCheckTypeCallLuaFunc)
 	ctx := luaState.NewTable()
@@ -87,32 +88,16 @@ func CallGadgetLuaFunc(luaState *lua.LState, luaFuncName string, luaCtx *LuaCtx,
 	luaParamList = append(luaParamList, ctx)
 	switch luaFuncName {
 	case "OnClientExecuteReq":
-		param1 := luaState.NewTable()
-		luaState.SetField(param1, "param1", lua.LNumber(param[0].(int32)))
-		luaParamList = append(luaParamList, param1)
-		param2 := luaState.NewTable()
-		luaState.SetField(param2, "param2", lua.LNumber(param[1].(int32)))
-		luaParamList = append(luaParamList, param2)
-		param3 := luaState.NewTable()
-		luaState.SetField(param3, "param3", lua.LNumber(param[2].(int32)))
-		luaParamList = append(luaParamList, param3)
+		luaParamList = append(luaParamList, lua.LNumber(param[0].(int32)))
+		luaParamList = append(luaParamList, lua.LNumber(param[1].(int32)))
+		luaParamList = append(luaParamList, lua.LNumber(param[2].(int32)))
 	case "OnBeHurt":
-		elementType := luaState.NewTable()
-		luaState.SetField(elementType, "element_type", lua.LNumber(param[0].(uint32)))
-		luaParamList = append(luaParamList, elementType)
-		strikeType := luaState.NewTable()
-		luaState.SetField(strikeType, "strike_type", lua.LNumber(param[1].(int)))
-		luaParamList = append(luaParamList, strikeType)
-		isHost := luaState.NewTable()
-		luaState.SetField(isHost, "is_host", lua.LBool(param[2].(bool)))
-		luaParamList = append(luaParamList, isHost)
+		luaParamList = append(luaParamList, lua.LNumber(param[0].(uint32)))
+		luaParamList = append(luaParamList, lua.LNumber(param[1].(int)))
+		luaParamList = append(luaParamList, lua.LBool(param[2].(bool)))
 	case "OnDie":
-		elementType := luaState.NewTable()
-		luaState.SetField(elementType, "element_type", lua.LNumber(param[0].(uint32)))
-		luaParamList = append(luaParamList, elementType)
-		strikeType := luaState.NewTable()
-		luaState.SetField(strikeType, "strike_type", lua.LNumber(param[1].(int)))
-		luaParamList = append(luaParamList, strikeType)
+		luaParamList = append(luaParamList, lua.LNumber(param[0].(int)))
+		luaParamList = append(luaParamList, lua.LNumber(param[1].(int)))
 	}
 	err := luaState.CallByParam(lua.P{
 		Fn:      luaState.GetGlobal(luaFuncName),
@@ -176,6 +161,7 @@ func GetContextSceneGroup(player *model.Player, groupId uint32) *model.SceneGrou
 
 // RegLuaScriptLibFunc 注册LUA侧ScriptLib调用的Golang方法
 func RegLuaScriptLibFunc() {
+	// 调用场景LUA方法
 	gdconf.RegScriptLibFunc("GetEntityType", GetEntityType)
 	gdconf.RegScriptLibFunc("GetQuestState", GetQuestState)
 	gdconf.RegScriptLibFunc("PrintLog", PrintLog)
@@ -207,17 +193,23 @@ func RegLuaScriptLibFunc() {
 	gdconf.RegScriptLibFunc("RemoveExtraGroupSuite", RemoveExtraGroupSuite)
 	gdconf.RegScriptLibFunc("ShowReminder", ShowReminder)
 	gdconf.RegScriptLibFunc("KillGroupEntity", KillGroupEntity)
+	// 调用物件LUA方法
 	gdconf.RegScriptLibFunc("SetGadgetState", SetGadgetState)
+	gdconf.RegScriptLibFunc("GetGadgetState", GetGadgetState)
+	gdconf.RegScriptLibFunc("GetContextGadgetConfigId", GetContextGadgetConfigId)
+	gdconf.RegScriptLibFunc("GetContextGroupId", GetContextGroupId)
+	gdconf.RegScriptLibFunc("DropSubfield", DropSubfield)
 }
 
 type CommonLuaTableParam struct {
-	ConfigId   int32 `json:"config_id"`
-	DelayTime  int32 `json:"delay_time"`
-	RegionEid  int32 `json:"region_eid"`
-	EntityType int32 `json:"entity_type"`
-	GroupId    int32 `json:"group_id"`
-	Suite      int32 `json:"suite"`
-	KillPolicy int32 `json:"kill_policy"`
+	ConfigId     int32  `json:"config_id"`
+	DelayTime    int32  `json:"delay_time"`
+	RegionEid    int32  `json:"region_eid"`
+	EntityType   int32  `json:"entity_type"`
+	GroupId      int32  `json:"group_id"`
+	Suite        int32  `json:"suite"`
+	KillPolicy   int32  `json:"kill_policy"`
+	SubfieldName string `json:"subfield_name"`
 }
 
 func GetEntityType(luaState *lua.LState) int {
@@ -1078,6 +1070,111 @@ func SetGadgetState(luaState *lua.LState) int {
 		return 1
 	}
 	GAME.ChangeGadgetState(player, entity.GetId(), uint32(state))
+	luaState.Push(lua.LNumber(0))
+	return 1
+}
+
+func GetGadgetState(luaState *lua.LState) int {
+	ctx, ok := luaState.Get(1).(*lua.LTable)
+	if !ok {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	player := GetContextPlayer(ctx, luaState)
+	if player == nil {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	targetEntityId, ok := luaState.GetField(ctx, "target_entity_id").(lua.LNumber)
+	if !ok {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	world := WORLD_MANAGER.GetWorldById(player.WorldId)
+	if world == nil {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	scene := world.GetSceneById(player.GetSceneId())
+	entity := scene.GetEntity(uint32(targetEntityId))
+	if entity == nil {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	iGadgetEntity, ok := entity.(IGadgetEntity)
+	if !ok {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	luaState.Push(lua.LNumber(iGadgetEntity.GetGadgetState()))
+	return 1
+}
+
+func GetContextGadgetConfigId(luaState *lua.LState) int {
+	ctx, ok := luaState.Get(1).(*lua.LTable)
+	if !ok {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	player := GetContextPlayer(ctx, luaState)
+	if player == nil {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	targetEntityId, ok := luaState.GetField(ctx, "target_entity_id").(lua.LNumber)
+	if !ok {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	world := WORLD_MANAGER.GetWorldById(player.WorldId)
+	if world == nil {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	scene := world.GetSceneById(player.GetSceneId())
+	entity := scene.GetEntity(uint32(targetEntityId))
+	if entity == nil {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	luaState.Push(lua.LNumber(entity.GetConfigId()))
+	return 1
+}
+
+func GetContextGroupId(luaState *lua.LState) int {
+	ctx, ok := luaState.Get(1).(*lua.LTable)
+	if !ok {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	groupId, ok := luaState.GetField(ctx, "groupId").(lua.LNumber)
+	if !ok {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	luaState.Push(groupId)
+	return 1
+}
+
+func DropSubfield(luaState *lua.LState) int {
+	ctx, ok := luaState.Get(1).(*lua.LTable)
+	if !ok {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	player := GetContextPlayer(ctx, luaState)
+	if player == nil {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	luaTable, ok := luaState.Get(2).(*lua.LTable)
+	if !ok {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	luaTableParam := new(CommonLuaTableParam)
+	gdconf.ParseLuaTableToObject[*CommonLuaTableParam](luaTable, luaTableParam)
+	logger.Debug("Lua DropSubfield SubfieldName: %v", luaTableParam.SubfieldName)
 	luaState.Push(lua.LNumber(0))
 	return 1
 }

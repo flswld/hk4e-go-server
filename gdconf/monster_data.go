@@ -1,8 +1,12 @@
 package gdconf
 
 import (
+	"fmt"
 	"hk4e/common/constant"
 	"hk4e/pkg/logger"
+	"os"
+
+	"github.com/hjson/hjson-go/v4"
 )
 
 // HpDrop 血量掉落
@@ -13,8 +17,9 @@ type HpDrop struct {
 
 // MonsterData 怪物配置表
 type MonsterData struct {
-	MonsterId int32  `csv:"ID"`
-	Name      string `csv:"名称$text_name_Name,omitempty"`
+	MonsterId  int32  `csv:"ID"`
+	Name       string `csv:"名称$text_name_Name,omitempty"`
+	ConfigJson string `csv:"战斗Config,omitempty"`
 	// 战斗属性
 	HpBase          float32 `csv:"基础生命值,omitempty"`
 	AttackBase      float32 `csv:"基础攻击力,omitempty"`
@@ -54,9 +59,10 @@ type MonsterData struct {
 	Drop3HpPercent int32 `csv:"[掉落]3血量百分比,omitempty"`
 	KillDropId     int32 `csv:"击杀掉落ID,omitempty"`
 
-	FightPropList []*FightProp // 战斗属性列表
-	PropGrowList  []*PropGrow  // 属性成长列表
-	HpDropList    []*HpDrop    // 血量掉落列表
+	FightPropList []*FightProp       // 战斗属性列表
+	PropGrowList  []*PropGrow        // 属性成长列表
+	HpDropList    []*HpDrop          // 血量掉落列表
+	ConfigAbility *ConfigAbilityJson // 能力配置
 }
 
 func (g *GameDataConfig) loadMonsterData() {
@@ -64,6 +70,18 @@ func (g *GameDataConfig) loadMonsterData() {
 	monsterDataList := make([]*MonsterData, 0)
 	readTable[MonsterData](g.txtPrefix+"MonsterData.txt", &monsterDataList)
 	for _, monsterData := range monsterDataList {
+		fileData, err := os.ReadFile(g.jsonPrefix + "monster/" + monsterData.ConfigJson + ".json")
+		if err != nil {
+			info := fmt.Sprintf("open file error: %v, monsterId: %v", err, monsterData.MonsterId)
+			panic(info)
+		}
+		configAbilityJson := new(ConfigAbilityJson)
+		err = hjson.Unmarshal(fileData, configAbilityJson)
+		if err != nil {
+			info := fmt.Sprintf("parse file error: %v, monsterId: %v", err, monsterData.MonsterId)
+			panic(info)
+		}
+		monsterData.ConfigAbility = configAbilityJson
 		// 战斗属性列表
 		monsterData.FightPropList = make([]*FightProp, 0)
 		if monsterData.HpBase != 0.0 {

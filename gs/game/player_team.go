@@ -470,25 +470,25 @@ func (g *Game) PacketAvatarAbilityControlBlock(avatarId uint32, skillDepotId uin
 	}
 	// 角色ability
 	avatarDataConfig := gdconf.GetAvatarDataById(int32(avatarId))
-	if avatarDataConfig != nil {
-		for _, abilityHashCode := range avatarDataConfig.AbilityHashCodeList {
+	if avatarDataConfig != nil && avatarDataConfig.ConfigAbility != nil {
+		for _, configAbility := range avatarDataConfig.ConfigAbility.Abilities {
 			abilityId++
 			ae := &proto.AbilityEmbryo{
 				AbilityId:               uint32(abilityId),
-				AbilityNameHash:         uint32(abilityHashCode),
+				AbilityNameHash:         uint32(endec.Hk4eAbilityHashCode(configAbility.AbilityName)),
 				AbilityOverrideNameHash: uint32(endec.Hk4eAbilityHashCode("Default")),
 			}
 			acb.AbilityEmbryoList = append(acb.AbilityEmbryoList, ae)
 		}
 	}
 	// 技能库ability
-	skillDepot := gdconf.GetAvatarSkillDepotDataById(int32(skillDepotId))
-	if skillDepot != nil && len(skillDepot.AbilityHashCodeList) != 0 {
-		for _, abilityHashCode := range skillDepot.AbilityHashCodeList {
+	avatarSkillDepotDataConfig := gdconf.GetAvatarSkillDepotDataById(int32(skillDepotId))
+	if avatarSkillDepotDataConfig != nil && avatarSkillDepotDataConfig.ConfigAbility != nil {
+		for _, configAbility := range avatarSkillDepotDataConfig.ConfigAbility.TargetAbilities {
 			abilityId++
 			ae := &proto.AbilityEmbryo{
 				AbilityId:               uint32(abilityId),
-				AbilityNameHash:         uint32(abilityHashCode),
+				AbilityNameHash:         uint32(endec.Hk4eAbilityHashCode(configAbility.AbilityName)),
 				AbilityOverrideNameHash: uint32(endec.Hk4eAbilityHashCode("Default")),
 			}
 			acb.AbilityEmbryoList = append(acb.AbilityEmbryoList, ae)

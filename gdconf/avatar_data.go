@@ -3,10 +3,8 @@ package gdconf
 import (
 	"fmt"
 	"hk4e/common/constant"
-	"os"
-
-	"hk4e/pkg/endec"
 	"hk4e/pkg/logger"
+	"os"
 
 	"github.com/hjson/hjson-go/v4"
 )
@@ -21,11 +19,6 @@ type FightProp struct {
 type PropGrow struct {
 	Type  int32 // 类型
 	Curve int32 // 曲线
-}
-
-type AvatarJsonConfig struct {
-	Abilities       []*ConfigAbility `json:"abilities"`
-	TargetAbilities []*ConfigAbility `json:"targetAbilities"`
 }
 
 // AvatarData 角色配置表
@@ -72,10 +65,10 @@ type AvatarData struct {
 	PropGrow3Type  int32 `csv:"[属性成长]3类型,omitempty"`
 	PropGrow3Curve int32 `csv:"[属性成长]3曲线,omitempty"`
 
-	AbilityHashCodeList []int32           // 能力哈希码列表
-	PromoteRewardMap    map[uint32]uint32 // 突破奖励集合
-	FightPropList       []*FightProp      // 战斗属性列表
-	PropGrowList        []*PropGrow       // 属性成长列表
+	ConfigAbility    *ConfigAbilityJson // 能力配置
+	PromoteRewardMap map[uint32]uint32  // 突破奖励集合
+	FightPropList    []*FightProp       // 战斗属性列表
+	PropGrowList     []*PropGrow        // 属性成长列表
 }
 
 func (g *GameDataConfig) loadAvatarData() {
@@ -83,25 +76,18 @@ func (g *GameDataConfig) loadAvatarData() {
 	avatarDataList := make([]*AvatarData, 0)
 	readTable[AvatarData](g.txtPrefix+"AvatarData.txt", &avatarDataList)
 	for _, avatarData := range avatarDataList {
-		// 读取战斗config解析技能并转化为哈希码
 		fileData, err := os.ReadFile(g.jsonPrefix + "avatar/" + avatarData.ConfigJson + ".json")
 		if err != nil {
-			info := fmt.Sprintf("open file error: %v, AvatarId: %v", err, avatarData.AvatarId)
+			info := fmt.Sprintf("open file error: %v, avatarId: %v", err, avatarData.AvatarId)
 			panic(info)
 		}
-		avatarJsonConfig := new(AvatarJsonConfig)
-		err = hjson.Unmarshal(fileData, avatarJsonConfig)
+		configAbilityJson := new(ConfigAbilityJson)
+		err = hjson.Unmarshal(fileData, configAbilityJson)
 		if err != nil {
-			info := fmt.Sprintf("parse file error: %v, AvatarId: %v", err, avatarData.AvatarId)
+			info := fmt.Sprintf("parse file error: %v, avatarId: %v", err, avatarData.AvatarId)
 			panic(info)
 		}
-		if len(avatarJsonConfig.Abilities) == 0 {
-			logger.Info("can not find any ability of avatar, AvatarId: %v", avatarData.AvatarId)
-		}
-		for _, ability := range avatarJsonConfig.Abilities {
-			abilityHashCode := endec.Hk4eAbilityHashCode(ability.AbilityName)
-			avatarData.AbilityHashCodeList = append(avatarData.AbilityHashCodeList, abilityHashCode)
-		}
+		avatarData.ConfigAbility = configAbilityJson
 		// 突破奖励转换列表
 		if len(avatarData.PromoteRewardLevel) != 0 && len(avatarData.PromoteReward) != 0 {
 			avatarData.PromoteRewardMap = make(map[uint32]uint32, len(avatarData.PromoteReward))

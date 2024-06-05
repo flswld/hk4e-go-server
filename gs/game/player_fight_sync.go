@@ -240,7 +240,9 @@ func (g *Game) handleEvtBeingHit(player *model.Player, scene *Scene, hitInfo *pr
 				return
 			}
 			isHost := player.PlayerId == scene.GetWorld().GetOwner().PlayerId
-			CallGadgetLuaFunc(gadgetLuaConfig.LuaState, "OnBeHurt", &LuaCtx{uid: player.PlayerId}, attackResult.ElementType, 0, isHost)
+			CallGadgetLuaFunc(gadgetLuaConfig.LuaState, "OnBeHurt",
+				&LuaCtx{uid: player.PlayerId, targetEntityId: defEntity.GetId(), groupId: defEntity.GetGroupId()},
+				attackResult.ElementType, 0, isHost)
 		}
 	}
 }
@@ -960,8 +962,8 @@ func (g *Game) handleAbilityInvoke(player *model.Player, entry *proto.AbilityInv
 	if entity == nil {
 		return
 	}
-	if entry.Head.LocalId != 0 {
-		logger.Debug("[LocalAbilityInvoke] type: %v, localId: %v, entityId: %v, uid: %v", entry.ArgumentType, entry.Head.LocalId, entity.GetId(), player.PlayerId)
+	logger.Debug("[LocalAbilityInvoke] type: %v, localId: %v, entityId: %v, uid: %v", entry.ArgumentType, entry.Head.LocalId, entity.GetId(), player.PlayerId)
+	if strings.Contains(entry.ArgumentType.String(), "ACTION") || entry.ArgumentType == proto.AbilityInvokeArgument_ABILITY_NONE {
 		ability := entity.GetAbility(entry.Head.InstancedAbilityId)
 		if ability == nil {
 			logger.Error("get ability is nil, instancedAbilityId: %v, entityId: %v, uid: %v", entry.Head.InstancedAbilityId, entity.GetId(), player.PlayerId)
@@ -972,57 +974,99 @@ func (g *Game) handleAbilityInvoke(player *model.Player, entry *proto.AbilityInv
 			logger.Error("get ability data config is nil, abilityName: %v", ability.abilityName)
 			return
 		}
-		if entry.ArgumentType == proto.AbilityInvokeArgument_ABILITY_NONE || strings.Contains(entry.ArgumentType.String(), "ACTION") {
-			actionDataConfig := abilityDataConfig.GetActionDataByLocalId(entry.Head.LocalId)
-			if actionDataConfig == nil {
-				logger.Error("get action data config is nil, localId: %v", entry.Head.LocalId)
-				return
-			}
-			entity.AbilityAction(ability, actionDataConfig, entity)
-		} else if strings.Contains(entry.ArgumentType.String(), "MIXIN") {
-			mixinDataConfig := abilityDataConfig.GetMixinDataByLocalId(entry.Head.LocalId)
-			if mixinDataConfig == nil {
-				logger.Error("get mixin data config is nil, localId: %v", entry.Head.LocalId)
-				return
-			}
-		} else {
-			logger.Error("???")
-		}
-		return
-	}
-	switch entry.ArgumentType {
-	case proto.AbilityInvokeArgument_ABILITY_META_OVERRIDE_PARAM:
-		abilityScalarValueEntry := new(proto.AbilityScalarValueEntry)
-		err := pb.Unmarshal(entry.AbilityData, abilityScalarValueEntry)
-		if err != nil {
-			logger.Error("parse AbilityScalarValueEntry error: %v", err)
+		actionDataConfig := abilityDataConfig.GetActionDataByLocalId(entry.Head.LocalId)
+		if actionDataConfig == nil {
+			logger.Error("get action data config is nil, localId: %v", entry.Head.LocalId)
 			return
 		}
+		entity.AbilityAction(ability, actionDataConfig, entity)
+	} else if strings.Contains(entry.ArgumentType.String(), "MIXIN") {
 		ability := entity.GetAbility(entry.Head.InstancedAbilityId)
 		if ability == nil {
 			logger.Error("get ability is nil, instancedAbilityId: %v, entityId: %v, uid: %v", entry.Head.InstancedAbilityId, entity.GetId(), player.PlayerId)
 			return
 		}
-		if abilityScalarValueEntry.ValueType != proto.AbilityScalarType_ABILITY_SCALAR_TYPE_FLOAT {
-			logger.Error("override param type not support, type: %v, uid: %v", abilityScalarValueEntry.ValueType, player.PlayerId)
+		abilityDataConfig := gdconf.GetAbilityDataByName(ability.abilityName)
+		if abilityDataConfig == nil {
+			logger.Error("get ability data config is nil, abilityName: %v", ability.abilityName)
 			return
 		}
-		key := abilityScalarValueEntry.Key.GetHash()
-		value := abilityScalarValueEntry.Value.(*proto.AbilityScalarValueEntry_FloatValue).FloatValue
-		ability.abilitySpecialOverrideMap[key] = value
-	case proto.AbilityInvokeArgument_ABILITY_META_REINIT_OVERRIDEMAP:
-		reInitOverrideMap := new(proto.AbilityMetaReInitOverrideMap)
-		err := pb.Unmarshal(entry.AbilityData, reInitOverrideMap)
-		if err != nil {
-			logger.Error("parse AbilityMetaReInitOverrideMap error: %v", err)
+		mixinDataConfig := abilityDataConfig.GetMixinDataByLocalId(entry.Head.LocalId)
+		if mixinDataConfig == nil {
+			logger.Error("get mixin data config is nil, localId: %v", entry.Head.LocalId)
 			return
 		}
-		ability := entity.GetAbility(entry.Head.InstancedAbilityId)
-		if ability == nil {
-			logger.Error("get ability is nil, instancedAbilityId: %v, entityId: %v, uid: %v", entry.Head.InstancedAbilityId, entity.GetId(), player.PlayerId)
-			return
-		}
-		for _, abilityScalarValueEntry := range reInitOverrideMap.OverrideMap {
+		entity.AbilityMixin(ability, mixinDataConfig, entity)
+	} else if strings.Contains(entry.ArgumentType.String(), "META") {
+		switch entry.ArgumentType {
+		case proto.AbilityInvokeArgument_ABILITY_META_ADD_NEW_ABILITY:
+			addAbility := new(proto.AbilityMetaAddAbility)
+			err := pb.Unmarshal(entry.AbilityData, addAbility)
+			if err != nil {
+				logger.Error("parse AbilityMetaAddAbility error: %v", err)
+				return
+			}
+			abilityNameHash := addAbility.Ability.AbilityName.GetHash()
+			if abilityNameHash == 0 {
+				logger.Error("ability name hash is 0, ability: %+v, entityId: %v, uid: %v", addAbility.Ability, entity.GetId(), player.PlayerId)
+				return
+			}
+			abilityDataConfig := gdconf.GetAbilityDataByHash(abilityNameHash)
+			if abilityDataConfig == nil {
+				logger.Error("get abilityDataConfig is nil, abilityNameHash: %v", abilityNameHash)
+				return
+			}
+			entity.AddAbility(abilityDataConfig.AbilityName, addAbility.Ability.InstancedAbilityId)
+		case proto.AbilityInvokeArgument_ABILITY_META_MODIFIER_CHANGE:
+			modifierChange := new(proto.AbilityMetaModifierChange)
+			err := pb.Unmarshal(entry.AbilityData, modifierChange)
+			if err != nil {
+				logger.Error("parse AbilityMetaModifierChange error: %v", err)
+				return
+			}
+			if modifierChange.Action == proto.ModifierAction_ADDED {
+				ability := entity.GetAbility(entry.Head.InstancedAbilityId)
+				if ability == nil {
+					logger.Error("get ability is nil, instancedAbilityId: %v, entityId: %v, uid: %v", entry.Head.InstancedAbilityId, entity.GetId(), player.PlayerId)
+					return
+				}
+				entity.AddModifier(ability, entry.Head.InstancedModifierId, uint32(entry.Head.ModifierConfigLocalId))
+			} else if modifierChange.Action == proto.ModifierAction_REMOVED {
+				entity.RemoveModifier(entry.Head.InstancedModifierId)
+			}
+		case proto.AbilityInvokeArgument_ABILITY_META_REINIT_OVERRIDEMAP:
+			reInitOverrideMap := new(proto.AbilityMetaReInitOverrideMap)
+			err := pb.Unmarshal(entry.AbilityData, reInitOverrideMap)
+			if err != nil {
+				logger.Error("parse AbilityMetaReInitOverrideMap error: %v", err)
+				return
+			}
+			ability := entity.GetAbility(entry.Head.InstancedAbilityId)
+			if ability == nil {
+				logger.Error("get ability is nil, instancedAbilityId: %v, entityId: %v, uid: %v", entry.Head.InstancedAbilityId, entity.GetId(), player.PlayerId)
+				return
+			}
+			for _, abilityScalarValueEntry := range reInitOverrideMap.OverrideMap {
+				if abilityScalarValueEntry.ValueType != proto.AbilityScalarType_ABILITY_SCALAR_TYPE_FLOAT {
+					logger.Error("override param type not support, type: %v, uid: %v", abilityScalarValueEntry.ValueType, player.PlayerId)
+					return
+				}
+				key := abilityScalarValueEntry.Key.GetHash()
+				value := abilityScalarValueEntry.Value.(*proto.AbilityScalarValueEntry_FloatValue).FloatValue
+				ability.abilitySpecialOverrideMap[key] = value
+			}
+		case proto.AbilityInvokeArgument_ABILITY_META_OVERRIDE_PARAM:
+			abilityScalarValueEntry := new(proto.AbilityScalarValueEntry)
+			err := pb.Unmarshal(entry.AbilityData, abilityScalarValueEntry)
+			if err != nil {
+				logger.Error("parse AbilityScalarValueEntry error: %v", err)
+				return
+			}
+			ability := entity.GetAbility(entry.Head.InstancedAbilityId)
+			if ability == nil {
+				logger.Error("get ability is nil, instancedAbilityId: %v, entityId: %v, uid: %v", entry.Head.InstancedAbilityId, entity.GetId(), player.PlayerId)
+				return
+			}
 			if abilityScalarValueEntry.ValueType != proto.AbilityScalarType_ABILITY_SCALAR_TYPE_FLOAT {
 				logger.Error("override param type not support, type: %v, uid: %v", abilityScalarValueEntry.ValueType, player.PlayerId)
 				return
@@ -1031,40 +1075,7 @@ func (g *Game) handleAbilityInvoke(player *model.Player, entry *proto.AbilityInv
 			value := abilityScalarValueEntry.Value.(*proto.AbilityScalarValueEntry_FloatValue).FloatValue
 			ability.abilitySpecialOverrideMap[key] = value
 		}
-	case proto.AbilityInvokeArgument_ABILITY_META_ADD_NEW_ABILITY:
-		addAbility := new(proto.AbilityMetaAddAbility)
-		err := pb.Unmarshal(entry.AbilityData, addAbility)
-		if err != nil {
-			logger.Error("parse AbilityMetaAddAbility error: %v", err)
-			return
-		}
-		abilityNameHash := addAbility.Ability.AbilityName.GetHash()
-		if abilityNameHash == 0 {
-			logger.Error("ability name hash is 0, ability: %+v, entityId: %v, uid: %v", addAbility.Ability, entity.GetId(), player.PlayerId)
-			return
-		}
-		abilityDataConfig := gdconf.GetAbilityDataByHash(abilityNameHash)
-		if abilityDataConfig == nil {
-			logger.Error("get abilityDataConfig is nil, abilityNameHash: %v", abilityNameHash)
-			return
-		}
-		entity.AddAbility(abilityDataConfig.AbilityName, addAbility.Ability.InstancedAbilityId)
-	case proto.AbilityInvokeArgument_ABILITY_META_MODIFIER_CHANGE:
-		modifierChange := new(proto.AbilityMetaModifierChange)
-		err := pb.Unmarshal(entry.AbilityData, modifierChange)
-		if err != nil {
-			logger.Error("parse AbilityMetaModifierChange error: %v", err)
-			return
-		}
-		if modifierChange.Action == proto.ModifierAction_ADDED {
-			ability := entity.GetAbility(entry.Head.InstancedAbilityId)
-			if ability == nil {
-				logger.Error("get ability is nil, instancedAbilityId: %v, entityId: %v, uid: %v", entry.Head.InstancedAbilityId, entity.GetId(), player.PlayerId)
-				return
-			}
-			entity.AddModifier(ability, entry.Head.InstancedModifierId, uint32(entry.Head.ModifierConfigLocalId))
-		} else if modifierChange.Action == proto.ModifierAction_REMOVED {
-			entity.RemoveModifier(entry.Head.InstancedModifierId)
-		}
+	} else {
+		logger.Error("???")
 	}
 }
