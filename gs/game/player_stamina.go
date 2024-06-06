@@ -114,14 +114,19 @@ func (g *Game) RestoreCountStaminaHandler(player *model.Player) {
 			continue
 		}
 		// 获取载具配置表
-		vehicleDataConfig := gdconf.GetVehicleDataById(int32(gadgetVehicleEntity.GetVehicleId()))
-		if vehicleDataConfig == nil {
-			logger.Error("vehicle config error, vehicleId: %v", gadgetVehicleEntity.GetVehicleId())
+		gadgetDataConfig := gdconf.GetGadgetDataById(int32(gadgetVehicleEntity.GetGadgetId()))
+		if gadgetDataConfig == nil {
+			logger.Error("get gadget data config is nil, gadgetId: %v", gadgetVehicleEntity.GetGadgetId())
+			continue
+		}
+		gadgetJsonConfig := gdconf.GetGadgetJsonConfigByName(gadgetDataConfig.JsonName)
+		if gadgetJsonConfig == nil {
+			logger.Error("get gadget json config is nil, name: %v", gadgetDataConfig.JsonName)
 			continue
 		}
 		restoreDelay := gadgetVehicleEntity.GetRestoreDelay()
 		// 做个限制不然一直加就panic了
-		if restoreDelay < uint8(vehicleDataConfig.ConfigGadgetVehicle.Vehicle.Stamina.StaminaRecoverWaitTime*10) {
+		if restoreDelay < uint8(gadgetJsonConfig.Vehicle.Stamina.StaminaRecoverWaitTime*10) {
 			gadgetVehicleEntity.SetRestoreDelay(restoreDelay + 1)
 		}
 	}
@@ -219,16 +224,21 @@ func (g *Game) UpdateVehicleStamina(player *model.Player, entity IEntity, stamin
 		return
 	}
 	// 获取载具配置表
-	vehicleDataConfig := gdconf.GetVehicleDataById(int32(gadgetVehicleEntity.GetVehicleId()))
-	if vehicleDataConfig == nil {
-		logger.Error("vehicle config error, vehicleId: %v", gadgetVehicleEntity.GetVehicleId())
+	gadgetDataConfig := gdconf.GetGadgetDataById(int32(gadgetVehicleEntity.GetGadgetId()))
+	if gadgetDataConfig == nil {
+		logger.Error("get gadget data config is nil, gadgetId: %v", gadgetVehicleEntity.GetGadgetId())
+		return
+	}
+	gadgetJsonConfig := gdconf.GetGadgetJsonConfigByName(gadgetDataConfig.JsonName)
+	if gadgetJsonConfig == nil {
+		logger.Error("get gadget json config is nil, name: %v", gadgetDataConfig.JsonName)
 		return
 	}
 	// 添加的耐力大于0为恢复
 	if staminaCost > 0 {
 		// 耐力延迟1.5s(15 ticks)恢复 动作状态为加速将立刻恢复耐力
 		restoreDelay := gadgetVehicleEntity.GetRestoreDelay()
-		if restoreDelay < uint8(vehicleDataConfig.ConfigGadgetVehicle.Vehicle.Stamina.StaminaRecoverWaitTime*10) && staminaInfo.State != proto.MotionState_MOTION_SKIFF_POWERED_DASH {
+		if restoreDelay < uint8(gadgetJsonConfig.Vehicle.Stamina.StaminaRecoverWaitTime*10) && staminaInfo.State != proto.MotionState_MOTION_SKIFF_POWERED_DASH {
 			return // 不恢复耐力
 		}
 	} else {

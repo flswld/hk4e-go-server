@@ -28,8 +28,9 @@ func (g *GameDataConfig) loadGadgetLuaConfigLoop(path string) {
 	}
 	for _, file := range fileList {
 		fileName := file.Name()
+		filePath := path + "/" + fileName
 		if file.IsDir() {
-			g.loadGadgetLuaConfigLoop(path + "/" + fileName)
+			g.loadGadgetLuaConfigLoop(filePath)
 		}
 		split := strings.Split(fileName, ".")
 		if split[len(split)-1] != "lua" {
@@ -39,9 +40,9 @@ func (g *GameDataConfig) loadGadgetLuaConfigLoop(path string) {
 			continue
 		}
 		gadgetLuaName := split[0]
-		fileData, err := os.ReadFile(path + "/" + fileName)
+		fileData, err := os.ReadFile(filePath)
 		if err != nil {
-			info := fmt.Sprintf("open file error: %v, path: %v", err, path+"/"+fileName)
+			info := fmt.Sprintf("open file error: %v", err)
 			panic(info)
 		}
 		if fileData[0] == 0xEF && fileData[1] == 0xBB && fileData[2] == 0xBF {
@@ -59,7 +60,10 @@ func GetGadgetLuaConfigByName(name string) *GadgetLuaConfig {
 		return nil
 	}
 	if gadgetLuaConfig.LuaState == nil {
-		luaState := newLuaState(gadgetLuaConfig.LuaStr)
+		luaState, err := newLuaState(gadgetLuaConfig.LuaStr)
+		if err != nil {
+			logger.Error("lua parse error: %v, name: %v", err, name)
+		}
 		scriptLib := luaState.NewTable()
 		luaState.SetGlobal("ScriptLib", scriptLib)
 		for _, scriptLibFunc := range SCRIPT_LIB_FUNC_LIST {

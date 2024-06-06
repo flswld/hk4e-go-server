@@ -232,7 +232,7 @@ func (g *Game) handleEvtBeingHit(player *model.Player, scene *Scene, hitInfo *pr
 			logger.Error("get gadget data config is nil, gadgetId: %v", iGadgetEntity.GetGadgetId())
 			return
 		}
-		logger.Debug("[EvtBeingHit] GadgetData: %+v, EntityId: %v, uid: %v", gadgetDataConfig, defEntity.GetId(), player.PlayerId)
+		logger.Debug("[EvtBeingHit] GadgetData: %+v, entityId: %v, uid: %v", gadgetDataConfig, defEntity.GetId(), player.PlayerId)
 		if gadgetDataConfig.ServerLuaScript != "" {
 			gadgetLuaConfig := gdconf.GetGadgetLuaConfigByName(gadgetDataConfig.ServerLuaScript)
 			if gadgetLuaConfig == nil {
@@ -962,7 +962,7 @@ func (g *Game) handleAbilityInvoke(player *model.Player, entry *proto.AbilityInv
 	if entity == nil {
 		return
 	}
-	logger.Debug("[LocalAbilityInvoke] type: %v, localId: %v, entityId: %v, uid: %v", entry.ArgumentType, entry.Head.LocalId, entity.GetId(), player.PlayerId)
+	// logger.Debug("[LocalAbilityInvoke] type: %v, localId: %v, entityId: %v, uid: %v", entry.ArgumentType, entry.Head.LocalId, entity.GetId(), player.PlayerId)
 	if strings.Contains(entry.ArgumentType.String(), "ACTION") || entry.ArgumentType == proto.AbilityInvokeArgument_ABILITY_NONE {
 		ability := entity.GetAbility(entry.Head.InstancedAbilityId)
 		if ability == nil {

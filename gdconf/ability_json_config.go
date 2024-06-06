@@ -206,21 +206,25 @@ func (g *GameDataConfig) loadAbilityJsonConfigLoop(path string) {
 	}
 	for _, file := range fileList {
 		fileName := file.Name()
+		filePath := path + "/" + fileName
 		if file.IsDir() {
-			g.loadAbilityJsonConfigLoop(path + "/" + fileName)
+			g.loadAbilityJsonConfigLoop(filePath)
 		}
 		if split := strings.Split(fileName, "."); split[len(split)-1] != "json" {
 			continue
 		}
-		fileData, err := os.ReadFile(path + "/" + fileName)
+		fileData, err := os.ReadFile(filePath)
 		if err != nil {
-			info := fmt.Sprintf("open file error: %v, path: %v", err, path+"/"+fileName)
+			info := fmt.Sprintf("open file error: %v", err)
 			panic(info)
+		}
+		if fileData[0] == 0xEF && fileData[1] == 0xBB && fileData[2] == 0xBF {
+			fileData = fileData[3:]
 		}
 		var abilityJsonConfigList []*AbilityJsonConfig = nil
 		err = hjson.Unmarshal(fileData, &abilityJsonConfigList)
 		if err != nil {
-			logger.Info("parse file error: %v, path: %v", err, path+"/"+fileName)
+			logger.Info("parse file error: %v, path: %v", err, filePath)
 			continue
 		}
 		for _, abilityJsonConfig := range abilityJsonConfigList {

@@ -72,8 +72,11 @@ func (g *GameDataConfig) loadMonsterData() {
 	for _, monsterData := range monsterDataList {
 		fileData, err := os.ReadFile(g.jsonPrefix + "monster/" + monsterData.ConfigJson + ".json")
 		if err != nil {
-			info := fmt.Sprintf("open file error: %v, monsterId: %v", err, monsterData.MonsterId)
+			info := fmt.Sprintf("open file error: %v", err)
 			panic(info)
+		}
+		if fileData[0] == 0xEF && fileData[1] == 0xBB && fileData[2] == 0xBF {
+			fileData = fileData[3:]
 		}
 		configAbilityJson := new(ConfigAbilityJson)
 		err = hjson.Unmarshal(fileData, configAbilityJson)

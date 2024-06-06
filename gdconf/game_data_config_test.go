@@ -47,6 +47,9 @@ func CheckJsonLoop(path string, errorJsonFileList *[]string, totalJsonFileCount 
 			logger.Error("open file error: %v", err)
 			continue
 		}
+		if fileData[0] == 0xEF && fileData[1] == 0xBB && fileData[2] == 0xBF {
+			fileData = fileData[3:]
+		}
 		var obj any
 		err = hjson.Unmarshal(fileData, &obj)
 		if err != nil {

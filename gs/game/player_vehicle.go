@@ -86,7 +86,7 @@ func (g *Game) VehicleInteractReq(player *model.Player, payloadMsg pb.Message) {
 	}
 	// 判断实体类型是否为载具
 	_, ok := entity.(*GadgetVehicleEntity)
-	if ok {
+	if !ok {
 		logger.Error("vehicle entity error, entity: %v", entity)
 		g.SendError(cmd.VehicleInteractRsp, player, &proto.VehicleInteractRsp{}, proto.Retcode_RET_GADGET_NOT_VEHICLE)
 		return
@@ -120,7 +120,7 @@ func (g *Game) VehicleDestroyMotion(player *model.Player, entity IEntity, state 
 	// 状态等于 MOTION_STATE_DESTROY_VEHICLE 代表请求销毁
 	if state == proto.MotionState_MOTION_DESTROY_VEHICLE {
 		gadgetVehicleEntity := entity.(*GadgetVehicleEntity)
-		g.DestroyVehicleEntity(player, scene, gadgetVehicleEntity.GetVehicleId(), entity.GetId())
+		g.DestroyVehicleEntity(player, scene, gadgetVehicleEntity.GetGadgetId(), entity.GetId())
 	}
 }
 
@@ -139,7 +139,7 @@ func (g *Game) IsPlayerInVehicle(player *model.Player, entity IEntity) bool {
 }
 
 // DestroyVehicleEntity 删除载具实体
-func (g *Game) DestroyVehicleEntity(player *model.Player, scene *Scene, vehicleId uint32, entityId uint32) {
+func (g *Game) DestroyVehicleEntity(player *model.Player, scene *Scene, gadgetId uint32, entityId uint32) {
 	entity := scene.GetEntity(entityId)
 	if entity == nil {
 		return
@@ -151,7 +151,7 @@ func (g *Game) DestroyVehicleEntity(player *model.Player, scene *Scene, vehicleI
 	}
 	// 目前原神仅有一种载具 多载具目前理论上是兼容了 到时候有问题再改
 	// 确保载具Id为将要创建的 (每种载具允许存在1个)
-	if gadgetVehicleEntity.GetVehicleId() != vehicleId {
+	if gadgetVehicleEntity.GetGadgetId() != gadgetId {
 		return
 	}
 	// 该载具是否为此玩家的
@@ -169,7 +169,7 @@ func (g *Game) DestroyVehicleEntity(player *model.Player, scene *Scene, vehicleI
 	scene.DestroyEntity(entity.GetId())
 	g.RemoveSceneEntityNotifyBroadcast(scene, proto.VisionType_VISION_MISS, []uint32{entity.GetId()}, 0)
 	// 删除玩家载具在线数据
-	delete(player.VehicleInfo.CreateEntityIdMap, vehicleId)
+	delete(player.VehicleInfo.CreateEntityIdMap, gadgetId)
 }
 
 // EnterVehicle 进入载具
@@ -179,12 +179,17 @@ func (g *Game) EnterVehicle(player *model.Player, entity IEntity, avatarGuid uin
 		return
 	}
 	// 获取载具配置表
-	vehicleDataConfig := gdconf.GetVehicleDataById(int32(gadgetVehicleEntity.GetVehicleId()))
-	if vehicleDataConfig == nil {
-		logger.Error("vehicle config error, vehicleId: %v", gadgetVehicleEntity.GetVehicleId())
+	gadgetDataConfig := gdconf.GetGadgetDataById(int32(gadgetVehicleEntity.GetGadgetId()))
+	if gadgetDataConfig == nil {
+		logger.Error("get gadget data config is nil, gadgetId: %v", gadgetVehicleEntity.GetGadgetId())
 		return
 	}
-	maxSlot := int(vehicleDataConfig.ConfigGadgetVehicle.Vehicle.MaxSeatCount)
+	gadgetJsonConfig := gdconf.GetGadgetJsonConfigByName(gadgetDataConfig.JsonName)
+	if gadgetJsonConfig == nil {
+		logger.Error("get gadget json config is nil, name: %v", gadgetDataConfig.JsonName)
+		return
+	}
+	maxSlot := int(gadgetJsonConfig.Vehicle.MaxSeatCount)
 	// 判断载具是否已满
 	if len(gadgetVehicleEntity.GetMemberMap()) >= maxSlot {
 		g.SendError(cmd.VehicleInteractRsp, player, &proto.VehicleInteractRsp{}, proto.Retcode_RET_VEHICLE_SLOT_OCCUPIED)

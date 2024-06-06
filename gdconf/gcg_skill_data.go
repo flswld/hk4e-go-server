@@ -51,8 +51,11 @@ func (g *GameDataConfig) loadGCGSkillData() {
 		// 技能效果Config
 		fileData, err := os.ReadFile(g.jsonPrefix + "gcg_card_skill/" + gcgSkillData.ConfigJson + ".json")
 		if err != nil {
-			info := fmt.Sprintf("open file error: %v, SkillId: %v", err, gcgSkillData.SkillId)
+			info := fmt.Sprintf("open file error: %v", err)
 			panic(info)
+		}
+		if fileData[0] == 0xEF && fileData[1] == 0xBB && fileData[2] == 0xBF {
+			fileData = fileData[3:]
 		}
 		configSkillEffect := new(ConfigSkillEffect)
 		err = hjson.Unmarshal(fileData, configSkillEffect)

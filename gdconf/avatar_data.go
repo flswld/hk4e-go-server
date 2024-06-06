@@ -78,8 +78,11 @@ func (g *GameDataConfig) loadAvatarData() {
 	for _, avatarData := range avatarDataList {
 		fileData, err := os.ReadFile(g.jsonPrefix + "avatar/" + avatarData.ConfigJson + ".json")
 		if err != nil {
-			info := fmt.Sprintf("open file error: %v, avatarId: %v", err, avatarData.AvatarId)
+			info := fmt.Sprintf("open file error: %v", err)
 			panic(info)
+		}
+		if fileData[0] == 0xEF && fileData[1] == 0xBB && fileData[2] == 0xBF {
+			fileData = fileData[3:]
 		}
 		configAbilityJson := new(ConfigAbilityJson)
 		err = hjson.Unmarshal(fileData, configAbilityJson)

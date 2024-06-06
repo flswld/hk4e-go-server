@@ -197,7 +197,7 @@ func (g *Game) ScenePlayerLocationNotify(world *World) {
 							Z: float32(entity.GetPos().Z),
 						},
 						UidList:  make([]uint32, 0, len(gadgetVehicleEntity.GetMemberMap())),
-						GadgetId: gadgetVehicleEntity.GetVehicleId(),
+						GadgetId: gadgetVehicleEntity.GetGadgetId(),
 						MaxHp:    entity.GetFightProp()[constant.FIGHT_PROP_MAX_HP],
 					}
 					for _, uid := range gadgetVehicleEntity.GetMemberMap() {

@@ -38,6 +38,11 @@ type GameDataConfig struct {
 	SceneLuaStateLruMap        map[int32]*LuaStateLru                     // 场景LUA虚拟机LRU内存淘汰
 	TriggerDataMap             map[int32]*TriggerData                     // 场景区域触发器
 	ScenePointJsonConfigMap    map[int32]*ScenePointJsonConfig            // 场景传送点JSON配置
+	AbilityDataMap             map[string]*AbilityData                    // 能力
+	AbilityDataHashMap         map[uint32]*AbilityData                    // 能力哈希
+	DefaultAbilityNameList     []string                                   // 默认能力
+	GadgetJsonConfigMap        map[string]*ConfigGadget                   // 物件JSON配置
+	GadgetLuaConfigMap         map[string]*GadgetLuaConfig                // 物件LUA配置
 	SceneTagDataMap            map[int32]*SceneTagData                    // 场景标签
 	GatherDataMap              map[int32]*GatherData                      // 采集物
 	GatherDataPointTypeMap     map[int32]*GatherData                      // 采集物场景节点索引
@@ -69,7 +74,6 @@ type GameDataConfig struct {
 	GCGCharDataMap             map[int32]*GCGCharData                     // 七圣召唤角色卡牌
 	GCGSkillDataMap            map[int32]*GCGSkillData                    // 七圣召唤卡牌技能
 	GachaDropGroupDataMap      map[int32]*GachaDropGroupData              // 卡池掉落组 临时的
-	VehicleDataMap             map[int32]*VehicleData                     // 载具
 	OpenStateDataMap           map[int32]*OpenStateData                   // 开放状态
 	WeatherDataMap             map[int32]*WeatherData                     // 天气
 	WeatherDataJsonMap         map[int32]map[int32]*WeatherData           // 天气 json的天气区域id格式
@@ -83,10 +87,6 @@ type GameDataConfig struct {
 	WeaponCurveDataMap         map[int32]*WeaponCurveData                 // 武器曲线
 	ReliquaryLevelDataMap      map[int32]map[int32]*ReliquaryLevelData    // 圣遗物等级
 	MonsterCurveDataMap        map[int32]*MonsterCurveData                // 怪物曲线
-	AbilityDataMap             map[string]*AbilityData                    // 能力
-	AbilityDataHashMap         map[uint32]*AbilityData                    // 能力哈希
-	GadgetJsonConfigMap        map[string]*ConfigAbilityJson              // 物件JSON配置
-	GadgetLuaConfigMap         map[string]*GadgetLuaConfig                // 物件LUA配置
 }
 
 func InitGameDataConfig() {
@@ -160,6 +160,10 @@ func (g *GameDataConfig) load(loadSceneLua bool) {
 	g.loadSceneLuaConfig(loadSceneLua) // 场景LUA配置
 	g.loadTriggerData()                // 场景区域触发器
 	g.loadScenePointJsonConfig()       // 场景传送点JSON配置
+	g.loadAbilityJsonConfig()          // 能力JSON配置
+	g.loadDefaultAbilityJsonConfig()   // 默认能力
+	g.loadGadgetJsonConfig()           // 物件JSON配置
+	g.loadGadgetLuaConfig()            // 物件LUA配置
 	g.loadSceneTagData()               // 场景标签
 	g.loadGatherData()                 // 采集物
 	g.loadWorldAreaData()              // 世界区域
@@ -188,7 +192,6 @@ func (g *GameDataConfig) load(loadSceneLua bool) {
 	g.loadGCGCharData()                // 七圣召唤角色卡牌
 	g.loadGCGSkillData()               // 七圣召唤卡牌技能
 	g.loadGachaDropGroupData()         // 卡池掉落组 临时的
-	g.loadVehicleData()                // 载具
 	g.loadOpenStateData()              // 开放状态
 	g.loadWeatherData()                // 天气
 	g.loadWeatherTemplateData()        // 天气模版
@@ -201,9 +204,6 @@ func (g *GameDataConfig) load(loadSceneLua bool) {
 	g.loadWeaponCurveData()            // 武器曲线
 	g.loadReliquaryLevelData()         // 圣遗物等级
 	g.loadMonsterCurveData()           // 怪物曲线
-	g.loadAbilityJsonConfig()          // 能力JSON配置
-	g.loadGadgetJsonConfig()           // 物件JSON配置
-	g.loadGadgetLuaConfig()            // 物件LUA配置
 }
 
 // CSV相关
@@ -395,7 +395,7 @@ func initLuaState(luaState *lua.LState) {
 	luaState.SetField(elementType, "Rock", lua.LNumber(constant.ELEMENT_TYPE_ROCK))
 }
 
-func newLuaState(luaStr string) *lua.LState {
+func newLuaState(luaStr string) (*lua.LState, error) {
 	luaState := lua.NewState(lua.Options{
 		IncludeGoStackTrace: true,
 	})
@@ -413,10 +413,10 @@ func newLuaState(luaStr string) *lua.LState {
 			err = luaState.DoString(luaStr)
 		}
 		if err != nil {
-			logger.Error("lua parse error: %v", err)
+			return luaState, err
 		}
 	}
-	return luaState
+	return luaState, nil
 }
 
 func getSceneLuaConfigTable[T any](luaState *lua.LState, tableName string, object T) bool {

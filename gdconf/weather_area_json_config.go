@@ -32,9 +32,10 @@ func (g *GameDataConfig) loadWeatherAreaJsonConfig() {
 		// 读取场景天气区域
 		fileData, err := os.ReadFile(sceneLuaPrefix + sceneIdStr + "/scene" + sceneIdStr + "_weather_areas.json")
 		if err != nil {
-			// 有些场景没有天气区域是正常情况
-			// logger.Error("open file error: %v, sceneId: %v", err, sceneId)
 			continue
+		}
+		if fileData[0] == 0xEF && fileData[1] == 0xBB && fileData[2] == 0xBF {
+			fileData = fileData[3:]
 		}
 		weatherAreaJsonConfigList := make([]*WeatherAreaJsonConfig, 0)
 		err = hjson.Unmarshal(fileData, &weatherAreaJsonConfigList)

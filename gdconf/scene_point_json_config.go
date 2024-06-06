@@ -12,33 +12,18 @@ import (
 
 // 传送点类型
 const (
-	PointTypeStrTransPointNormal       = "TransPointNormal"
-	PointTypeStrTransPointPortal       = "TransPointPortal"
-	PointTypeStrTransPointStatue       = "TransPointStatue"
-	PointTypeStrDungeonEntry           = "DungeonEntry"
-	PointTypeStrDungeonExit            = "DungeonExit"
-	PointTypeStrDungeonQuitPoint       = "DungeonQuitPoint"
-	PointTypeStrDungeonWayPoint        = "DungeonWayPoint"
-	PointTypeStrDungeonSlipRevivePoint = "DungeonSlipRevivePoint"
-	PointTypeStrSceneBuildingPoint     = "SceneBuildingPoint"
-	PointTypeStrPersonalSceneJumpPoint = "PersonalSceneJumpPoint"
-	PointTypeStrVehicleSummonPoint     = "VehicleSummonPoint"
-	PointTypeStrOther                  = "Other"
-)
-
-const (
-	PointTypeTransPointNormal = iota // X
-	PointTypeTransPointPortal
-	PointTypeTransPointStatue // X
-	PointTypeDungeonEntry     // X
-	PointTypeDungeonExit
-	PointTypeDungeonQuitPoint
-	PointTypeDungeonWayPoint
-	PointTypeDungeonSlipRevivePoint
-	PointTypeSceneBuildingPoint     // X
-	PointTypePersonalSceneJumpPoint // X
-	PointTypeVehicleSummonPoint     // X
-	PointTypeOther
+	PointTypeTransPointNormal       = "TransPointNormal"
+	PointTypeTransPointPortal       = "TransPointPortal"
+	PointTypeTransPointStatue       = "TransPointStatue"
+	PointTypeDungeonEntry           = "DungeonEntry"
+	PointTypeDungeonExit            = "DungeonExit"
+	PointTypeDungeonQuitPoint       = "DungeonQuitPoint"
+	PointTypeDungeonWayPoint        = "DungeonWayPoint"
+	PointTypeDungeonSlipRevivePoint = "DungeonSlipRevivePoint"
+	PointTypeSceneBuildingPoint     = "SceneBuildingPoint"
+	PointTypePersonalSceneJumpPoint = "PersonalSceneJumpPoint"
+	PointTypeVehicleSummonPoint     = "VehicleSummonPoint"
+	PointTypeOther                  = "Other"
 )
 
 type ScenePointJsonConfig struct {
@@ -48,8 +33,7 @@ type ScenePointJsonConfig struct {
 
 type PointData struct {
 	Id                int32     `json:"-"`
-	PointType         int       `json:"-"`
-	PointTypeStr      string    `json:"pointType"`         // 传送点类型
+	PointType         string    `json:"pointType"`         // 传送点类型
 	TranPos           *Position `json:"tranPos"`           // 传送后位置
 	TranRot           *Position `json:"tranRot"`           // 传送后朝向
 	DungeonIds        []int32   `json:"dungeonIds"`        // 地牢id列表
@@ -72,8 +56,10 @@ func (g *GameDataConfig) loadScenePointJsonConfig() {
 		sceneIdStr := strconv.Itoa(int(sceneId))
 		fileData, err := os.ReadFile(sceneLuaPrefix + sceneIdStr + "/scene" + sceneIdStr + "_point.json")
 		if err != nil {
-			logger.Info("open file error: %v, sceneId: %v", err, sceneId)
 			continue
+		}
+		if fileData[0] == 0xEF && fileData[1] == 0xBB && fileData[2] == 0xBF {
+			fileData = fileData[3:]
 		}
 		scenePointJsonConfig := new(ScenePointJsonConfig)
 		err = json.Unmarshal(fileData, scenePointJsonConfig)
@@ -89,35 +75,6 @@ func (g *GameDataConfig) loadScenePointJsonConfig() {
 				continue
 			}
 			pointData.Id = int32(pointId)
-			switch pointData.PointTypeStr {
-			case PointTypeStrTransPointNormal:
-				pointData.PointType = PointTypeTransPointNormal
-			case PointTypeStrTransPointPortal:
-				pointData.PointType = PointTypeTransPointPortal
-			case PointTypeStrTransPointStatue:
-				pointData.PointType = PointTypeTransPointStatue
-			case PointTypeStrDungeonEntry:
-				pointData.PointType = PointTypeDungeonEntry
-			case PointTypeStrDungeonExit:
-				pointData.PointType = PointTypeDungeonExit
-			case PointTypeStrDungeonQuitPoint:
-				pointData.PointType = PointTypeDungeonQuitPoint
-			case PointTypeStrDungeonWayPoint:
-				pointData.PointType = PointTypeDungeonWayPoint
-			case PointTypeStrDungeonSlipRevivePoint:
-				pointData.PointType = PointTypeDungeonSlipRevivePoint
-			case PointTypeStrSceneBuildingPoint:
-				pointData.PointType = PointTypeSceneBuildingPoint
-			case PointTypeStrPersonalSceneJumpPoint:
-				pointData.PointType = PointTypePersonalSceneJumpPoint
-			case PointTypeStrVehicleSummonPoint:
-				pointData.PointType = PointTypeVehicleSummonPoint
-			case PointTypeStrOther:
-				pointData.PointType = PointTypeOther
-			default:
-				logger.Info("unknown scene point type: %v", pointData.PointTypeStr)
-				pointData.PointType = PointTypeOther
-			}
 			scenePointJsonConfig.PointMap[int32(pointId)] = pointData
 		}
 		g.ScenePointJsonConfigMap[sceneId] = scenePointJsonConfig

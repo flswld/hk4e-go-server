@@ -54,20 +54,22 @@ func (g *GameDataConfig) loadAvatarSkillDepotData() {
 	g.AvatarSkillDepotDataMap = make(map[int32]*AvatarSkillDepotData)
 	avatarSkillDepotDataList := make([]*AvatarSkillDepotData, 0)
 	readTable[AvatarSkillDepotData](g.txtPrefix+"AvatarSkillDepotData.txt", &avatarSkillDepotDataList)
-	playerElementsFilePath := g.jsonPrefix + "ability_group/AbilityGroup_Other_PlayerElementAbility.json"
-	playerElementsFile, err := os.ReadFile(playerElementsFilePath)
+	filePath := g.jsonPrefix + "ability_group/AbilityGroup_Other_PlayerElementAbility.json"
+	fileData, err := os.ReadFile(filePath)
 	if err != nil {
 		info := fmt.Sprintf("open file error: %v", err)
 		panic(info)
 	}
+	if fileData[0] == 0xEF && fileData[1] == 0xBB && fileData[2] == 0xBF {
+		fileData = fileData[3:]
+	}
 	playerAbilities := make(map[string]*ConfigAbilityJson)
-	err = hjson.Unmarshal(playerElementsFile, &playerAbilities)
+	err = hjson.Unmarshal(fileData, &playerAbilities)
 	if err != nil {
 		info := fmt.Sprintf("parse file error: %v", err)
 		panic(info)
 	}
 	logger.Info("load %v PlayerAbilities", len(playerAbilities))
-
 	for _, avatarSkillDepotData := range avatarSkillDepotDataList {
 		// 把全部技能数据放进一个列表里 以后要是没用到或者不需要的话就可以删了
 		avatarSkillDepotData.Skills = make([]int32, 0)

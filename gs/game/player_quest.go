@@ -523,11 +523,6 @@ func (g *Game) TriggerQuest(player *model.Player, cond int32, complexParam strin
 				dbQuest.ForceFinishQuest(quest.QuestId)
 				updateQuestIdList = append(updateQuestIdList, quest.QuestId)
 			case constant.QUEST_FINISH_COND_TYPE_SKILL:
-				// TODO 实在不知道客户端要在怎样的情况下 才会发长按10006这个技能 这里先临时改表解决了
-				// 是走ability体系计算出来的 操了
-				if quest.QuestId == 35303 {
-					questCond.Param[0] = 10067
-				}
 				// 使用技能 参数1:技能id
 				ok := matchParamEqual(questCond.Param, param, 1)
 				if !ok {

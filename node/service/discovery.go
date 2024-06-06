@@ -246,11 +246,12 @@ func (s *DiscoveryService) CancelServer(ctx context.Context, req *api.CancelServ
 	if !exist {
 		return nil, errors.New("server type not exist")
 	}
-	_, exist = instMap.Load(req.AppId)
+	serverInstance, exist := instMap.Load(req.AppId)
 	if !exist {
 		logger.Error("recv not exist server cancel, server type: %v, appid: %v", req.ServerType, req.AppId)
 		return nil, errors.New("server not exist")
 	}
+	s.handleServerOffline(serverInstance.(*ServerInstance))
 	instMap.Delete(req.AppId)
 	return &api.NullMsg{}, nil
 }
@@ -543,8 +544,10 @@ func (s *DiscoveryService) removeDeadServer() {
 			instMap.Range(func(appid, inst any) bool {
 				serverInstance := inst.(*ServerInstance)
 				if nowTime-serverInstance.lastAliveTime > 30 {
+					logger.Warn("remove dead server, server type: %v, appid: %v, last alive time: %v",
+						serverInstance.serverType, serverInstance.appId, serverInstance.lastAliveTime)
 					instMap.Delete(appid)
-					s.handleServerDead(serverInstance)
+					s.handleServerOffline(serverInstance)
 				}
 				return true
 			})
@@ -552,9 +555,7 @@ func (s *DiscoveryService) removeDeadServer() {
 	}
 }
 
-func (s *DiscoveryService) handleServerDead(serverInstance *ServerInstance) {
-	logger.Warn("remove dead server, server type: %v, appid: %v, last alive time: %v",
-		serverInstance.serverType, serverInstance.appId, serverInstance.lastAliveTime)
+func (s *DiscoveryService) handleServerOffline(serverInstance *ServerInstance) {
 	if serverInstance.serverType == api.GS {
 		s.globalGsOnlineMap.Range(func(uid, gsAppid any) bool {
 			if serverInstance.appId == gsAppid.(string) {

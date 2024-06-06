@@ -2119,7 +2119,7 @@ func (g *Game) PacketSceneGadgetInfoNormal(player *model.Player, entity IEntity)
 
 func (g *Game) PacketSceneGadgetInfoClient(gadgetClientEntity *GadgetClientEntity) *proto.SceneGadgetInfo {
 	sceneGadgetInfo := &proto.SceneGadgetInfo{
-		GadgetId:         gadgetClientEntity.GetConfigId(),
+		GadgetId:         gadgetClientEntity.GetGadgetId(),
 		OwnerEntityId:    gadgetClientEntity.GetOwnerEntityId(),
 		AuthorityPeerId:  1,
 		IsEnableInteract: true,
@@ -2143,8 +2143,8 @@ func (g *Game) PacketSceneGadgetInfoVehicle(gadgetVehicleEntity *GadgetVehicleEn
 		return new(proto.SceneGadgetInfo)
 	}
 	sceneGadgetInfo := &proto.SceneGadgetInfo{
-		GadgetId:         gadgetVehicleEntity.GetVehicleId(),
-		AuthorityPeerId:  WORLD_MANAGER.GetWorldById(gadgetVehicleEntity.GetWorldId()).GetPlayerPeerId(player),
+		GadgetId:         gadgetVehicleEntity.GetGadgetId(),
+		AuthorityPeerId:  gadgetVehicleEntity.GetScene().GetWorld().GetPlayerPeerId(player),
 		IsEnableInteract: true,
 		Content: &proto.SceneGadgetInfo_VehicleInfo{
 			VehicleInfo: &proto.VehicleInfo{

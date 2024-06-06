@@ -420,7 +420,7 @@ func (g *Game) GadgetInteractReq(player *model.Player, payloadMsg pb.Message) {
 			logger.Error("get gadget data config is nil, gadgetId: %v, uid: %v", entity.(IGadgetEntity).GetGadgetId(), player.PlayerId)
 			return
 		}
-		logger.Debug("[GadgetInteractReq] GadgetData: %+v, EntityId: %v, uid: %v", gadgetDataConfig, entity.GetId(), player.PlayerId)
+		logger.Debug("[GadgetInteractReq] GadgetData: %+v, entityId: %v, uid: %v", gadgetDataConfig, entity.GetId(), player.PlayerId)
 		switch gadgetDataConfig.Type {
 		case constant.GADGET_TYPE_GADGET, constant.GADGET_TYPE_EQUIP, constant.GADGET_TYPE_ENERGY_BALL:
 			// 掉落物捡起

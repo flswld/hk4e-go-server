@@ -169,13 +169,19 @@ func (g *GameDataConfig) loadGroup(group *Group, block *Block, sceneId int32, bl
 	sceneIdStr := strconv.Itoa(int(sceneId))
 	groupId := group.Id
 	groupIdStr := strconv.Itoa(int(groupId))
-	groupLuaData, err := os.ReadFile(sceneLuaPrefix + sceneIdStr + "/scene" + sceneIdStr + "_group" + groupIdStr + ".lua")
+	fileData, err := os.ReadFile(sceneLuaPrefix + sceneIdStr + "/scene" + sceneIdStr + "_group" + groupIdStr + ".lua")
 	if err != nil {
-		logger.Error("open file error: %v, sceneId: %v, blockId: %v, groupId: %v", err, sceneId, blockId, groupId)
+		logger.Error("open file error: %v", err)
 		return
 	}
-	group.LuaStr = string(groupLuaData)
-	luaState := newLuaState(group.LuaStr)
+	if fileData[0] == 0xEF && fileData[1] == 0xBB && fileData[2] == 0xBF {
+		fileData = fileData[3:]
+	}
+	group.LuaStr = string(fileData)
+	luaState, err := newLuaState(group.LuaStr)
+	if err != nil {
+		logger.Error("lua parse error: %v, groupId: %v", err, groupId)
+	}
 	// init_config
 	group.GroupInitConfig = new(GroupInitConfig)
 	ok := getSceneLuaConfigTable[*GroupInitConfig](luaState, "init_config", group.GroupInitConfig)
@@ -320,12 +326,15 @@ func (g *GameDataConfig) loadSceneLuaConfig(loadSceneLua bool) {
 	for _, sceneData := range g.SceneDataMap {
 		sceneId := sceneData.SceneId
 		sceneIdStr := strconv.Itoa(int(sceneId))
-		mainLuaData, err := os.ReadFile(sceneLuaPrefix + sceneIdStr + "/scene" + sceneIdStr + ".lua")
+		filePath := sceneLuaPrefix + sceneIdStr + "/scene" + sceneIdStr + ".lua"
+		mainLuaData, err := os.ReadFile(filePath)
 		if err != nil {
-			logger.Info("open file error: %v, sceneId: %v", err, sceneId)
 			continue
 		}
-		luaState := newLuaState(string(mainLuaData))
+		luaState, err := newLuaState(string(mainLuaData))
+		if err != nil {
+			logger.Error("lua parse error: %v, path: %v", err, filePath)
+		}
 		sceneLuaConfig := new(SceneLuaConfig)
 		sceneLuaConfig.Id = sceneId
 		// scene_config
@@ -361,12 +370,16 @@ func (g *GameDataConfig) loadSceneLuaConfig(loadSceneLua bool) {
 			}
 			block.BlockRange = blockRectList[index]
 			blockIdStr := strconv.Itoa(int(block.Id))
-			blockLuaData, err := os.ReadFile(sceneLuaPrefix + sceneIdStr + "/scene" + sceneIdStr + "_block" + blockIdStr + ".lua")
+			filePath := sceneLuaPrefix + sceneIdStr + "/scene" + sceneIdStr + "_block" + blockIdStr + ".lua"
+			blockLuaData, err := os.ReadFile(filePath)
 			if err != nil {
-				logger.Error("open file error: %v, sceneId: %v, blockId: %v", err, sceneId, blockId)
+				logger.Error("open file error: %v", err)
 				continue
 			}
-			luaState = newLuaState(string(blockLuaData))
+			luaState, err := newLuaState(string(blockLuaData))
+			if err != nil {
+				logger.Error("lua parse error: %v, path: %v", err, filePath)
+			}
 			// groups
 			block.GroupMap = make(map[int32]*Group)
 			groupList := make([]*Group, 0)
@@ -477,7 +490,10 @@ func (g *Group) GetLuaState() *lua.LState {
 		AccessTime: time.Now().UnixMilli(),
 	}
 	if g.LuaState == nil {
-		luaState := newLuaState(g.LuaStr)
+		luaState, err := newLuaState(g.LuaStr)
+		if err != nil {
+			logger.Error("lua parse error: %v, groupId: %v", err, g.Id)
+		}
 		scriptLib := luaState.NewTable()
 		luaState.SetGlobal("ScriptLib", scriptLib)
 		for _, scriptLibFunc := range SCRIPT_LIB_FUNC_LIST {

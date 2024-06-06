@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"hk4e/pkg/endec"
 	"math"
+	"strconv"
 	"time"
 
 	"hk4e/gdconf"
@@ -257,8 +258,8 @@ func (s *Scene) CreateEntityGadgetClient(pos, rot *model.Vector, entityId, confi
 				},
 				entityType:  constant.ENTITY_TYPE_GADGET,
 				visionLevel: constant.VISION_LEVEL_NORMAL,
-				configId:    configId,
 			},
+			gadgetId: configId,
 		},
 		campId:            campId,
 		campType:          campType,
@@ -274,9 +275,14 @@ func (s *Scene) CreateEntityGadgetClient(pos, rot *model.Vector, entityId, confi
 
 func (s *Scene) CreateEntityGadgetVehicle(ownerUid uint32, pos, rot *model.Vector, vehicleId uint32) uint32 {
 	// 获取载具配置表
-	vehicleDataConfig := gdconf.GetVehicleDataById(int32(vehicleId))
-	if vehicleDataConfig == nil {
-		logger.Error("vehicle config error, vehicleId: %v", vehicleId)
+	gadgetDataConfig := gdconf.GetGadgetDataById(int32(vehicleId))
+	if gadgetDataConfig == nil {
+		logger.Error("get gadget data config is nil, gadgetId: %v", vehicleId)
+		return 0
+	}
+	gadgetJsonConfig := gdconf.GetGadgetJsonConfigByName(gadgetDataConfig.JsonName)
+	if gadgetJsonConfig == nil {
+		logger.Error("get gadget json config is nil, name: %v", gadgetDataConfig.JsonName)
 		return 0
 	}
 	entityId := s.world.GetNextWorldEntityId(constant.ENTITY_TYPE_GADGET)
@@ -292,20 +298,19 @@ func (s *Scene) CreateEntityGadgetVehicle(ownerUid uint32, pos, rot *model.Vecto
 				lastMoveSceneTimeMs: 0,
 				lastMoveReliableSeq: 0,
 				fightProp: map[uint32]float32{
-					constant.FIGHT_PROP_BASE_DEFENSE: vehicleDataConfig.ConfigGadgetVehicle.Combat.Property.DefenseBase,
-					constant.FIGHT_PROP_CUR_HP:       vehicleDataConfig.ConfigGadgetVehicle.Combat.Property.HP,
-					constant.FIGHT_PROP_MAX_HP:       vehicleDataConfig.ConfigGadgetVehicle.Combat.Property.HP,
-					constant.FIGHT_PROP_CUR_ATTACK:   vehicleDataConfig.ConfigGadgetVehicle.Combat.Property.Attack,
+					constant.FIGHT_PROP_BASE_DEFENSE: gadgetJsonConfig.Combat.Property.DefenseBase,
+					constant.FIGHT_PROP_CUR_HP:       gadgetJsonConfig.Combat.Property.HP,
+					constant.FIGHT_PROP_MAX_HP:       gadgetJsonConfig.Combat.Property.HP,
+					constant.FIGHT_PROP_CUR_ATTACK:   gadgetJsonConfig.Combat.Property.Attack,
 				},
 				entityType:  constant.ENTITY_TYPE_GADGET,
 				visionLevel: constant.VISION_LEVEL_NORMAL,
 			},
+			gadgetId: vehicleId,
 		},
-		vehicleId:    vehicleId,
-		worldId:      s.world.id,
 		ownerUid:     ownerUid,
-		maxStamina:   vehicleDataConfig.ConfigGadgetVehicle.Vehicle.Stamina.StaminaUpperLimit,
-		curStamina:   vehicleDataConfig.ConfigGadgetVehicle.Vehicle.Stamina.StaminaUpperLimit,
+		maxStamina:   gadgetJsonConfig.Vehicle.Stamina.StaminaUpperLimit,
+		curStamina:   gadgetJsonConfig.Vehicle.Stamina.StaminaUpperLimit,
 		restoreDelay: 0,
 		memberMap:    make(map[uint32]uint32),
 	}
@@ -615,7 +620,7 @@ func (e *Entity) InitAbility() {
 }
 
 func (e *Entity) AddAbility(abilityName string, instancedAbilityId uint32) {
-	logger.Debug("[AddAbility] abilityName: %v, instancedAbilityId: %v, entityId: %v", abilityName, instancedAbilityId, e.GetId())
+	// logger.Debug("[AddAbility] abilityName: %v, instancedAbilityId: %v, entityId: %v", abilityName, instancedAbilityId, e.GetId())
 	_, exist := e.abilityMap[instancedAbilityId]
 	if exist {
 		logger.Error("ability already exist, abilityName: %v, entityId: %v", abilityName, e.GetId())
@@ -626,11 +631,6 @@ func (e *Entity) AddAbility(abilityName string, instancedAbilityId uint32) {
 		abilityNameHash:           uint32(endec.Hk4eAbilityHashCode(abilityName)),
 		instancedAbilityId:        instancedAbilityId,
 		abilitySpecialOverrideMap: make(map[uint32]float32),
-	}
-	abilityDataConfig := gdconf.GetAbilityDataByName(abilityName)
-	if abilityDataConfig == nil {
-		logger.Error("get ability data config is nil, abilityName: %v", abilityName)
-		return
 	}
 }
 
@@ -647,8 +647,8 @@ func (e *Entity) GetAllAbility() []*Ability {
 }
 
 func (e *Entity) AddModifier(ability *Ability, instancedModifierId uint32, modifierLocalId uint32) {
-	logger.Debug("[AddModifier] abilityName: %v, instancedModifierId: %v, modifierLocalId: %v, entityId: %v",
-		ability.abilityName, instancedModifierId, modifierLocalId, e.GetId())
+	// logger.Debug("[AddModifier] abilityName: %v, instancedModifierId: %v, modifierLocalId: %v, entityId: %v",
+	// 	ability.abilityName, instancedModifierId, modifierLocalId, e.GetId())
 	_, exist := e.modifierMap[instancedModifierId]
 	if exist {
 		logger.Error("modifier already exist, abilityName: %v, modifierLocalId: %v, entityId: %v", ability.abilityName, modifierLocalId, e.GetId())
@@ -660,16 +660,6 @@ func (e *Entity) AddModifier(ability *Ability, instancedModifierId uint32, modif
 		parentAbilityNameHash: ability.abilityNameHash,
 		instancedAbilityId:    ability.instancedAbilityId,
 		instancedModifierId:   instancedModifierId,
-	}
-	abilityDataConfig := gdconf.GetAbilityDataByName(ability.abilityName)
-	if abilityDataConfig == nil {
-		logger.Error("get ability data config is nil, abilityName: %v", ability.abilityName)
-		return
-	}
-	modifierDataConfig := abilityDataConfig.Modifiers.GetByLocalId(modifierLocalId)
-	if modifierDataConfig == nil {
-		logger.Error("get modifier data config is nil, modifierLocalId: %v", modifierLocalId)
-		return
 	}
 }
 
@@ -687,18 +677,8 @@ func (e *Entity) RemoveModifier(instancedModifierId uint32) {
 		logger.Error("modifier not exist, instancedModifierId: %v, entityId: %v", instancedModifierId, e.GetId())
 		return
 	}
-	logger.Debug("[RemoveModifier] abilityName: %v, modifierLocalId: %v, entityId: %v", modifier.parentAbilityName, modifier.modifierLocalId, e.GetId())
-	delete(e.modifierMap, instancedModifierId)
-	abilityDataConfig := gdconf.GetAbilityDataByName(modifier.parentAbilityName)
-	if abilityDataConfig == nil {
-		logger.Error("get ability data config is nil, abilityName: %v", modifier.parentAbilityName)
-		return
-	}
-	modifierDataConfig := abilityDataConfig.Modifiers.GetByLocalId(modifier.modifierLocalId)
-	if modifierDataConfig == nil {
-		logger.Error("get modifier data config is nil, modifierLocalId: %v", modifier.modifierLocalId)
-		return
-	}
+	// logger.Debug("[RemoveModifier] abilityName: %v, modifierLocalId: %v, entityId: %v", modifier.parentAbilityName, modifier.modifierLocalId, e.GetId())
+	delete(e.modifierMap, modifier.instancedModifierId)
 }
 
 func (a *Ability) GetDynamicFloat(abilityData *gdconf.AbilityData, dynamicFloat gdconf.DynamicFloat) float32 {
@@ -791,6 +771,43 @@ func (e *Entity) AbilityAction(ability *Ability, action *gdconf.ActionData, enti
 		}
 		staminaCost := ability.GetDynamicFloat(abilityDataConfig, action.CostStaminaRatio)
 		GAME.UpdatePlayerStamina(owner, int32(staminaCost)*-100)
+		GAME.TriggerQuest(owner, constant.QUEST_FINISH_COND_TYPE_SKILL, "", action.SkillID)
+	case "CreateGadget":
+		if !action.ByServer {
+			return
+		}
+		GAME.CreateGadget(owner, entity.GetPos(), uint32(action.GadgetID), false, 0, 0)
+	case "GenerateElemBall":
+		itemDataConfig := gdconf.GetItemDataById(action.ConfigID)
+		if itemDataConfig == nil {
+			logger.Error("get item data config is nil, itemId: %v", action.ConfigID)
+			return
+		}
+		if itemDataConfig.GadgetId == 0 {
+			return
+		}
+		abilityDataConfig := gdconf.GetAbilityDataByName(ability.abilityName)
+		if abilityDataConfig == nil {
+			logger.Error("get ability data config is nil, abilityName: %v", ability.abilityName)
+			return
+		}
+		baseEnergy := ability.GetDynamicFloat(abilityDataConfig, action.BaseEnergy)
+		ratio := ability.GetDynamicFloat(abilityDataConfig, action.Ratio)
+		totalEnergy := baseEnergy * ratio
+		for _, itemUse := range itemDataConfig.ItemUseList {
+			if itemUse.UseOption != constant.ITEM_USE_ADD_ELEM_ENERGY {
+				continue
+			}
+			if len(itemUse.UseParam) != 3 {
+				continue
+			}
+			sameEnergy, err := strconv.Atoi(itemUse.UseParam[1])
+			if err != nil {
+				continue
+			}
+			count := math.Ceil(float64(totalEnergy) / float64(sameEnergy))
+			GAME.CreateDropGadget(owner, entity.GetPos(), uint32(itemDataConfig.GadgetId), uint32(action.ConfigID), uint32(count))
+		}
 	}
 }
 
@@ -941,7 +958,7 @@ func (g *GadgetEntity) InitAbility() {
 	for configAbilityIndex, configAbility := range gadgetJsonConfig.Abilities {
 		abilityDataConfig := gdconf.GetAbilityDataByName(configAbility.AbilityName)
 		if abilityDataConfig == nil {
-			logger.Error("get ability data config is nil, abilityName: %v", gadgetDataConfig.JsonName)
+			logger.Error("get ability data config is nil, abilityName: %v", configAbility.AbilityName)
 			continue
 		}
 		instancedAbilityId := uint32(configAbilityIndex + 1)
@@ -999,21 +1016,11 @@ func (g *GadgetClientEntity) GetPropOwnerEntityId() uint32 {
 
 type GadgetVehicleEntity struct {
 	*GadgetEntity
-	vehicleId    uint32
-	worldId      uint64
 	ownerUid     uint32
 	maxStamina   float32
 	curStamina   float32
 	restoreDelay uint8             // 载具耐力回复延时
 	memberMap    map[uint32]uint32 // key:pos value:uid
-}
-
-func (g *GadgetVehicleEntity) GetVehicleId() uint32 {
-	return g.vehicleId
-}
-
-func (g *GadgetVehicleEntity) GetWorldId() uint64 {
-	return g.worldId
 }
 
 func (g *GadgetVehicleEntity) GetOwnerUid() uint32 {

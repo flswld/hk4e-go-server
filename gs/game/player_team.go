@@ -459,14 +459,34 @@ func (g *Game) PacketAvatarAbilityControlBlock(avatarId uint32, skillDepotId uin
 	}
 	abilityId := 0
 	// 默认ability
-	for _, abilityHashCode := range constant.DEFAULT_ABILITY_HASH_CODE {
+	for _, defaultAbilityName := range gdconf.GetDefaultAbilityNameList() {
 		abilityId++
 		ae := &proto.AbilityEmbryo{
 			AbilityId:               uint32(abilityId),
-			AbilityNameHash:         uint32(abilityHashCode),
+			AbilityNameHash:         uint32(endec.Hk4eAbilityHashCode(defaultAbilityName)),
 			AbilityOverrideNameHash: uint32(endec.Hk4eAbilityHashCode("Default")),
 		}
 		acb.AbilityEmbryoList = append(acb.AbilityEmbryoList, ae)
+	}
+	if SELF != nil && SELF.ClientVersion >= 400 {
+		defaultAbilityNameList := []string{
+			"Avatar_PlayerBoy_DiveStamina_Reduction",
+			"Ability_Avatar_Dive_SealEcho",
+			"Absorb_SealEcho_Bullet_01",
+			"Absorb_SealEcho_Bullet_02",
+			"Ability_Avatar_Dive_CrabShield",
+			"ActivityAbility_Absorb_Shoot",
+			"SceneAbility_DiveVolume",
+		}
+		for _, defaultAbilityName := range defaultAbilityNameList {
+			abilityId++
+			ae := &proto.AbilityEmbryo{
+				AbilityId:               uint32(abilityId),
+				AbilityNameHash:         uint32(endec.Hk4eAbilityHashCode(defaultAbilityName)),
+				AbilityOverrideNameHash: uint32(endec.Hk4eAbilityHashCode("Default")),
+			}
+			acb.AbilityEmbryoList = append(acb.AbilityEmbryoList, ae)
+		}
 	}
 	// 角色ability
 	avatarDataConfig := gdconf.GetAvatarDataById(int32(avatarId))
@@ -504,15 +524,18 @@ func (g *Game) PacketTeamAbilityControlBlock() *proto.AbilityControlBlock {
 		AbilityEmbryoList: make([]*proto.AbilityEmbryo, 0),
 	}
 	abilityId := 0
-	// 默认ability
-	for _, abilityHashCode := range constant.DEFAULT_TEAM_ABILITY_HASH_CODE {
-		abilityId++
-		ae := &proto.AbilityEmbryo{
-			AbilityId:               uint32(abilityId),
-			AbilityNameHash:         uint32(abilityHashCode),
-			AbilityOverrideNameHash: uint32(endec.Hk4eAbilityHashCode("Default")),
+	if SELF != nil && SELF.ClientVersion >= 400 {
+		// 默认ability
+		defaultTeamAbilityNameList := []string{"Ability_Avatar_Dive_Team"}
+		for _, defaultTeamAbilityName := range defaultTeamAbilityNameList {
+			abilityId++
+			ae := &proto.AbilityEmbryo{
+				AbilityId:               uint32(abilityId),
+				AbilityNameHash:         uint32(endec.Hk4eAbilityHashCode(defaultTeamAbilityName)),
+				AbilityOverrideNameHash: uint32(endec.Hk4eAbilityHashCode("Default")),
+			}
+			acb.AbilityEmbryoList = append(acb.AbilityEmbryoList, ae)
 		}
-		acb.AbilityEmbryoList = append(acb.AbilityEmbryoList, ae)
 	}
 	return acb
 }
