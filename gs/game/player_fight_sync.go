@@ -855,18 +855,16 @@ func (g *Game) EvtCreateGadgetNotify(player *model.Player, payloadMsg pb.Message
 	if ntf.InitPos == nil {
 		return
 	}
-	ok := scene.CreateEntityGadgetClient(&model.Vector{
-		X: float64(ntf.InitPos.X),
-		Y: float64(ntf.InitPos.Y),
-		Z: float64(ntf.InitPos.Z),
-	}, &model.Vector{
-		X: float64(ntf.InitEulerAngles.X),
-		Y: float64(ntf.InitEulerAngles.Y),
-		Z: float64(ntf.InitEulerAngles.Z),
-	}, ntf.EntityId, ntf.ConfigId, ntf.CampId, ntf.CampType, ntf.OwnerEntityId, ntf.TargetEntityId, ntf.PropOwnerEntityId)
-	if !ok {
+	gadgetClientEntity := scene.CreateEntityGadgetClient(
+		ntf.EntityId,
+		&model.Vector{X: float64(ntf.InitPos.X), Y: float64(ntf.InitPos.Y), Z: float64(ntf.InitPos.Z)},
+		&model.Vector{X: float64(ntf.InitEulerAngles.X), Y: float64(ntf.InitEulerAngles.Y), Z: float64(ntf.InitEulerAngles.Z)},
+		ntf.ConfigId,
+	)
+	if gadgetClientEntity == nil {
 		return
 	}
+	gadgetClientEntity.CreateGadgetClientEntity(ntf.CampId, ntf.CampType, ntf.OwnerEntityId, ntf.TargetEntityId, ntf.PropOwnerEntityId)
 	g.AddSceneEntityNotify(player, proto.VisionType_VISION_BORN, []uint32{ntf.EntityId}, true, true)
 
 	// 触发事件

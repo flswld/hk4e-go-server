@@ -425,14 +425,14 @@ func (g *Game) GadgetInteractReq(player *model.Player, payloadMsg pb.Message) {
 		case constant.GADGET_TYPE_GADGET, constant.GADGET_TYPE_EQUIP, constant.GADGET_TYPE_ENERGY_BALL:
 			// 掉落物捡起
 			interactType = proto.InteractType_INTERACT_PICK_ITEM
-			gadgetNormalEntity := entity.(*GadgetNormalEntity)
-			g.AddPlayerItem(player.PlayerId, []*ChangeItem{{ItemId: gadgetNormalEntity.GetItemId(), ChangeCount: 1}}, proto.ActionReasonType_ACTION_REASON_SUBFIELD_DROP)
+			gadgetTrifleItemEntity := entity.(*GadgetTrifleItemEntity)
+			g.AddPlayerItem(player.PlayerId, []*ChangeItem{{ItemId: gadgetTrifleItemEntity.GetItemId(), ChangeCount: 1}}, proto.ActionReasonType_ACTION_REASON_SUBFIELD_DROP)
 			g.KillEntity(player, scene, entity.GetId(), proto.PlayerDieType_PLAYER_DIE_NONE)
 		case constant.GADGET_TYPE_GATHER_OBJECT:
 			// 采集物摘取
 			interactType = proto.InteractType_INTERACT_GATHER
-			gadgetNormalEntity := entity.(*GadgetNormalEntity)
-			g.AddPlayerItem(player.PlayerId, []*ChangeItem{{ItemId: gadgetNormalEntity.GetItemId(), ChangeCount: 1}}, proto.ActionReasonType_ACTION_REASON_GATHER)
+			gadgetGatherEntity := entity.(*GadgetGatherEntity)
+			g.AddPlayerItem(player.PlayerId, []*ChangeItem{{ItemId: gadgetGatherEntity.GetItemId(), ChangeCount: 1}}, proto.ActionReasonType_ACTION_REASON_GATHER)
 			g.KillEntity(player, scene, entity.GetId(), proto.PlayerDieType_PLAYER_DIE_NONE)
 		case constant.GADGET_TYPE_CHEST:
 			// 宝箱开启
@@ -501,6 +501,11 @@ func (g *Game) EnterTransPointRegionNotify(player *model.Player, payloadMsg pb.M
 func (g *Game) ExitTransPointRegionNotify(player *model.Player, payloadMsg pb.Message) {
 	ntf := payloadMsg.(*proto.ExitTransPointRegionNotify)
 	_ = ntf
+}
+
+func (g *Game) SelectWorktopOptionReq(player *model.Player, payloadMsg pb.Message) {
+	req := payloadMsg.(*proto.SelectWorktopOptionReq)
+	_ = req
 }
 
 /************************************************** 游戏功能 **************************************************/

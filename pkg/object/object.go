@@ -79,18 +79,18 @@ func ConvRetCodeToBool(v int64) bool {
 	}
 }
 
-func ConvListToMap[T any](l []T) map[uint64]T {
-	ret := make(map[uint64]T)
-	for index, value := range l {
-		ret[uint64(index)] = value
+func ConvMapValueToList[K comparable, V any](m map[K]V) []V {
+	ret := make([]V, 0)
+	for _, value := range m {
+		ret = append(ret, value)
 	}
 	return ret
 }
 
-func ConvMapToList[T any](m map[uint64]T) []T {
-	ret := make([]T, 0)
-	for _, value := range m {
-		ret = append(ret, value)
+func ConvMapKeyToList[K comparable, V any](m map[K]V) []K {
+	ret := make([]K, 0)
+	for key := range m {
+		ret = append(ret, key)
 	}
 	return ret
 }

@@ -193,6 +193,10 @@ func RegLuaScriptLibFunc() {
 	gdconf.RegScriptLibFunc("RemoveExtraGroupSuite", RemoveExtraGroupSuite)
 	gdconf.RegScriptLibFunc("ShowReminder", ShowReminder)
 	gdconf.RegScriptLibFunc("KillGroupEntity", KillGroupEntity)
+	gdconf.RegScriptLibFunc("SetWorktopOptions", SetWorktopOptions)
+	gdconf.RegScriptLibFunc("SetWorktopOptionsByGroupId", SetWorktopOptionsByGroupId)
+	gdconf.RegScriptLibFunc("DelWorktopOption", DelWorktopOption)
+	gdconf.RegScriptLibFunc("DelWorktopOptionByGroupId", DelWorktopOptionByGroupId)
 	// 调用物件LUA方法
 	gdconf.RegScriptLibFunc("SetGadgetState", SetGadgetState)
 	gdconf.RegScriptLibFunc("GetGadgetState", GetGadgetState)
@@ -480,6 +484,10 @@ func SetGadgetStateByConfigId(luaState *lua.LState) int {
 	configId := luaState.ToInt(2)
 	state := luaState.ToInt(3)
 	entity := group.GetEntityByConfigId(uint32(configId))
+	if entity == nil {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
 	GAME.ChangeGadgetState(player, entity.GetId(), uint32(state))
 	luaState.Push(lua.LNumber(0))
 	return 1
@@ -1037,6 +1045,198 @@ func KillGroupEntity(luaState *lua.LState) int {
 			GAME.KillEntity(player, scene, entity.GetId(), proto.PlayerDieType_PLAYER_DIE_NONE)
 		}
 	}
+	luaState.Push(lua.LNumber(0))
+	return 1
+}
+
+func SetWorktopOptions(luaState *lua.LState) int {
+	ctx, ok := luaState.Get(1).(*lua.LTable)
+	if !ok {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	player := GetContextPlayer(ctx, luaState)
+	if player == nil {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	targetEntityId, ok := luaState.GetField(ctx, "target_entity_id").(lua.LNumber)
+	if !ok {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	luaTable, ok := luaState.Get(2).(*lua.LTable)
+	if !ok {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	var optionList []uint32 = nil
+	gdconf.ParseLuaTableToObject[*[]uint32](luaTable, &optionList)
+	world := WORLD_MANAGER.GetWorldById(player.WorldId)
+	if world == nil {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	scene := world.GetSceneById(player.SceneId)
+	entity := scene.GetEntity(uint32(targetEntityId))
+	if entity == nil {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	gadgetWorktopEntity, ok := entity.(*GadgetWorktopEntity)
+	if !ok {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	optionMap := gadgetWorktopEntity.GetOptionMap()
+	for _, option := range optionList {
+		optionMap[option] = struct{}{}
+	}
+	GAME.SendToSceneA(scene, cmd.WorktopOptionNotify, player.ClientSeq, &proto.WorktopOptionNotify{
+		GadgetEntityId: gadgetWorktopEntity.GetId(),
+		OptionList:     object.ConvMapKeyToList[uint32, struct{}](gadgetWorktopEntity.GetOptionMap()),
+	}, 0)
+	luaState.Push(lua.LNumber(0))
+	return 1
+}
+
+func SetWorktopOptionsByGroupId(luaState *lua.LState) int {
+	ctx, ok := luaState.Get(1).(*lua.LTable)
+	if !ok {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	player := GetContextPlayer(ctx, luaState)
+	if player == nil {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	groupId := luaState.ToInt(2)
+	configId := luaState.ToInt(3)
+	luaTable, ok := luaState.Get(4).(*lua.LTable)
+	if !ok {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	var optionList []uint32 = nil
+	gdconf.ParseLuaTableToObject[*[]uint32](luaTable, &optionList)
+	world := WORLD_MANAGER.GetWorldById(player.WorldId)
+	if world == nil {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	scene := world.GetSceneById(player.SceneId)
+	group := scene.GetGroupById(uint32(groupId))
+	if group == nil {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	entity := group.GetEntityByConfigId(uint32(configId))
+	if entity == nil {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	gadgetWorktopEntity, ok := entity.(*GadgetWorktopEntity)
+	if !ok {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	optionMap := gadgetWorktopEntity.GetOptionMap()
+	for _, option := range optionList {
+		optionMap[option] = struct{}{}
+	}
+	GAME.SendToSceneA(scene, cmd.WorktopOptionNotify, player.ClientSeq, &proto.WorktopOptionNotify{
+		GadgetEntityId: gadgetWorktopEntity.GetId(),
+		OptionList:     object.ConvMapKeyToList[uint32, struct{}](gadgetWorktopEntity.GetOptionMap()),
+	}, 0)
+	luaState.Push(lua.LNumber(0))
+	return 1
+}
+
+func DelWorktopOption(luaState *lua.LState) int {
+	ctx, ok := luaState.Get(1).(*lua.LTable)
+	if !ok {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	player := GetContextPlayer(ctx, luaState)
+	if player == nil {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	targetEntityId, ok := luaState.GetField(ctx, "target_entity_id").(lua.LNumber)
+	if !ok {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	option := luaState.ToInt(2)
+	world := WORLD_MANAGER.GetWorldById(player.WorldId)
+	if world == nil {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	scene := world.GetSceneById(player.SceneId)
+	entity := scene.GetEntity(uint32(targetEntityId))
+	if entity == nil {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	gadgetWorktopEntity, ok := entity.(*GadgetWorktopEntity)
+	if !ok {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	optionMap := gadgetWorktopEntity.GetOptionMap()
+	delete(optionMap, uint32(option))
+	GAME.SendToSceneA(scene, cmd.WorktopOptionNotify, player.ClientSeq, &proto.WorktopOptionNotify{
+		GadgetEntityId: gadgetWorktopEntity.GetId(),
+		OptionList:     object.ConvMapKeyToList[uint32, struct{}](gadgetWorktopEntity.GetOptionMap()),
+	}, 0)
+	luaState.Push(lua.LNumber(0))
+	return 1
+}
+
+func DelWorktopOptionByGroupId(luaState *lua.LState) int {
+	ctx, ok := luaState.Get(1).(*lua.LTable)
+	if !ok {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	player := GetContextPlayer(ctx, luaState)
+	if player == nil {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	groupId := luaState.ToInt(2)
+	configId := luaState.ToInt(3)
+	option := luaState.ToInt(4)
+	world := WORLD_MANAGER.GetWorldById(player.WorldId)
+	if world == nil {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	scene := world.GetSceneById(player.SceneId)
+	group := scene.GetGroupById(uint32(groupId))
+	if group == nil {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	entity := group.GetEntityByConfigId(uint32(configId))
+	if entity == nil {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	gadgetWorktopEntity, ok := entity.(*GadgetWorktopEntity)
+	if !ok {
+		luaState.Push(lua.LNumber(-1))
+		return 1
+	}
+	optionMap := gadgetWorktopEntity.GetOptionMap()
+	delete(optionMap, uint32(option))
+	GAME.SendToSceneA(scene, cmd.WorktopOptionNotify, player.ClientSeq, &proto.WorktopOptionNotify{
+		GadgetEntityId: gadgetWorktopEntity.GetId(),
+		OptionList:     object.ConvMapKeyToList[uint32, struct{}](gadgetWorktopEntity.GetOptionMap()),
+	}, 0)
 	luaState.Push(lua.LNumber(0))
 	return 1
 }

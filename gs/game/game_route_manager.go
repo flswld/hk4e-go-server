@@ -143,6 +143,7 @@ func (r *RouteManager) initRoute() {
 		cmd.GetMailItemReq:                    GAME.GetMailItemReq,
 		cmd.ReadMailNotify:                    GAME.ReadMailNotify,
 		cmd.ChangeMailStarNotify:              GAME.ChangeMailStarNotify,
+		cmd.SelectWorktopOptionReq:            GAME.SelectWorktopOptionReq,
 	}
 }
 

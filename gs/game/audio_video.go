@@ -311,26 +311,20 @@ func UpdateFrame(fileData []byte, basePos *model.Vector, rgb bool) {
 		for h := 0; h < SCREEN_HEIGHT; h++ {
 			// 创建像素点
 			if rgb {
-				entityId := scene.CreateEntityGadgetNormal(
-					&model.Vector{
+				gadgetNormalEntity := scene.CreateEntityGadgetNormal(&model.Vector{
+					X: leftTopPos.X - float64(w)*SCREEN_DPI,
+					Y: leftTopPos.Y - float64(h)*SCREEN_DPI,
+					Z: leftTopPos.Z,
+				}, new(model.Vector), 0, 0, constant.VISION_LEVEL_SUPER, uint32(FRAME_COLOR[w][h]), uint32(constant.GADGET_STATE_DEFAULT))
+				SCREEN_ENTITY_ID_LIST = append(SCREEN_ENTITY_ID_LIST, gadgetNormalEntity.GetId())
+			} else {
+				if !FRAME[w][h] {
+					gadgetNormalEntity := scene.CreateEntityGadgetNormal(&model.Vector{
 						X: leftTopPos.X - float64(w)*SCREEN_DPI,
 						Y: leftTopPos.Y - float64(h)*SCREEN_DPI,
 						Z: leftTopPos.Z,
-					}, new(model.Vector),
-					uint32(FRAME_COLOR[w][h]), uint32(constant.GADGET_STATE_DEFAULT),
-					false, 0, 0, 0, 0, constant.VISION_LEVEL_SUPER)
-				SCREEN_ENTITY_ID_LIST = append(SCREEN_ENTITY_ID_LIST, entityId)
-			} else {
-				if !FRAME[w][h] {
-					entityId := scene.CreateEntityGadgetNormal(
-						&model.Vector{
-							X: leftTopPos.X - float64(w)*SCREEN_DPI,
-							Y: leftTopPos.Y - float64(h)*SCREEN_DPI,
-							Z: leftTopPos.Z,
-						}, new(model.Vector),
-						uint32(GADGET_ID), uint32(constant.GADGET_STATE_DEFAULT),
-						false, 0, 0, 0, 0, constant.VISION_LEVEL_SUPER)
-					SCREEN_ENTITY_ID_LIST = append(SCREEN_ENTITY_ID_LIST, entityId)
+					}, new(model.Vector), 0, 0, constant.VISION_LEVEL_SUPER, uint32(GADGET_ID), uint32(constant.GADGET_STATE_DEFAULT))
+					SCREEN_ENTITY_ID_LIST = append(SCREEN_ENTITY_ID_LIST, gadgetNormalEntity.GetId())
 				}
 			}
 		}

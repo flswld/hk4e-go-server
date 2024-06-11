@@ -46,21 +46,21 @@ func (g *Game) CreateVehicleReq(player *model.Player, payloadMsg pb.Message) {
 	// 创建载具实体
 	pos := &model.Vector{X: float64(req.Pos.X), Y: float64(req.Pos.Y), Z: float64(req.Pos.Z)}
 	rot := &model.Vector{X: float64(req.Rot.X), Y: float64(req.Rot.Y), Z: float64(req.Rot.Z)}
-	entityId := scene.CreateEntityGadgetVehicle(player.PlayerId, pos, rot, req.VehicleId)
-	if entityId == 0 {
-		logger.Error("vehicle entityId is 0, uid: %v", player.PlayerId)
+	gadgetVehicleEntity := scene.CreateEntityGadgetVehicle(pos, rot, req.VehicleId)
+	if gadgetVehicleEntity == nil {
 		g.SendError(cmd.VehicleInteractRsp, player, &proto.VehicleInteractRsp{})
 		return
 	}
-	GAME.AddSceneEntityNotify(player, proto.VisionType_VISION_BORN, []uint32{entityId}, true, false)
+	gadgetVehicleEntity.CreateGadgetVehicleEntity(player.PlayerId)
+	GAME.AddSceneEntityNotify(player, proto.VisionType_VISION_BORN, []uint32{gadgetVehicleEntity.GetId()}, true, false)
 	// 记录创建的载具信息
-	player.VehicleInfo.CreateEntityIdMap[req.VehicleId] = entityId
+	player.VehicleInfo.CreateEntityIdMap[req.VehicleId] = gadgetVehicleEntity.GetId()
 	player.VehicleInfo.LastCreateTime = time.Now().UnixMilli()
 
 	// PacketCreateVehicleRsp
 	createVehicleRsp := &proto.CreateVehicleRsp{
 		VehicleId: req.VehicleId,
-		EntityId:  entityId,
+		EntityId:  gadgetVehicleEntity.GetId(),
 	}
 	g.SendMsg(cmd.CreateVehicleRsp, player.PlayerId, player.ClientSeq, createVehicleRsp)
 }

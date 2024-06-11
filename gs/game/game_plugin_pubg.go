@@ -528,7 +528,6 @@ func (p *PluginPubg) StartPubg() {
 			p.world.GetOwner(),
 			&model.Vector{X: float64(pubgWorldGadgetDataConfig.X), Y: float64(pubgWorldGadgetDataConfig.Y), Z: float64(pubgWorldGadgetDataConfig.Z)},
 			uint32(pubgWorldGadgetDataConfig.GadgetId),
-			false, 0, 0,
 		)
 		p.entityIdWorldGadgetIdMap[entityId] = pubgWorldGadgetDataConfig.WorldGadgetId
 	}

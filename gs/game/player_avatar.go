@@ -922,7 +922,7 @@ func (g *Game) PacketAvatarInfo(avatar *model.Avatar) *proto.AvatarInfo {
 			},
 		},
 		LifeState:     uint32(avatar.LifeState),
-		EquipGuidList: object.ConvMapToList(avatar.EquipGuidMap),
+		EquipGuidList: object.ConvMapValueToList[uint64, uint64](avatar.EquipGuidMap),
 		FightPropMap:  avatar.FightPropMap,
 		SkillDepotId:  avatar.SkillDepotId,
 		FetterInfo: &proto.AvatarFetterInfo{

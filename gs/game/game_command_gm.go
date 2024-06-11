@@ -415,7 +415,7 @@ func (g *GMCmd) GMCreateGadget(userId uint32, gadgetId uint32, count uint32) {
 		return
 	}
 	for i := 0; i < int(count); i++ {
-		GAME.CreateGadget(player, nil, gadgetId, false, 0, 0)
+		GAME.CreateGadget(player, nil, gadgetId)
 	}
 }
 

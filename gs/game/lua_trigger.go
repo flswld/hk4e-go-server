@@ -182,7 +182,7 @@ func (g *Game) QuestStartTriggerCheck(player *model.Player, questId uint32) {
 }
 
 // MonsterCreateTriggerCheck 怪物创建触发器检测
-func (g *Game) MonsterCreateTriggerCheck(player *model.Player, group *Group, configId uint32) {
+func (g *Game) MonsterCreateTriggerCheck(player *model.Player, group *Group, entity IEntity) {
 	forEachGroupTrigger(player, group, func(triggerConfig *gdconf.Trigger, groupConfig *gdconf.Group) {
 		if triggerConfig.Event != constant.LUA_EVENT_ANY_MONSTER_LIVE {
 			return
@@ -190,7 +190,7 @@ func (g *Game) MonsterCreateTriggerCheck(player *model.Player, group *Group, con
 		if triggerConfig.Condition != "" {
 			cond := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
 				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
-				&LuaEvt{param1: int32(configId)})
+				&LuaEvt{param1: int32(entity.GetId())})
 			if !cond {
 				return
 			}
@@ -198,7 +198,7 @@ func (g *Game) MonsterCreateTriggerCheck(player *model.Player, group *Group, con
 		if triggerConfig.Action != "" {
 			logger.Debug("scene group trigger do action, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)
 			ok := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
-				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
+				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id), targetEntityId: entity.GetId()},
 				&LuaEvt{})
 			if !ok {
 				logger.Error("trigger action fail, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)
@@ -208,7 +208,7 @@ func (g *Game) MonsterCreateTriggerCheck(player *model.Player, group *Group, con
 }
 
 // MonsterDieTriggerCheck 怪物死亡触发器检测
-func (g *Game) MonsterDieTriggerCheck(player *model.Player, group *Group) {
+func (g *Game) MonsterDieTriggerCheck(player *model.Player, group *Group, entity IEntity) {
 	forEachGroupTrigger(player, group, func(triggerConfig *gdconf.Trigger, groupConfig *gdconf.Group) {
 		if triggerConfig.Event != constant.LUA_EVENT_ANY_MONSTER_DIE {
 			return
@@ -224,7 +224,7 @@ func (g *Game) MonsterDieTriggerCheck(player *model.Player, group *Group) {
 		if triggerConfig.Action != "" {
 			logger.Debug("scene group trigger do action, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)
 			ok := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
-				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
+				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id), targetEntityId: entity.GetId()},
 				&LuaEvt{})
 			if !ok {
 				logger.Error("trigger action fail, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)
@@ -234,7 +234,7 @@ func (g *Game) MonsterDieTriggerCheck(player *model.Player, group *Group) {
 }
 
 // GadgetCreateTriggerCheck 物件创建触发器检测
-func (g *Game) GadgetCreateTriggerCheck(player *model.Player, group *Group, configId uint32) {
+func (g *Game) GadgetCreateTriggerCheck(player *model.Player, group *Group, entity IEntity) {
 	forEachGroupTrigger(player, group, func(triggerConfig *gdconf.Trigger, groupConfig *gdconf.Group) {
 		if triggerConfig.Event != constant.LUA_EVENT_GADGET_CREATE {
 			return
@@ -242,7 +242,7 @@ func (g *Game) GadgetCreateTriggerCheck(player *model.Player, group *Group, conf
 		if triggerConfig.Condition != "" {
 			cond := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
 				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
-				&LuaEvt{param1: int32(configId)})
+				&LuaEvt{param1: int32(entity.GetConfigId())})
 			if !cond {
 				return
 			}
@@ -250,7 +250,7 @@ func (g *Game) GadgetCreateTriggerCheck(player *model.Player, group *Group, conf
 		if triggerConfig.Action != "" {
 			logger.Debug("scene group trigger do action, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)
 			ok := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
-				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
+				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id), targetEntityId: entity.GetId()},
 				&LuaEvt{})
 			if !ok {
 				logger.Error("trigger action fail, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)
@@ -260,7 +260,7 @@ func (g *Game) GadgetCreateTriggerCheck(player *model.Player, group *Group, conf
 }
 
 // GadgetStateChangeTriggerCheck 物件状态变更触发器检测
-func (g *Game) GadgetStateChangeTriggerCheck(player *model.Player, group *Group, configId uint32, state uint8) {
+func (g *Game) GadgetStateChangeTriggerCheck(player *model.Player, group *Group, entity IEntity, state uint8) {
 	forEachGroupTrigger(player, group, func(triggerConfig *gdconf.Trigger, groupConfig *gdconf.Group) {
 		if triggerConfig.Event != constant.LUA_EVENT_GADGET_STATE_CHANGE {
 			return
@@ -268,7 +268,7 @@ func (g *Game) GadgetStateChangeTriggerCheck(player *model.Player, group *Group,
 		if triggerConfig.Condition != "" {
 			cond := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
 				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
-				&LuaEvt{param1: int32(state), param2: int32(configId)})
+				&LuaEvt{param1: int32(state), param2: int32(entity.GetConfigId())})
 			if !cond {
 				return
 			}
@@ -276,7 +276,7 @@ func (g *Game) GadgetStateChangeTriggerCheck(player *model.Player, group *Group,
 		if triggerConfig.Action != "" {
 			logger.Debug("scene group trigger do action, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)
 			ok := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
-				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
+				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id), targetEntityId: entity.GetId()},
 				&LuaEvt{})
 			if !ok {
 				logger.Error("trigger action fail, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)
@@ -286,7 +286,7 @@ func (g *Game) GadgetStateChangeTriggerCheck(player *model.Player, group *Group,
 }
 
 // GadgetDieTriggerCheck 物件死亡触发器检测
-func (g *Game) GadgetDieTriggerCheck(player *model.Player, group *Group, configId uint32) {
+func (g *Game) GadgetDieTriggerCheck(player *model.Player, group *Group, entity IEntity) {
 	forEachGroupTrigger(player, group, func(triggerConfig *gdconf.Trigger, groupConfig *gdconf.Group) {
 		if triggerConfig.Event != constant.LUA_EVENT_ANY_GADGET_DIE {
 			return
@@ -294,7 +294,7 @@ func (g *Game) GadgetDieTriggerCheck(player *model.Player, group *Group, configI
 		if triggerConfig.Condition != "" {
 			cond := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
 				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
-				&LuaEvt{param1: int32(configId)})
+				&LuaEvt{param1: int32(entity.GetConfigId())})
 			if !cond {
 				return
 			}
@@ -302,7 +302,7 @@ func (g *Game) GadgetDieTriggerCheck(player *model.Player, group *Group, configI
 		if triggerConfig.Action != "" {
 			logger.Debug("scene group trigger do action, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)
 			ok := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
-				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
+				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id), targetEntityId: entity.GetId()},
 				&LuaEvt{})
 			if !ok {
 				logger.Error("trigger action fail, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)

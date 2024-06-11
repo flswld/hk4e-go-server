@@ -105,17 +105,15 @@ func (s *Scene) CreateEntityAvatar(player *model.Player, avatarId uint32) uint32
 	}
 	entity := &AvatarEntity{
 		Entity: &Entity{
-			id:                  entityId,
-			scene:               s,
-			lifeState:           avatar.LifeState,
-			pos:                 player.GetPos(),
-			rot:                 player.GetRot(),
-			moveState:           uint16(proto.MotionState_MOTION_NONE),
-			lastMoveSceneTimeMs: 0,
-			lastMoveReliableSeq: 0,
-			fightProp:           avatar.FightPropMap, // 使用角色结构的数据
-			entityType:          constant.ENTITY_TYPE_AVATAR,
-			visionLevel:         constant.VISION_LEVEL_NORMAL,
+			id:          entityId,
+			scene:       s,
+			lifeState:   avatar.LifeState,
+			pos:         player.GetPos(),
+			rot:         player.GetRot(),
+			moveState:   uint16(proto.MotionState_MOTION_NONE),
+			fightProp:   avatar.FightPropMap, // 使用角色结构的数据
+			entityType:  constant.ENTITY_TYPE_AVATAR,
+			visionLevel: constant.VISION_LEVEL_NORMAL,
 		},
 		uid:      player.PlayerId,
 		avatarId: avatarId,
@@ -127,14 +125,12 @@ func (s *Scene) CreateEntityWeapon(pos, rot *model.Vector) uint32 {
 	entityId := s.world.GetNextWorldEntityId(constant.ENTITY_TYPE_WEAPON)
 	entity := &WeaponEntity{
 		&Entity{
-			id:                  entityId,
-			scene:               s,
-			lifeState:           constant.LIFE_STATE_ALIVE,
-			pos:                 &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
-			rot:                 &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
-			moveState:           uint16(proto.MotionState_MOTION_NONE),
-			lastMoveSceneTimeMs: 0,
-			lastMoveReliableSeq: 0,
+			id:        entityId,
+			scene:     s,
+			lifeState: constant.LIFE_STATE_ALIVE,
+			pos:       &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
+			rot:       &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
+			moveState: uint16(proto.MotionState_MOTION_NONE),
 			fightProp: map[uint32]float32{
 				constant.FIGHT_PROP_CUR_HP:  math.MaxFloat32,
 				constant.FIGHT_PROP_MAX_HP:  math.MaxFloat32,
@@ -147,47 +143,37 @@ func (s *Scene) CreateEntityWeapon(pos, rot *model.Vector) uint32 {
 	return s.CreateEntity(entity)
 }
 
-func (s *Scene) CreateEntityMonster(pos, rot *model.Vector, monsterId uint32, level uint8, configId, groupId uint32, visionLevel int) uint32 {
-	fightPropMap := gdconf.GetMonsterFightPropMap(monsterId, level)
-	fightPropMap[constant.FIGHT_PROP_CUR_ATTACK] = fightPropMap[constant.FIGHT_PROP_BASE_ATTACK]
-	fightPropMap[constant.FIGHT_PROP_CUR_DEFENSE] = fightPropMap[constant.FIGHT_PROP_BASE_DEFENSE]
-	fightPropMap[constant.FIGHT_PROP_MAX_HP] = fightPropMap[constant.FIGHT_PROP_BASE_HP]
-	fightPropMap[constant.FIGHT_PROP_CUR_HP] = fightPropMap[constant.FIGHT_PROP_MAX_HP]
+func (s *Scene) CreateEntityMonster(pos, rot *model.Vector, level uint8, configId, groupId uint32, visionLevel int) *MonsterEntity {
 	entityId := s.world.GetNextWorldEntityId(constant.ENTITY_TYPE_MONSTER)
 	entity := &MonsterEntity{
 		Entity: &Entity{
-			id:                  entityId,
-			scene:               s,
-			lifeState:           constant.LIFE_STATE_ALIVE,
-			pos:                 &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
-			rot:                 &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
-			moveState:           uint16(proto.MotionState_MOTION_NONE),
-			lastMoveSceneTimeMs: 0,
-			lastMoveReliableSeq: 0,
-			fightProp:           fightPropMap,
-			level:               level,
-			entityType:          constant.ENTITY_TYPE_MONSTER,
-			configId:            configId,
-			groupId:             groupId,
-			visionLevel:         visionLevel,
+			id:          entityId,
+			scene:       s,
+			lifeState:   constant.LIFE_STATE_ALIVE,
+			pos:         &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
+			rot:         &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
+			moveState:   uint16(proto.MotionState_MOTION_NONE),
+			level:       level,
+			entityType:  constant.ENTITY_TYPE_MONSTER,
+			configId:    configId,
+			groupId:     groupId,
+			visionLevel: visionLevel,
 		},
-		monsterId: monsterId,
 	}
-	return s.CreateEntity(entity)
+	s.CreateEntity(entity)
+	return entity
 }
 
-func (s *Scene) CreateEntityNpc(pos, rot *model.Vector, npcId, roomId, parentQuestId, blockId, configId, groupId uint32) uint32 {
+func (s *Scene) CreateEntityNpc(pos, rot *model.Vector, configId, groupId uint32) *NpcEntity {
 	entityId := s.world.GetNextWorldEntityId(constant.ENTITY_TYPE_NPC)
 	entity := &NpcEntity{
 		Entity: &Entity{
-			id:                  entityId,
-			scene:               s,
-			lifeState:           constant.LIFE_STATE_ALIVE,
-			pos:                 &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
-			rot:                 &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
-			moveState:           uint16(proto.MotionState_MOTION_NONE),
-			lastMoveSceneTimeMs: 0,
-			lastMoveReliableSeq: 0,
+			id:        entityId,
+			scene:     s,
+			lifeState: constant.LIFE_STATE_ALIVE,
+			pos:       &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
+			rot:       &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
+			moveState: uint16(proto.MotionState_MOTION_NONE),
 			fightProp: map[uint32]float32{
 				constant.FIGHT_PROP_CUR_HP:  math.MaxFloat32,
 				constant.FIGHT_PROP_MAX_HP:  math.MaxFloat32,
@@ -198,27 +184,22 @@ func (s *Scene) CreateEntityNpc(pos, rot *model.Vector, npcId, roomId, parentQue
 			groupId:     groupId,
 			visionLevel: constant.VISION_LEVEL_NORMAL,
 		},
-		npcId:         npcId,
-		roomId:        roomId,
-		parentQuestId: parentQuestId,
-		blockId:       blockId,
 	}
-	return s.CreateEntity(entity)
+	s.CreateEntity(entity)
+	return entity
 }
 
-func (s *Scene) CreateEntityGadgetNormal(pos, rot *model.Vector, gadgetId, gadgetState uint32, isDrop bool, itemId, count uint32, configId, groupId uint32, visionLevel int) uint32 {
+func (s *Scene) CreateEntityGadgetNormal(pos, rot *model.Vector, configId, groupId uint32, visionLevel int, gadgetId, gadgetState uint32) *GadgetNormalEntity {
 	entityId := s.world.GetNextWorldEntityId(constant.ENTITY_TYPE_GADGET)
 	entity := &GadgetNormalEntity{
 		GadgetEntity: &GadgetEntity{
 			Entity: &Entity{
-				id:                  entityId,
-				scene:               s,
-				lifeState:           constant.LIFE_STATE_ALIVE,
-				pos:                 &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
-				rot:                 &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
-				moveState:           uint16(proto.MotionState_MOTION_NONE),
-				lastMoveSceneTimeMs: 0,
-				lastMoveReliableSeq: 0,
+				id:        entityId,
+				scene:     s,
+				lifeState: constant.LIFE_STATE_ALIVE,
+				pos:       &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
+				rot:       &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
+				moveState: uint16(proto.MotionState_MOTION_NONE),
 				fightProp: map[uint32]float32{
 					constant.FIGHT_PROP_CUR_HP:  math.MaxFloat32,
 					constant.FIGHT_PROP_MAX_HP:  math.MaxFloat32,
@@ -232,25 +213,107 @@ func (s *Scene) CreateEntityGadgetNormal(pos, rot *model.Vector, gadgetId, gadge
 			gadgetId:    gadgetId,
 			gadgetState: gadgetState,
 		},
-		isDrop: isDrop,
-		itemId: itemId,
-		count:  count,
 	}
-	return s.CreateEntity(entity)
+	s.CreateEntity(entity)
+	return entity
 }
 
-func (s *Scene) CreateEntityGadgetClient(pos, rot *model.Vector, entityId, configId, campId, campType, ownerEntityId, targetEntityId, propOwnerEntityId uint32) bool {
+func (s *Scene) CreateEntityGadgetTrifleItem(pos, rot *model.Vector, visionLevel int, gadgetId, gadgetState uint32) *GadgetTrifleItemEntity {
+	entityId := s.world.GetNextWorldEntityId(constant.ENTITY_TYPE_GADGET)
+	entity := &GadgetTrifleItemEntity{
+		GadgetEntity: &GadgetEntity{
+			Entity: &Entity{
+				id:        entityId,
+				scene:     s,
+				lifeState: constant.LIFE_STATE_ALIVE,
+				pos:       &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
+				rot:       &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
+				moveState: uint16(proto.MotionState_MOTION_NONE),
+				fightProp: map[uint32]float32{
+					constant.FIGHT_PROP_CUR_HP:  math.MaxFloat32,
+					constant.FIGHT_PROP_MAX_HP:  math.MaxFloat32,
+					constant.FIGHT_PROP_BASE_HP: float32(1),
+				},
+				entityType:  constant.ENTITY_TYPE_GADGET,
+				visionLevel: visionLevel,
+			},
+			gadgetId:    gadgetId,
+			gadgetState: gadgetState,
+		},
+	}
+	s.CreateEntity(entity)
+	return entity
+}
+
+func (s *Scene) CreateEntityGadgetGather(pos, rot *model.Vector, configId, groupId uint32, visionLevel int, gadgetId, gadgetState uint32) *GadgetGatherEntity {
+	entityId := s.world.GetNextWorldEntityId(constant.ENTITY_TYPE_GADGET)
+	entity := &GadgetGatherEntity{
+		GadgetEntity: &GadgetEntity{
+			Entity: &Entity{
+				id:        entityId,
+				scene:     s,
+				lifeState: constant.LIFE_STATE_ALIVE,
+				pos:       &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
+				rot:       &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
+				moveState: uint16(proto.MotionState_MOTION_NONE),
+				fightProp: map[uint32]float32{
+					constant.FIGHT_PROP_CUR_HP:  math.MaxFloat32,
+					constant.FIGHT_PROP_MAX_HP:  math.MaxFloat32,
+					constant.FIGHT_PROP_BASE_HP: float32(1),
+				},
+				entityType:  constant.ENTITY_TYPE_GADGET,
+				configId:    configId,
+				groupId:     groupId,
+				visionLevel: visionLevel,
+			},
+			gadgetId:    gadgetId,
+			gadgetState: gadgetState,
+		},
+	}
+	s.CreateEntity(entity)
+	return entity
+}
+
+func (s *Scene) CreateEntityGadgetWorktop(pos, rot *model.Vector, configId, groupId uint32, visionLevel int, gadgetId, gadgetState uint32) *GadgetWorktopEntity {
+	entityId := s.world.GetNextWorldEntityId(constant.ENTITY_TYPE_GADGET)
+	entity := &GadgetWorktopEntity{
+		GadgetEntity: &GadgetEntity{
+			Entity: &Entity{
+				id:        entityId,
+				scene:     s,
+				lifeState: constant.LIFE_STATE_ALIVE,
+				pos:       &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
+				rot:       &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
+				moveState: uint16(proto.MotionState_MOTION_NONE),
+				fightProp: map[uint32]float32{
+					constant.FIGHT_PROP_CUR_HP:  math.MaxFloat32,
+					constant.FIGHT_PROP_MAX_HP:  math.MaxFloat32,
+					constant.FIGHT_PROP_BASE_HP: float32(1),
+				},
+				entityType:  constant.ENTITY_TYPE_GADGET,
+				configId:    configId,
+				groupId:     groupId,
+				visionLevel: visionLevel,
+			},
+			gadgetId:    gadgetId,
+			gadgetState: gadgetState,
+		},
+		optionMap: make(map[uint32]struct{}),
+	}
+	s.CreateEntity(entity)
+	return entity
+}
+
+func (s *Scene) CreateEntityGadgetClient(entityId uint32, pos, rot *model.Vector, gadgetId uint32) *GadgetClientEntity {
 	entity := &GadgetClientEntity{
 		GadgetEntity: &GadgetEntity{
 			Entity: &Entity{
-				id:                  entityId,
-				scene:               s,
-				lifeState:           constant.LIFE_STATE_ALIVE,
-				pos:                 &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
-				rot:                 &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
-				moveState:           uint16(proto.MotionState_MOTION_NONE),
-				lastMoveSceneTimeMs: 0,
-				lastMoveReliableSeq: 0,
+				id:        entityId,
+				scene:     s,
+				lifeState: constant.LIFE_STATE_ALIVE,
+				pos:       &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
+				rot:       &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
+				moveState: uint16(proto.MotionState_MOTION_NONE),
 				fightProp: map[uint32]float32{
 					constant.FIGHT_PROP_CUR_HP:  math.MaxFloat32,
 					constant.FIGHT_PROP_MAX_HP:  math.MaxFloat32,
@@ -259,62 +322,34 @@ func (s *Scene) CreateEntityGadgetClient(pos, rot *model.Vector, entityId, confi
 				entityType:  constant.ENTITY_TYPE_GADGET,
 				visionLevel: constant.VISION_LEVEL_NORMAL,
 			},
-			gadgetId: configId,
+			gadgetId: gadgetId,
 		},
-		campId:            campId,
-		campType:          campType,
-		ownerEntityId:     ownerEntityId,
-		targetEntityId:    targetEntityId,
-		propOwnerEntityId: propOwnerEntityId,
 	}
 	if s.CreateEntity(entity) == 0 {
-		return false
+		return nil
 	}
-	return true
+	return entity
 }
 
-func (s *Scene) CreateEntityGadgetVehicle(ownerUid uint32, pos, rot *model.Vector, vehicleId uint32) uint32 {
-	// 获取载具配置表
-	gadgetDataConfig := gdconf.GetGadgetDataById(int32(vehicleId))
-	if gadgetDataConfig == nil {
-		logger.Error("get gadget data config is nil, gadgetId: %v", vehicleId)
-		return 0
-	}
-	gadgetJsonConfig := gdconf.GetGadgetJsonConfigByName(gadgetDataConfig.JsonName)
-	if gadgetJsonConfig == nil {
-		logger.Error("get gadget json config is nil, name: %v", gadgetDataConfig.JsonName)
-		return 0
-	}
+func (s *Scene) CreateEntityGadgetVehicle(pos, rot *model.Vector, gadgetId uint32) *GadgetVehicleEntity {
 	entityId := s.world.GetNextWorldEntityId(constant.ENTITY_TYPE_GADGET)
 	entity := &GadgetVehicleEntity{
 		GadgetEntity: &GadgetEntity{
 			Entity: &Entity{
-				id:                  entityId,
-				scene:               s,
-				lifeState:           constant.LIFE_STATE_ALIVE,
-				pos:                 &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
-				rot:                 &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
-				moveState:           uint16(proto.MotionState_MOTION_NONE),
-				lastMoveSceneTimeMs: 0,
-				lastMoveReliableSeq: 0,
-				fightProp: map[uint32]float32{
-					constant.FIGHT_PROP_BASE_DEFENSE: gadgetJsonConfig.Combat.Property.DefenseBase,
-					constant.FIGHT_PROP_CUR_HP:       gadgetJsonConfig.Combat.Property.HP,
-					constant.FIGHT_PROP_MAX_HP:       gadgetJsonConfig.Combat.Property.HP,
-					constant.FIGHT_PROP_CUR_ATTACK:   gadgetJsonConfig.Combat.Property.Attack,
-				},
+				id:          entityId,
+				scene:       s,
+				lifeState:   constant.LIFE_STATE_ALIVE,
+				pos:         &model.Vector{X: pos.X, Y: pos.Y, Z: pos.Z},
+				rot:         &model.Vector{X: rot.X, Y: rot.Y, Z: rot.Z},
+				moveState:   uint16(proto.MotionState_MOTION_NONE),
 				entityType:  constant.ENTITY_TYPE_GADGET,
 				visionLevel: constant.VISION_LEVEL_NORMAL,
 			},
-			gadgetId: vehicleId,
+			gadgetId: gadgetId,
 		},
-		ownerUid:     ownerUid,
-		maxStamina:   gadgetJsonConfig.Vehicle.Stamina.StaminaUpperLimit,
-		curStamina:   gadgetJsonConfig.Vehicle.Stamina.StaminaUpperLimit,
-		restoreDelay: 0,
-		memberMap:    make(map[uint32]uint32),
 	}
-	return s.CreateEntity(entity)
+	s.CreateEntity(entity)
+	return entity
 }
 
 func (s *Scene) CreateEntity(entity IEntity) uint32 {
@@ -776,7 +811,7 @@ func (e *Entity) AbilityAction(ability *Ability, action *gdconf.ActionData, enti
 		if !action.ByServer {
 			return
 		}
-		GAME.CreateGadget(owner, entity.GetPos(), uint32(action.GadgetID), false, 0, 0)
+		GAME.CreateGadget(owner, entity.GetPos(), uint32(action.GadgetID))
 	case "GenerateElemBall":
 		itemDataConfig := gdconf.GetItemDataById(action.ConfigID)
 		if itemDataConfig == nil {
@@ -885,6 +920,16 @@ func (m *MonsterEntity) InitAbility() {
 	}
 }
 
+func (m *MonsterEntity) CreateMonsterEntity(monsterId uint32) {
+	fightPropMap := gdconf.GetMonsterFightPropMap(monsterId, m.GetLevel())
+	fightPropMap[constant.FIGHT_PROP_CUR_ATTACK] = fightPropMap[constant.FIGHT_PROP_BASE_ATTACK]
+	fightPropMap[constant.FIGHT_PROP_CUR_DEFENSE] = fightPropMap[constant.FIGHT_PROP_BASE_DEFENSE]
+	fightPropMap[constant.FIGHT_PROP_MAX_HP] = fightPropMap[constant.FIGHT_PROP_BASE_HP]
+	fightPropMap[constant.FIGHT_PROP_CUR_HP] = fightPropMap[constant.FIGHT_PROP_MAX_HP]
+	m.fightProp = fightPropMap
+	m.monsterId = monsterId
+}
+
 type NpcEntity struct {
 	*Entity
 	npcId         uint32
@@ -912,6 +957,13 @@ func (n *NpcEntity) GetBlockId() uint32 {
 func (n *NpcEntity) InitAbility() {
 	n.abilityMap = make(map[uint32]*Ability)
 	n.modifierMap = make(map[uint32]*Modifier)
+}
+
+func (n *NpcEntity) CreateNpcEntity(npcId, roomId, parentQuestId, blockId uint32) {
+	n.npcId = npcId
+	n.roomId = roomId
+	n.parentQuestId = parentQuestId
+	n.blockId = blockId
 }
 
 type IGadgetEntity interface {
@@ -968,21 +1020,47 @@ func (g *GadgetEntity) InitAbility() {
 
 type GadgetNormalEntity struct {
 	*GadgetEntity
-	isDrop bool
+}
+
+type GadgetTrifleItemEntity struct {
+	*GadgetEntity
 	itemId uint32
 	count  uint32
 }
 
-func (g *GadgetNormalEntity) GetIsDrop() bool {
-	return g.isDrop
-}
-
-func (g *GadgetNormalEntity) GetItemId() uint32 {
+func (g *GadgetTrifleItemEntity) GetItemId() uint32 {
 	return g.itemId
 }
 
-func (g *GadgetNormalEntity) GetCount() uint32 {
+func (g *GadgetTrifleItemEntity) GetCount() uint32 {
 	return g.count
+}
+
+func (g *GadgetTrifleItemEntity) CreateGadgetTrifleItemEntity(itemId, count uint32) {
+	g.itemId = itemId
+	g.count = count
+}
+
+type GadgetGatherEntity struct {
+	*GadgetEntity
+	itemId uint32
+}
+
+func (g *GadgetGatherEntity) GetItemId() uint32 {
+	return g.itemId
+}
+
+func (g *GadgetGatherEntity) CreateGadgetGatherEntity(itemId uint32) {
+	g.itemId = itemId
+}
+
+type GadgetWorktopEntity struct {
+	*GadgetEntity
+	optionMap map[uint32]struct{}
+}
+
+func (g *GadgetWorktopEntity) GetOptionMap() map[uint32]struct{} {
+	return g.optionMap
 }
 
 type GadgetClientEntity struct {
@@ -1012,6 +1090,14 @@ func (g *GadgetClientEntity) GetTargetEntityId() uint32 {
 
 func (g *GadgetClientEntity) GetPropOwnerEntityId() uint32 {
 	return g.propOwnerEntityId
+}
+
+func (g *GadgetClientEntity) CreateGadgetClientEntity(campId, campType, ownerEntityId, targetEntityId, propOwnerEntityId uint32) {
+	g.campId = campId
+	g.campType = campType
+	g.ownerEntityId = ownerEntityId
+	g.targetEntityId = targetEntityId
+	g.propOwnerEntityId = propOwnerEntityId
 }
 
 type GadgetVehicleEntity struct {
@@ -1049,4 +1135,29 @@ func (g *GadgetVehicleEntity) SetCurStamina(curStamina float32) {
 
 func (g *GadgetVehicleEntity) SetRestoreDelay(restoreDelay uint8) {
 	g.restoreDelay = restoreDelay
+}
+
+func (g *GadgetVehicleEntity) CreateGadgetVehicleEntity(ownerUid uint32) {
+	// 获取载具配置表
+	gadgetDataConfig := gdconf.GetGadgetDataById(int32(g.GetGadgetId()))
+	if gadgetDataConfig == nil {
+		logger.Error("get gadget data config is nil, gadgetId: %v", g.GetGadgetId())
+		return
+	}
+	gadgetJsonConfig := gdconf.GetGadgetJsonConfigByName(gadgetDataConfig.JsonName)
+	if gadgetJsonConfig == nil {
+		logger.Error("get gadget json config is nil, name: %v", gadgetDataConfig.JsonName)
+		return
+	}
+	fightPropMap := map[uint32]float32{
+		constant.FIGHT_PROP_BASE_DEFENSE: gadgetJsonConfig.Combat.Property.DefenseBase,
+		constant.FIGHT_PROP_CUR_HP:       gadgetJsonConfig.Combat.Property.HP,
+		constant.FIGHT_PROP_MAX_HP:       gadgetJsonConfig.Combat.Property.HP,
+		constant.FIGHT_PROP_CUR_ATTACK:   gadgetJsonConfig.Combat.Property.Attack,
+	}
+	g.fightProp = fightPropMap
+	g.ownerUid = ownerUid
+	g.maxStamina = gadgetJsonConfig.Vehicle.Stamina.StaminaUpperLimit
+	g.curStamina = gadgetJsonConfig.Vehicle.Stamina.StaminaUpperLimit
+	g.memberMap = make(map[uint32]uint32)
 }

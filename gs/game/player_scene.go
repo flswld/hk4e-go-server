@@ -921,11 +921,11 @@ func (g *Game) KillEntity(player *model.Player, scene *Scene, entityId uint32, d
 		// 随机掉落
 		g.monsterDrop(player, MonsterDropTypeKill, 0, entity)
 		// 怪物死亡触发器检测
-		g.MonsterDieTriggerCheck(player, group)
+		g.MonsterDieTriggerCheck(player, group, entity)
 	case IGadgetEntity:
 		iGadgetEntity := entity.(IGadgetEntity)
 		// 物件死亡触发器检测
-		g.GadgetDieTriggerCheck(player, group, entity.GetConfigId())
+		g.GadgetDieTriggerCheck(player, group, entity)
 		gadgetDataConfig := gdconf.GetGadgetDataById(int32(iGadgetEntity.GetGadgetId()))
 		if gadgetDataConfig == nil {
 			logger.Error("get gadget data config is nil, gadgetId: %v", iGadgetEntity.GetGadgetId())
@@ -985,7 +985,7 @@ func (g *Game) ChangeGadgetState(player *model.Player, entityId uint32, state ui
 	sceneGroup.ChangeGadgetState(entity.GetConfigId(), uint8(iGadgetEntity.GetGadgetState()))
 
 	// 物件状态变更触发器检测
-	g.GadgetStateChangeTriggerCheck(player, group, entity.GetConfigId(), uint8(iGadgetEntity.GetGadgetState()))
+	g.GadgetStateChangeTriggerCheck(player, group, entity, uint8(iGadgetEntity.GetGadgetState()))
 }
 
 // GetVisionEntity 获取某位置视野内的全部实体
@@ -1299,56 +1299,66 @@ func (g *Game) CreateConfigEntity(scene *Scene, groupId uint32, entityConfig any
 		if monsterLevel > 100 {
 			monsterLevel = 100
 		}
-		return scene.CreateEntityMonster(
+		monsterEntity := scene.CreateEntityMonster(
 			&model.Vector{X: float64(monster.Pos.X), Y: float64(monster.Pos.Y), Z: float64(monster.Pos.Z)},
 			&model.Vector{X: float64(monster.Rot.X), Y: float64(monster.Rot.Y), Z: float64(monster.Rot.Z)},
-			uint32(monster.MonsterId), monsterLevel, uint32(monster.ConfigId), groupId, int(monster.VisionLevel),
+			monsterLevel, uint32(monster.ConfigId), groupId, int(monster.VisionLevel),
 		)
+		monsterEntity.CreateMonsterEntity(uint32(monster.MonsterId))
+		return monsterEntity.GetId()
 	case *gdconf.Npc:
 		npc := entityConfig.(*gdconf.Npc)
-		return scene.CreateEntityNpc(
+		npcEntity := scene.CreateEntityNpc(
 			&model.Vector{X: float64(npc.Pos.X), Y: float64(npc.Pos.Y), Z: float64(npc.Pos.Z)},
 			&model.Vector{X: float64(npc.Rot.X), Y: float64(npc.Rot.Y), Z: float64(npc.Rot.Z)},
-			uint32(npc.NpcId), 0, 0, 0, uint32(npc.ConfigId), groupId,
+			uint32(npc.ConfigId), groupId,
 		)
+		npcEntity.CreateNpcEntity(uint32(npc.NpcId), 0, 0, 0)
+		return npcEntity.GetId()
 	case *gdconf.Gadget:
 		gadget := entityConfig.(*gdconf.Gadget)
-		// 70500000并不是实际的物件id 根据节点类型对应采集物配置表
-		if gadget.PointType != 0 && gadget.GadgetId == 70500000 {
+		gadgetDataConfig := gdconf.GetGadgetDataById(gadget.GadgetId)
+		if gadgetDataConfig == nil {
+			logger.Error("get gadget data config is nil, gadgetId: %v", gadget.GadgetId)
+			return 0
+		}
+		switch gadgetDataConfig.Type {
+		case constant.GADGET_TYPE_GATHER_POINT:
 			gatherDataConfig := gdconf.GetGatherDataByPointType(gadget.PointType)
 			if gatherDataConfig == nil {
 				return 0
 			}
-			return scene.CreateEntityGadgetNormal(
+			gadgetGatherEntity := scene.CreateEntityGadgetGather(
 				&model.Vector{X: float64(gadget.Pos.X), Y: float64(gadget.Pos.Y), Z: float64(gadget.Pos.Z)},
 				&model.Vector{X: float64(gadget.Rot.X), Y: float64(gadget.Rot.Y), Z: float64(gadget.Rot.Z)},
-				uint32(gatherDataConfig.GadgetId),
-				uint32(constant.GADGET_STATE_DEFAULT),
-				false,
-				uint32(gatherDataConfig.ItemId),
-				1,
-				uint32(gadget.ConfigId),
-				groupId,
-				int(gadget.VisionLevel),
+				uint32(gadget.ConfigId), groupId, int(gadget.VisionLevel), uint32(gatherDataConfig.GadgetId), uint32(constant.GADGET_STATE_DEFAULT),
 			)
-		} else {
+			gadgetGatherEntity.CreateGadgetGatherEntity(uint32(gatherDataConfig.ItemId))
+			return gadgetGatherEntity.GetId()
+		case constant.GADGET_TYPE_WORKTOP:
 			state := uint8(gadget.State)
 			exist := sceneGroup.CheckGadgetExist(uint32(gadget.ConfigId))
 			if exist {
 				state = sceneGroup.GetGadgetState(uint32(gadget.ConfigId))
 			}
-			return scene.CreateEntityGadgetNormal(
+			gadgetWorktopEntity := scene.CreateEntityGadgetWorktop(
 				&model.Vector{X: float64(gadget.Pos.X), Y: float64(gadget.Pos.Y), Z: float64(gadget.Pos.Z)},
 				&model.Vector{X: float64(gadget.Rot.X), Y: float64(gadget.Rot.Y), Z: float64(gadget.Rot.Z)},
-				uint32(gadget.GadgetId),
-				uint32(state),
-				false,
-				0,
-				0,
-				uint32(gadget.ConfigId),
-				groupId,
-				int(gadget.VisionLevel),
+				uint32(gadget.ConfigId), groupId, int(gadget.VisionLevel), uint32(gadget.GadgetId), uint32(state),
 			)
+			return gadgetWorktopEntity.GetId()
+		default:
+			state := uint8(gadget.State)
+			exist := sceneGroup.CheckGadgetExist(uint32(gadget.ConfigId))
+			if exist {
+				state = sceneGroup.GetGadgetState(uint32(gadget.ConfigId))
+			}
+			gadgetNormalEntity := scene.CreateEntityGadgetNormal(
+				&model.Vector{X: float64(gadget.Pos.X), Y: float64(gadget.Pos.Y), Z: float64(gadget.Pos.Z)},
+				&model.Vector{X: float64(gadget.Rot.X), Y: float64(gadget.Rot.Y), Z: float64(gadget.Rot.Z)},
+				uint32(gadget.ConfigId), groupId, int(gadget.VisionLevel), uint32(gadget.GadgetId), uint32(state),
+			)
+			return gadgetNormalEntity.GetId()
 		}
 	}
 	return 0
@@ -1412,10 +1422,10 @@ func (g *Game) SceneGroupCreateEntity(player *model.Player, groupId uint32, conf
 	switch entityType {
 	case constant.ENTITY_TYPE_MONSTER:
 		// 怪物创建触发器检测
-		g.MonsterCreateTriggerCheck(player, group, configId)
+		g.MonsterCreateTriggerCheck(player, group, entity)
 	case constant.ENTITY_TYPE_GADGET:
 		// 物件创建触发器检测
-		g.GadgetCreateTriggerCheck(player, group, configId)
+		g.GadgetCreateTriggerCheck(player, group, entity)
 	}
 }
 
@@ -1436,23 +1446,16 @@ func (g *Game) CreateMonster(player *model.Player, pos *model.Vector, monsterId 
 	}
 	rot := new(model.Vector)
 	rot.Y = random.GetRandomFloat64(0.0, 360.0)
-	entityId := scene.CreateEntityMonster(
-		pos, rot,
-		monsterId, level,
-		0, 0, constant.VISION_LEVEL_NORMAL,
-	)
-	entity := scene.GetEntity(entityId)
-	if entity == nil {
-		return 0
-	}
-	g.AddSceneEntityNotify(player, proto.VisionType_VISION_BORN, []uint32{entityId}, true, false)
-	return entityId
+	monsterEntity := scene.CreateEntityMonster(pos, rot, level, 0, 0, constant.VISION_LEVEL_NORMAL)
+	monsterEntity.CreateMonsterEntity(monsterId)
+	g.AddSceneEntityNotify(player, proto.VisionType_VISION_BORN, []uint32{monsterEntity.GetId()}, true, false)
+	return monsterEntity.GetId()
 }
 
 // CreateGadget 创建物件实体
-func (g *Game) CreateGadget(player *model.Player, pos *model.Vector, gadgetId uint32, isDrop bool, itemId, count uint32) uint32 {
+func (g *Game) CreateGadget(player *model.Player, pos *model.Vector, gadgetId uint32) uint32 {
 	if gadgetId == 0 {
-		logger.Error("create gadget id is zero, pos: %+v, isDrop: %v, itemId: %v, count: %v, uid: %v", pos, isDrop, itemId, count, player.PlayerId)
+		logger.Error("create gadget id is zero, pos: %+v, uid: %v", pos, player.PlayerId)
 		return 0
 	}
 	world := WORLD_MANAGER.GetWorldById(player.WorldId)
@@ -1467,19 +1470,33 @@ func (g *Game) CreateGadget(player *model.Player, pos *model.Vector, gadgetId ui
 	}
 	rot := new(model.Vector)
 	rot.Y = random.GetRandomFloat64(0.0, 360.0)
-	entityId := scene.CreateEntityGadgetNormal(
-		pos, rot,
-		gadgetId, constant.GADGET_STATE_DEFAULT, isDrop, itemId, count,
-		0, 0, constant.VISION_LEVEL_NORMAL,
-	)
-	g.AddSceneEntityNotify(player, proto.VisionType_VISION_BORN, []uint32{entityId}, true, false)
-	return entityId
+	gadgetNormalEntity := scene.CreateEntityGadgetNormal(pos, rot, 0, 0, constant.VISION_LEVEL_NORMAL, gadgetId, constant.GADGET_STATE_DEFAULT)
+	g.AddSceneEntityNotify(player, proto.VisionType_VISION_BORN, []uint32{gadgetNormalEntity.GetId()}, true, false)
+	return gadgetNormalEntity.GetId()
 }
 
 // CreateDropGadget 创建掉落物的物件实体
 func (g *Game) CreateDropGadget(player *model.Player, pos *model.Vector, gadgetId, itemId, count uint32) uint32 {
-	entityId := g.CreateGadget(player, pos, gadgetId, true, itemId, count)
-	return entityId
+	if gadgetId == 0 {
+		logger.Error("create gadget id is zero, pos: %+v, itemId: %v, count: %v, uid: %v", pos, itemId, count, player.PlayerId)
+		return 0
+	}
+	world := WORLD_MANAGER.GetWorldById(player.WorldId)
+	if world == nil {
+		return 0
+	}
+	scene := world.GetSceneById(player.GetSceneId())
+	if pos == nil {
+		pos = g.GetPlayerPos(player)
+		pos.X += random.GetRandomFloat64(-5.0, 5.0)
+		pos.Z += random.GetRandomFloat64(-5.0, 5.0)
+	}
+	rot := new(model.Vector)
+	rot.Y = random.GetRandomFloat64(0.0, 360.0)
+	gadgetTrifleItemEntity := scene.CreateEntityGadgetTrifleItem(pos, rot, constant.VISION_LEVEL_NORMAL, gadgetId, constant.GADGET_STATE_DEFAULT)
+	gadgetTrifleItemEntity.CreateGadgetTrifleItemEntity(itemId, count)
+	g.AddSceneEntityNotify(player, proto.VisionType_VISION_BORN, []uint32{gadgetTrifleItemEntity.GetId()}, true, false)
+	return gadgetTrifleItemEntity.GetId()
 }
 
 // GetPosIsInWeatherArea 获取坐标是否在指定的天气区域
@@ -1984,7 +2001,19 @@ func (g *Game) PacketSceneEntityInfoGadget(player *model.Player, scene *Scene, e
 	switch entity.(type) {
 	case *GadgetNormalEntity:
 		sceneEntityInfo.Entity = &proto.SceneEntityInfo_Gadget{
-			Gadget: g.PacketSceneGadgetInfoNormal(player, entity),
+			Gadget: g.PacketSceneGadgetInfoNormal(entity.(*GadgetNormalEntity)),
+		}
+	case *GadgetTrifleItemEntity:
+		sceneEntityInfo.Entity = &proto.SceneEntityInfo_Gadget{
+			Gadget: g.PacketSceneGadgetInfoTrifleItem(player, entity.(*GadgetTrifleItemEntity)),
+		}
+	case *GadgetGatherEntity:
+		sceneEntityInfo.Entity = &proto.SceneEntityInfo_Gadget{
+			Gadget: g.PacketSceneGadgetInfoGather(entity.(*GadgetGatherEntity)),
+		}
+	case *GadgetWorktopEntity:
+		sceneEntityInfo.Entity = &proto.SceneEntityInfo_Gadget{
+			Gadget: g.PacketSceneGadgetInfoWorktop(entity.(*GadgetWorktopEntity)),
 		}
 	case *GadgetClientEntity:
 		sceneEntityInfo.Entity = &proto.SceneEntityInfo_Gadget{
@@ -2074,45 +2103,74 @@ func (g *Game) PacketSceneNpcInfo(entity *NpcEntity) *proto.SceneNpcInfo {
 	return sceneNpcInfo
 }
 
-func (g *Game) PacketSceneGadgetInfoNormal(player *model.Player, entity IEntity) *proto.SceneGadgetInfo {
-	iGadgetEntity, ok := entity.(IGadgetEntity)
-	if !ok {
-		return new(proto.SceneGadgetInfo)
-	}
-	gadgetDataConfig := gdconf.GetGadgetDataById(int32(iGadgetEntity.GetGadgetId()))
-	if gadgetDataConfig == nil {
-		logger.Error("get gadget data config is nil, gadgetId: %v", iGadgetEntity.GetGadgetId())
-		return new(proto.SceneGadgetInfo)
-	}
+func (g *Game) PacketSceneGadgetInfoNormal(gadgetNormalEntity *GadgetNormalEntity) *proto.SceneGadgetInfo {
 	sceneGadgetInfo := &proto.SceneGadgetInfo{
-		GadgetId:         iGadgetEntity.GetGadgetId(),
-		GroupId:          entity.GetGroupId(),
-		ConfigId:         entity.GetConfigId(),
-		GadgetState:      iGadgetEntity.GetGadgetState(),
+		GadgetId:         gadgetNormalEntity.GetGadgetId(),
+		GroupId:          gadgetNormalEntity.GetGroupId(),
+		ConfigId:         gadgetNormalEntity.GetConfigId(),
+		GadgetState:      gadgetNormalEntity.GetGadgetState(),
 		IsEnableInteract: true,
 		AuthorityPeerId:  1,
 	}
-	gadgetNormalEntity := entity.(*GadgetNormalEntity)
-	if gadgetNormalEntity.GetIsDrop() {
-		dbItem := player.GetDbItem()
-		sceneGadgetInfo.Content = &proto.SceneGadgetInfo_TrifleItem{
-			TrifleItem: &proto.Item{
-				ItemId: gadgetNormalEntity.GetItemId(),
-				Guid:   dbItem.GetItemGuid(gadgetNormalEntity.GetItemId()),
-				Detail: &proto.Item_Material{
-					Material: &proto.Material{
-						Count: gadgetNormalEntity.GetCount(),
-					},
+	return sceneGadgetInfo
+}
+
+func (g *Game) PacketSceneGadgetInfoTrifleItem(player *model.Player, gadgetTrifleItemEntity *GadgetTrifleItemEntity) *proto.SceneGadgetInfo {
+	sceneGadgetInfo := &proto.SceneGadgetInfo{
+		GadgetId:         gadgetTrifleItemEntity.GetGadgetId(),
+		GroupId:          gadgetTrifleItemEntity.GetGroupId(),
+		ConfigId:         gadgetTrifleItemEntity.GetConfigId(),
+		GadgetState:      gadgetTrifleItemEntity.GetGadgetState(),
+		IsEnableInteract: true,
+		AuthorityPeerId:  1,
+	}
+	dbItem := player.GetDbItem()
+	sceneGadgetInfo.Content = &proto.SceneGadgetInfo_TrifleItem{
+		TrifleItem: &proto.Item{
+			ItemId: gadgetTrifleItemEntity.GetItemId(),
+			Guid:   dbItem.GetItemGuid(gadgetTrifleItemEntity.GetItemId()),
+			Detail: &proto.Item_Material{
+				Material: &proto.Material{
+					Count: gadgetTrifleItemEntity.GetCount(),
 				},
 			},
-		}
-	} else if gadgetDataConfig.Type == constant.GADGET_TYPE_GATHER_OBJECT {
-		sceneGadgetInfo.Content = &proto.SceneGadgetInfo_GatherGadget{
-			GatherGadget: &proto.GatherGadgetInfo{
-				ItemId:        gadgetNormalEntity.GetItemId(),
-				IsForbidGuest: false,
-			},
-		}
+		},
+	}
+	return sceneGadgetInfo
+}
+
+func (g *Game) PacketSceneGadgetInfoGather(gadgetGatherEntity *GadgetGatherEntity) *proto.SceneGadgetInfo {
+	sceneGadgetInfo := &proto.SceneGadgetInfo{
+		GadgetId:         gadgetGatherEntity.GetGadgetId(),
+		GroupId:          gadgetGatherEntity.GetGroupId(),
+		ConfigId:         gadgetGatherEntity.GetConfigId(),
+		GadgetState:      gadgetGatherEntity.GetGadgetState(),
+		IsEnableInteract: true,
+		AuthorityPeerId:  1,
+	}
+	sceneGadgetInfo.Content = &proto.SceneGadgetInfo_GatherGadget{
+		GatherGadget: &proto.GatherGadgetInfo{
+			ItemId:        gadgetGatherEntity.GetItemId(),
+			IsForbidGuest: false,
+		},
+	}
+	return sceneGadgetInfo
+}
+
+func (g *Game) PacketSceneGadgetInfoWorktop(gadgetWorktopEntity *GadgetWorktopEntity) *proto.SceneGadgetInfo {
+	sceneGadgetInfo := &proto.SceneGadgetInfo{
+		GadgetId:         gadgetWorktopEntity.GetGadgetId(),
+		GroupId:          gadgetWorktopEntity.GetGroupId(),
+		ConfigId:         gadgetWorktopEntity.GetConfigId(),
+		GadgetState:      gadgetWorktopEntity.GetGadgetState(),
+		IsEnableInteract: true,
+		AuthorityPeerId:  1,
+	}
+	sceneGadgetInfo.Content = &proto.SceneGadgetInfo_Worktop{
+		Worktop: &proto.WorktopInfo{
+			OptionList:        object.ConvMapKeyToList[uint32, struct{}](gadgetWorktopEntity.GetOptionMap()),
+			IsGuestCanOperate: false,
+		},
 	}
 	return sceneGadgetInfo
 }

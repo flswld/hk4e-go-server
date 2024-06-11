@@ -165,6 +165,9 @@ func (c *CmdProtoMap) registerMessage() {
 	c.regMsg(EnterTransPointRegionNotify, func() any { return new(proto.EnterTransPointRegionNotify) })       // 进入传送点区域通知 七天神像区域
 	c.regMsg(ExitTransPointRegionNotify, func() any { return new(proto.ExitTransPointRegionNotify) })         // 离开传送点区域通知
 	c.regMsg(SceneAreaUnlockNotify, func() any { return new(proto.SceneAreaUnlockNotify) })                   // 场景区域解锁通知
+	c.regMsg(SelectWorktopOptionReq, func() any { return new(proto.SelectWorktopOptionReq) })                 // 操作台选项选择请求
+	c.regMsg(SelectWorktopOptionRsp, func() any { return new(proto.SelectWorktopOptionRsp) })                 // 操作台选项选择响应
+	c.regMsg(WorktopOptionNotify, func() any { return new(proto.WorktopOptionNotify) })                       // 操作台选项通知
 
 	// 战斗与同步
 	c.regMsg(AvatarFightPropNotify, func() any { return new(proto.AvatarFightPropNotify) })                         // 角色战斗属性通知
