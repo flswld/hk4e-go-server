@@ -330,6 +330,7 @@ func initLuaState(luaState *lua.LState) {
 	luaState.SetField(eventType, "EVENT_ANY_GADGET_DIE", lua.LNumber(constant.LUA_EVENT_ANY_GADGET_DIE))
 	luaState.SetField(eventType, "EVENT_GROUP_LOAD", lua.LNumber(constant.LUA_EVENT_GROUP_LOAD))
 	luaState.SetField(eventType, "EVENT_TIMER_EVENT", lua.LNumber(constant.LUA_EVENT_TIMER_EVENT))
+	luaState.SetField(eventType, "EVENT_SELECT_OPTION", lua.LNumber(constant.LUA_EVENT_SELECT_OPTION))
 
 	entityType := luaState.NewTable()
 	luaState.SetGlobal("EntityType", entityType)

@@ -134,15 +134,12 @@ func (g *Game) CombatInvocationsNotify(player *model.Player, payloadMsg pb.Messa
 			if motionInfo == nil || motionInfo.Pos == nil || motionInfo.Rot == nil {
 				break
 			}
-			g.handleEntityMove(player, world, scene, entityMoveInfo.EntityId, &model.Vector{
-				X: float64(motionInfo.Pos.X),
-				Y: float64(motionInfo.Pos.Y),
-				Z: float64(motionInfo.Pos.Z),
-			}, &model.Vector{
-				X: float64(motionInfo.Rot.X),
-				Y: float64(motionInfo.Rot.Y),
-				Z: float64(motionInfo.Rot.Z),
-			}, false, entityMoveInfo)
+			g.handleEntityMove(
+				player, world, scene, entityMoveInfo.EntityId,
+				&model.Vector{X: float64(motionInfo.Pos.X), Y: float64(motionInfo.Pos.Y), Z: float64(motionInfo.Pos.Z)},
+				&model.Vector{X: float64(motionInfo.Rot.X), Y: float64(motionInfo.Rot.Y), Z: float64(motionInfo.Rot.Z)},
+				false, entityMoveInfo,
+			)
 			// 众里寻他千百度 蓦然回首 那人却在灯火阑珊处
 			if motionInfo.State == proto.MotionState_MOTION_NOTIFY || motionInfo.State == proto.MotionState_MOTION_FIGHT {
 				// 只要转发了这两个包的其中之一 客户端的动画就会被打断
@@ -259,6 +256,25 @@ func (g *Game) handleEntityMove(player *model.Player, world *World, scene *Scene
 			return
 		}
 		oldPos := g.GetPlayerPos(player)
+		// 更新玩家角色实体的位置信息
+		for _, worldAvatar := range world.GetPlayerWorldAvatarList(player) {
+			worldAvatarEntityId := worldAvatar.GetAvatarEntityId()
+			worldAvatarEntity := scene.GetEntity(worldAvatarEntityId)
+			if worldAvatarEntity == nil {
+				logger.Error("world avatar entity is nil, worldAvatar: %+v, uid: %v", worldAvatar, player.PlayerId)
+				continue
+			}
+			worldAvatarEntity.SetPos(pos)
+			worldAvatarEntity.SetRot(rot)
+			worldWeaponEntityId := worldAvatar.GetWeaponEntityId()
+			worldWeaponEntity := scene.GetEntity(worldWeaponEntityId)
+			if worldWeaponEntity == nil {
+				logger.Error("world weapon entity is nil, worldAvatar: %+v, uid: %v", worldAvatar, player.PlayerId)
+				continue
+			}
+			worldWeaponEntity.SetPos(pos)
+			worldWeaponEntity.SetRot(rot)
+		}
 		if !WORLD_MANAGER.IsAiWorld(world) {
 			if !world.IsValidScenePos(scene.GetId(), float32(pos.X), 0.0, float32(pos.Z)) {
 				return
@@ -282,25 +298,6 @@ func (g *Game) handleEntityMove(player *model.Player, world *World, scene *Scene
 		}
 		// 场景天气区域变更检测
 		g.SceneWeatherAreaCheck(player, oldPos, pos)
-		// 更新玩家角色实体的位置信息
-		for _, worldAvatar := range world.GetPlayerWorldAvatarList(player) {
-			worldAvatarEntityId := worldAvatar.GetAvatarEntityId()
-			worldAvatarEntity := scene.GetEntity(worldAvatarEntityId)
-			if worldAvatarEntity == nil {
-				logger.Error("world avatar entity is nil, worldAvatar: %+v, uid: %v", worldAvatar, player.PlayerId)
-				continue
-			}
-			worldAvatarEntity.SetPos(pos)
-			worldAvatarEntity.SetRot(rot)
-			worldWeaponEntityId := worldAvatar.GetWeaponEntityId()
-			worldWeaponEntity := scene.GetEntity(worldWeaponEntityId)
-			if worldWeaponEntity == nil {
-				logger.Error("world weapon entity is nil, worldAvatar: %+v, uid: %v", worldAvatar, player.PlayerId)
-				continue
-			}
-			worldWeaponEntity.SetPos(pos)
-			worldWeaponEntity.SetRot(rot)
-		}
 	}
 	// 更新场景实体的位置信息
 	entity.SetPos(pos)
@@ -861,10 +858,8 @@ func (g *Game) EvtCreateGadgetNotify(player *model.Player, payloadMsg pb.Message
 		&model.Vector{X: float64(ntf.InitEulerAngles.X), Y: float64(ntf.InitEulerAngles.Y), Z: float64(ntf.InitEulerAngles.Z)},
 		ntf.ConfigId,
 	)
-	if gadgetClientEntity == nil {
-		return
-	}
 	gadgetClientEntity.CreateGadgetClientEntity(ntf.CampId, ntf.CampType, ntf.OwnerEntityId, ntf.TargetEntityId, ntf.PropOwnerEntityId)
+	scene.CreateEntity(gadgetClientEntity)
 	g.AddSceneEntityNotify(player, proto.VisionType_VISION_BORN, []uint32{ntf.EntityId}, true, true)
 
 	// 触发事件

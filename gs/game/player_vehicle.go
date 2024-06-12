@@ -47,11 +47,8 @@ func (g *Game) CreateVehicleReq(player *model.Player, payloadMsg pb.Message) {
 	pos := &model.Vector{X: float64(req.Pos.X), Y: float64(req.Pos.Y), Z: float64(req.Pos.Z)}
 	rot := &model.Vector{X: float64(req.Rot.X), Y: float64(req.Rot.Y), Z: float64(req.Rot.Z)}
 	gadgetVehicleEntity := scene.CreateEntityGadgetVehicle(pos, rot, req.VehicleId)
-	if gadgetVehicleEntity == nil {
-		g.SendError(cmd.VehicleInteractRsp, player, &proto.VehicleInteractRsp{})
-		return
-	}
 	gadgetVehicleEntity.CreateGadgetVehicleEntity(player.PlayerId)
+	scene.CreateEntity(gadgetVehicleEntity)
 	GAME.AddSceneEntityNotify(player, proto.VisionType_VISION_BORN, []uint32{gadgetVehicleEntity.GetId()}, true, false)
 	// 记录创建的载具信息
 	player.VehicleInfo.CreateEntityIdMap[req.VehicleId] = gadgetVehicleEntity.GetId()

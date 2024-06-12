@@ -160,7 +160,6 @@ func (s *Scene) CreateEntityMonster(pos, rot *model.Vector, level uint8, configI
 			visionLevel: visionLevel,
 		},
 	}
-	s.CreateEntity(entity)
 	return entity
 }
 
@@ -185,7 +184,6 @@ func (s *Scene) CreateEntityNpc(pos, rot *model.Vector, configId, groupId uint32
 			visionLevel: constant.VISION_LEVEL_NORMAL,
 		},
 	}
-	s.CreateEntity(entity)
 	return entity
 }
 
@@ -214,7 +212,6 @@ func (s *Scene) CreateEntityGadgetNormal(pos, rot *model.Vector, configId, group
 			gadgetState: gadgetState,
 		},
 	}
-	s.CreateEntity(entity)
 	return entity
 }
 
@@ -241,7 +238,6 @@ func (s *Scene) CreateEntityGadgetTrifleItem(pos, rot *model.Vector, visionLevel
 			gadgetState: gadgetState,
 		},
 	}
-	s.CreateEntity(entity)
 	return entity
 }
 
@@ -270,7 +266,6 @@ func (s *Scene) CreateEntityGadgetGather(pos, rot *model.Vector, configId, group
 			gadgetState: gadgetState,
 		},
 	}
-	s.CreateEntity(entity)
 	return entity
 }
 
@@ -300,7 +295,6 @@ func (s *Scene) CreateEntityGadgetWorktop(pos, rot *model.Vector, configId, grou
 		},
 		optionMap: make(map[uint32]struct{}),
 	}
-	s.CreateEntity(entity)
 	return entity
 }
 
@@ -325,9 +319,6 @@ func (s *Scene) CreateEntityGadgetClient(entityId uint32, pos, rot *model.Vector
 			gadgetId: gadgetId,
 		},
 	}
-	if s.CreateEntity(entity) == 0 {
-		return nil
-	}
 	return entity
 }
 
@@ -348,7 +339,6 @@ func (s *Scene) CreateEntityGadgetVehicle(pos, rot *model.Vector, gadgetId uint3
 			gadgetId: gadgetId,
 		},
 	}
-	s.CreateEntity(entity)
 	return entity
 }
 

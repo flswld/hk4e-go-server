@@ -124,7 +124,7 @@ func (g *Game) GetWorldLevelByPlayerLevel(playerLevel uint32) uint32 {
 	}
 }
 
-// TriggerOpenState 触发检测功能开放状态更新
+// TriggerOpenState 触发功能开放状态
 func (g *Game) TriggerOpenState(userId uint32) {
 	player := USER_MANAGER.GetOnlineUser(userId)
 	if player == nil {

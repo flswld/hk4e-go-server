@@ -15,11 +15,11 @@ type DbQuest struct {
 
 // Quest 任务
 type Quest struct {
-	QuestId            uint32   // 任务id
-	State              uint8    // 任务状态
-	AcceptTime         uint32   // 接取时间
-	StartTime          uint32   // 开始执行时间
-	FinishProgressList []uint32 // 任务进度
+	QuestId         uint32   // 任务id
+	State           uint8    // 任务状态
+	AcceptTime      uint32   // 接取时间
+	StartTime       uint32   // 开始执行时间
+	FinishCountList []uint32 // 任务完成进度
 }
 
 func (p *Player) GetDbQuest() *DbQuest {
@@ -55,11 +55,11 @@ func (q *DbQuest) AddQuest(questId uint32) {
 		return
 	}
 	q.QuestMap[questId] = &Quest{
-		QuestId:            uint32(questDataConfig.QuestId),
-		State:              constant.QUEST_STATE_UNSTARTED,
-		AcceptTime:         uint32(time.Now().Unix()),
-		StartTime:          0,
-		FinishProgressList: nil,
+		QuestId:         uint32(questDataConfig.QuestId),
+		State:           constant.QUEST_STATE_UNSTARTED,
+		AcceptTime:      uint32(time.Now().Unix()),
+		StartTime:       0,
+		FinishCountList: make([]uint32, len(questDataConfig.FinishCondList)),
 	}
 }
 
@@ -74,14 +74,8 @@ func (q *DbQuest) StartQuest(questId uint32) {
 		logger.Error("invalid quest state, questId: %v, state: %v", questId, quest.State)
 		return
 	}
-	questDataConfig := gdconf.GetQuestDataById(int32(questId))
-	if questDataConfig == nil {
-		logger.Error("get quest data config is nil, questId: %v", questId)
-		return
-	}
 	quest.State = constant.QUEST_STATE_UNFINISHED
 	quest.StartTime = uint32(time.Now().Unix())
-	quest.FinishProgressList = make([]uint32, len(questDataConfig.FinishCondList))
 }
 
 // DeleteQuest 删除一个任务
@@ -94,8 +88,25 @@ func (q *DbQuest) DeleteQuest(questId uint32) {
 	delete(q.QuestMap, questId)
 }
 
-// AddQuestProgress 添加一个任务的进度
-func (q *DbQuest) AddQuestProgress(questId uint32, index int, progress uint32) {
+// AddQuestFinishCount 添加一个任务的完成进度
+func (q *DbQuest) AddQuestFinishCount(questId uint32, index int) {
+	quest, exist := q.QuestMap[questId]
+	if !exist {
+		logger.Error("get quest is nil, questId: %v", questId)
+		return
+	}
+	if quest.State != constant.QUEST_STATE_UNFINISHED {
+		return
+	}
+	if index >= len(quest.FinishCountList) {
+		logger.Error("invalid quest cond index, questId: %v, index: %v", questId, index)
+		return
+	}
+	quest.FinishCountList[index] += 1
+}
+
+// CheckQuestFinish 检查任务是否完成
+func (q *DbQuest) CheckQuestFinish(questId uint32) {
 	quest, exist := q.QuestMap[questId]
 	if !exist {
 		logger.Error("get quest is nil, questId: %v", questId)
@@ -109,28 +120,55 @@ func (q *DbQuest) AddQuestProgress(questId uint32, index int, progress uint32) {
 		logger.Error("get quest data config is nil, questId: %v", questId)
 		return
 	}
-	if index >= len(quest.FinishProgressList) || index >= len(questDataConfig.FinishCondList) {
-		logger.Error("invalid quest progress index, questId: %v, index: %v", questId, index)
-		return
+	resultList := make([]bool, 0)
+	for index, finishCond := range questDataConfig.FinishCondList {
+		result := false
+		finishCount := finishCond.Count
+		if finishCount == 0 {
+			finishCount = 1
+		}
+		if quest.FinishCountList[index] >= uint32(finishCount) {
+			result = true
+		}
+		resultList = append(resultList, result)
 	}
-	quest.FinishProgressList[index] += progress
-	if quest.FinishProgressList[index] >= uint32(questDataConfig.FinishCondList[index].Count) {
+	finish := false
+	switch questDataConfig.FinishCondCompose {
+	case constant.QUEST_LOGIC_TYPE_NONE:
+		fallthrough
+	case constant.QUEST_LOGIC_TYPE_AND:
+		finish = true
+		for _, result := range resultList {
+			if !result {
+				finish = false
+				break
+			}
+		}
+	case constant.QUEST_LOGIC_TYPE_OR:
+		finish = false
+		for _, result := range resultList {
+			if result {
+				finish = true
+				break
+			}
+		}
+	}
+	if finish {
 		quest.State = constant.QUEST_STATE_FINISHED
 	}
 }
 
 // ForceFinishQuest 强制完成一个任务
 func (q *DbQuest) ForceFinishQuest(questId uint32) {
-	questDataConfig := gdconf.GetQuestDataById(int32(questId))
-	if questDataConfig == nil {
-		logger.Error("get quest data config is nil, questId: %v", questId)
+	quest, exist := q.QuestMap[questId]
+	if !exist {
+		logger.Error("get quest is nil, questId: %v", questId)
 		return
 	}
-	for index, finishCond := range questDataConfig.FinishCondList {
-		q.AddQuestProgress(questId, index, uint32(finishCond.Count))
-	}
+	quest.State = constant.QUEST_STATE_FINISHED
 }
 
+// FailQuest 失败一个任务
 func (q *DbQuest) FailQuest(questId uint32) {
 	quest, exist := q.QuestMap[questId]
 	if !exist {
@@ -141,4 +179,10 @@ func (q *DbQuest) FailQuest(questId uint32) {
 		return
 	}
 	quest.State = constant.QUEST_STATE_FAILED
+	questDataConfig := gdconf.GetQuestDataById(int32(questId))
+	if questDataConfig == nil {
+		logger.Error("get quest data config is nil, questId: %v", questId)
+		return
+	}
+	quest.FinishCountList = make([]uint32, len(questDataConfig.FinishCondList))
 }

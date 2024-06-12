@@ -260,7 +260,7 @@ func (g *Game) GadgetCreateTriggerCheck(player *model.Player, group *Group, enti
 }
 
 // GadgetStateChangeTriggerCheck 物件状态变更触发器检测
-func (g *Game) GadgetStateChangeTriggerCheck(player *model.Player, group *Group, entity IEntity, state uint8) {
+func (g *Game) GadgetStateChangeTriggerCheck(player *model.Player, group *Group, entity IEntity, state uint32) {
 	forEachGroupTrigger(player, group, func(triggerConfig *gdconf.Trigger, groupConfig *gdconf.Group) {
 		if triggerConfig.Event != constant.LUA_EVENT_GADGET_STATE_CHANGE {
 			return
@@ -360,6 +360,32 @@ func (g *Game) TimerEventTriggerCheck(player *model.Player, group *Group, source
 			logger.Debug("scene group trigger do action, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)
 			ok := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
 				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
+				&LuaEvt{})
+			if !ok {
+				logger.Error("trigger action fail, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)
+			}
+		}
+	})
+}
+
+// SelectOptionTriggerCheck 操作台选择触发器检测
+func (g *Game) SelectOptionTriggerCheck(player *model.Player, group *Group, entity IEntity, option uint32) {
+	forEachGroupTrigger(player, group, func(triggerConfig *gdconf.Trigger, groupConfig *gdconf.Group) {
+		if triggerConfig.Event != constant.LUA_EVENT_SELECT_OPTION {
+			return
+		}
+		if triggerConfig.Condition != "" {
+			cond := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Condition,
+				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id)},
+				&LuaEvt{param1: int32(entity.GetConfigId()), param2: int32(option)})
+			if !cond {
+				return
+			}
+		}
+		if triggerConfig.Action != "" {
+			logger.Debug("scene group trigger do action, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)
+			ok := CallSceneLuaFunc(groupConfig.GetLuaState(), triggerConfig.Action,
+				&LuaCtx{uid: player.PlayerId, groupId: uint32(groupConfig.Id), targetEntityId: entity.GetId()},
 				&LuaEvt{})
 			if !ok {
 				logger.Error("trigger action fail, trigger: %+v, uid: %v", triggerConfig, player.PlayerId)

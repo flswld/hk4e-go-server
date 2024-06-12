@@ -505,7 +505,26 @@ func (g *Game) ExitTransPointRegionNotify(player *model.Player, payloadMsg pb.Me
 
 func (g *Game) SelectWorktopOptionReq(player *model.Player, payloadMsg pb.Message) {
 	req := payloadMsg.(*proto.SelectWorktopOptionReq)
-	_ = req
+
+	world := WORLD_MANAGER.GetWorldById(player.WorldId)
+	if world == nil {
+		return
+	}
+	scene := world.GetSceneById(player.SceneId)
+	entity := scene.GetEntity(req.GadgetEntityId)
+	if entity == nil {
+		return
+	}
+	group := scene.GetGroupById(entity.GetGroupId())
+	if group == nil {
+		return
+	}
+	g.SelectOptionTriggerCheck(player, group, entity, req.OptionId)
+
+	g.SendMsg(cmd.SelectWorktopOptionRsp, player.PlayerId, player.ClientSeq, &proto.SelectWorktopOptionRsp{
+		GadgetEntityId: req.GadgetEntityId,
+		OptionId:       req.OptionId,
+	})
 }
 
 /************************************************** 游戏功能 **************************************************/
@@ -533,7 +552,7 @@ func (g *Game) UnlockPlayerScenePoint(player *model.Player, sceneId uint32, poin
 		SceneId:   sceneId,
 		PointList: []uint32{pointId},
 	}, 0)
-	g.TriggerQuest(player, constant.QUEST_FINISH_COND_TYPE_UNLOCK_TRANS_POINT, "", int32(sceneId), int32(pointId))
+	g.TriggerQuest(player, constant.QUEST_FINISH_COND_TYPE_UNLOCK_TRANS_POINT, "")
 	return proto.Retcode_RET_SUCC
 }
 
@@ -560,7 +579,7 @@ func (g *Game) UnlockPlayerSceneArea(player *model.Player, sceneId uint32, areaI
 		SceneId:  sceneId,
 		AreaList: []uint32{areaId},
 	}, 0)
-	g.TriggerQuest(player, constant.QUEST_FINISH_COND_TYPE_UNLOCK_AREA, "", int32(sceneId), int32(areaId))
+	g.TriggerQuest(player, constant.QUEST_FINISH_COND_TYPE_UNLOCK_AREA, "")
 }
 
 // ChangeGameTime 修改游戏时间

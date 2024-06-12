@@ -985,7 +985,7 @@ func (g *Game) ChangeGadgetState(player *model.Player, entityId uint32, state ui
 	sceneGroup.ChangeGadgetState(entity.GetConfigId(), uint8(iGadgetEntity.GetGadgetState()))
 
 	// 物件状态变更触发器检测
-	g.GadgetStateChangeTriggerCheck(player, group, entity, uint8(iGadgetEntity.GetGadgetState()))
+	g.GadgetStateChangeTriggerCheck(player, group, entity, iGadgetEntity.GetGadgetState())
 }
 
 // GetVisionEntity 获取某位置视野内的全部实体
@@ -1305,6 +1305,7 @@ func (g *Game) CreateConfigEntity(scene *Scene, groupId uint32, entityConfig any
 			monsterLevel, uint32(monster.ConfigId), groupId, int(monster.VisionLevel),
 		)
 		monsterEntity.CreateMonsterEntity(uint32(monster.MonsterId))
+		scene.CreateEntity(monsterEntity)
 		return monsterEntity.GetId()
 	case *gdconf.Npc:
 		npc := entityConfig.(*gdconf.Npc)
@@ -1314,6 +1315,7 @@ func (g *Game) CreateConfigEntity(scene *Scene, groupId uint32, entityConfig any
 			uint32(npc.ConfigId), groupId,
 		)
 		npcEntity.CreateNpcEntity(uint32(npc.NpcId), 0, 0, 0)
+		scene.CreateEntity(npcEntity)
 		return npcEntity.GetId()
 	case *gdconf.Gadget:
 		gadget := entityConfig.(*gdconf.Gadget)
@@ -1334,6 +1336,7 @@ func (g *Game) CreateConfigEntity(scene *Scene, groupId uint32, entityConfig any
 				uint32(gadget.ConfigId), groupId, int(gadget.VisionLevel), uint32(gatherDataConfig.GadgetId), uint32(constant.GADGET_STATE_DEFAULT),
 			)
 			gadgetGatherEntity.CreateGadgetGatherEntity(uint32(gatherDataConfig.ItemId))
+			scene.CreateEntity(gadgetGatherEntity)
 			return gadgetGatherEntity.GetId()
 		case constant.GADGET_TYPE_WORKTOP:
 			state := uint8(gadget.State)
@@ -1346,6 +1349,7 @@ func (g *Game) CreateConfigEntity(scene *Scene, groupId uint32, entityConfig any
 				&model.Vector{X: float64(gadget.Rot.X), Y: float64(gadget.Rot.Y), Z: float64(gadget.Rot.Z)},
 				uint32(gadget.ConfigId), groupId, int(gadget.VisionLevel), uint32(gadget.GadgetId), uint32(state),
 			)
+			scene.CreateEntity(gadgetWorktopEntity)
 			return gadgetWorktopEntity.GetId()
 		default:
 			state := uint8(gadget.State)
@@ -1358,6 +1362,7 @@ func (g *Game) CreateConfigEntity(scene *Scene, groupId uint32, entityConfig any
 				&model.Vector{X: float64(gadget.Rot.X), Y: float64(gadget.Rot.Y), Z: float64(gadget.Rot.Z)},
 				uint32(gadget.ConfigId), groupId, int(gadget.VisionLevel), uint32(gadget.GadgetId), uint32(state),
 			)
+			scene.CreateEntity(gadgetNormalEntity)
 			return gadgetNormalEntity.GetId()
 		}
 	}
@@ -1448,6 +1453,7 @@ func (g *Game) CreateMonster(player *model.Player, pos *model.Vector, monsterId 
 	rot.Y = random.GetRandomFloat64(0.0, 360.0)
 	monsterEntity := scene.CreateEntityMonster(pos, rot, level, 0, 0, constant.VISION_LEVEL_NORMAL)
 	monsterEntity.CreateMonsterEntity(monsterId)
+	scene.CreateEntity(monsterEntity)
 	g.AddSceneEntityNotify(player, proto.VisionType_VISION_BORN, []uint32{monsterEntity.GetId()}, true, false)
 	return monsterEntity.GetId()
 }
@@ -1471,6 +1477,7 @@ func (g *Game) CreateGadget(player *model.Player, pos *model.Vector, gadgetId ui
 	rot := new(model.Vector)
 	rot.Y = random.GetRandomFloat64(0.0, 360.0)
 	gadgetNormalEntity := scene.CreateEntityGadgetNormal(pos, rot, 0, 0, constant.VISION_LEVEL_NORMAL, gadgetId, constant.GADGET_STATE_DEFAULT)
+	scene.CreateEntity(gadgetNormalEntity)
 	g.AddSceneEntityNotify(player, proto.VisionType_VISION_BORN, []uint32{gadgetNormalEntity.GetId()}, true, false)
 	return gadgetNormalEntity.GetId()
 }
@@ -1495,6 +1502,7 @@ func (g *Game) CreateDropGadget(player *model.Player, pos *model.Vector, gadgetI
 	rot.Y = random.GetRandomFloat64(0.0, 360.0)
 	gadgetTrifleItemEntity := scene.CreateEntityGadgetTrifleItem(pos, rot, constant.VISION_LEVEL_NORMAL, gadgetId, constant.GADGET_STATE_DEFAULT)
 	gadgetTrifleItemEntity.CreateGadgetTrifleItemEntity(itemId, count)
+	scene.CreateEntity(gadgetTrifleItemEntity)
 	g.AddSceneEntityNotify(player, proto.VisionType_VISION_BORN, []uint32{gadgetTrifleItemEntity.GetId()}, true, false)
 	return gadgetTrifleItemEntity.GetId()
 }

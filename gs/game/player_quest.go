@@ -1,6 +1,7 @@
 package game
 
 import (
+	"hk4e/pkg/object"
 	"strconv"
 	"strings"
 
@@ -108,7 +109,7 @@ func matchParamEqual(param1 []int32, param2 []int32, num int) bool {
 }
 
 // AcceptQuest 接取任务
-func (g *Game) AcceptQuest(player *model.Player, notifyClient bool) {
+func (g *Game) AcceptQuest(player *model.Player, notify bool) {
 	g.EndlessLoopCheck(EndlessLoopCheckTypeAcceptQuest)
 	dbQuest := player.GetDbQuest()
 	addQuestIdList := make([]uint32, 0)
@@ -116,7 +117,7 @@ func (g *Game) AcceptQuest(player *model.Player, notifyClient bool) {
 		if dbQuest.GetQuestById(uint32(questData.QuestId)) != nil {
 			continue
 		}
-		acceptCondResultList := make([]bool, 0)
+		resultList := make([]bool, 0)
 		for _, acceptCond := range questData.AcceptCondList {
 			result := false
 			switch acceptCond.Type {
@@ -149,30 +150,30 @@ func (g *Game) AcceptQuest(player *model.Player, notifyClient bool) {
 			default:
 				break
 			}
-			acceptCondResultList = append(acceptCondResultList, result)
+			resultList = append(resultList, result)
 		}
-		canAccept := false
+		accept := false
 		switch questData.AcceptCondCompose {
 		case constant.QUEST_LOGIC_TYPE_NONE:
 			fallthrough
 		case constant.QUEST_LOGIC_TYPE_AND:
-			canAccept = true
-			for _, acceptCondResult := range acceptCondResultList {
-				if !acceptCondResult {
-					canAccept = false
+			accept = true
+			for _, result := range resultList {
+				if !result {
+					accept = false
 					break
 				}
 			}
 		case constant.QUEST_LOGIC_TYPE_OR:
-			canAccept = false
-			for _, acceptCondResult := range acceptCondResultList {
-				if acceptCondResult {
-					canAccept = true
+			accept = false
+			for _, result := range resultList {
+				if result {
+					accept = true
 					break
 				}
 			}
 		}
-		if canAccept {
+		if accept {
 			if questData.QuestId == 35304 {
 				// TODO 任务异常的权柄释放元素爆发时没有能量
 				world := WORLD_MANAGER.GetWorldById(player.WorldId)
@@ -205,7 +206,7 @@ func (g *Game) AcceptQuest(player *model.Player, notifyClient bool) {
 			addQuestIdList = append(addQuestIdList, uint32(questData.QuestId))
 		}
 	}
-	if notifyClient {
+	if notify {
 		ntf := &proto.QuestListUpdateNotify{
 			QuestList: make([]*proto.Quest, 0),
 		}
@@ -219,21 +220,20 @@ func (g *Game) AcceptQuest(player *model.Player, notifyClient bool) {
 		g.SendMsg(cmd.QuestListUpdateNotify, player.PlayerId, player.ClientSeq, ntf)
 	}
 	for _, questId := range addQuestIdList {
-		g.StartQuest(player, questId, notifyClient)
+		g.StartQuest(player, questId, notify)
 	}
 }
 
 // StartQuest 开始任务
-func (g *Game) StartQuest(player *model.Player, questId uint32, notifyClient bool) {
+func (g *Game) StartQuest(player *model.Player, questId uint32, notify bool) {
 	g.EndlessLoopCheck(EndlessLoopCheckTypeStartQuest)
 	dbQuest := player.GetDbQuest()
 	dbQuest.StartQuest(questId)
 
 	g.ExecQuest(player, questId, QuestExecTypeStart)
 	g.QuestStartTriggerCheck(player, questId)
-	g.CheckQuestFinishedCond(player, questId)
 
-	if notifyClient {
+	if notify {
 		ntf := &proto.QuestListUpdateNotify{
 			QuestList: make([]*proto.Quest, 0),
 		}
@@ -243,6 +243,16 @@ func (g *Game) StartQuest(player *model.Player, questId uint32, notifyClient boo
 		}
 		ntf.QuestList = append(ntf.QuestList, pbQuest)
 		g.SendMsg(cmd.QuestListUpdateNotify, player.PlayerId, player.ClientSeq, ntf)
+	}
+
+	// 任务开始时主动触发检测是否完成
+	questDataConfig := gdconf.GetQuestDataById(int32(questId))
+	if questDataConfig == nil {
+		logger.Error("get quest data config is nil, questId: %v", questId)
+		return
+	}
+	for _, finishCond := range questDataConfig.FinishCondList {
+		g.TriggerQuest(player, finishCond.Type, "")
 	}
 }
 
@@ -414,40 +424,13 @@ func (g *Game) ExecQuest(player *model.Player, questId uint32, questExecType int
 			}
 			dbQuest := player.GetDbQuest()
 			rollbackQuest := dbQuest.GetQuestById(uint32(rollbackQuestId))
+			if rollbackQuest.State != constant.QUEST_STATE_FAILED {
+				continue
+			}
 			rollbackQuest.State = constant.QUEST_STATE_UNSTARTED
 			g.StartQuest(player, rollbackQuest.QuestId, true)
 		default:
-			logger.Error("not support quest exec type: %v, uid: %v", questExec.Type, player.PlayerId)
-		}
-	}
-}
-
-// CheckQuestFinishedCond 检测任务已完成的条件
-func (g *Game) CheckQuestFinishedCond(player *model.Player, questId uint32) {
-	g.EndlessLoopCheck(EndlessLoopCheckTypeCheckFinishedCond)
-	questDataConfig := gdconf.GetQuestDataById(int32(questId))
-	if questDataConfig == nil {
-		return
-	}
-	// TODO 检测已经完成的失败条件
-	// 检测已经完成的完成条件
-	for _, cond := range questDataConfig.FinishCondList {
-		switch cond.Type {
-		case constant.QUEST_FINISH_COND_TYPE_UNLOCK_TRANS_POINT:
-			sceneId := uint32(cond.Param[0])
-			pointId := uint32(cond.Param[1])
-
-			dbWorld := player.GetDbWorld()
-			dbScene := dbWorld.GetSceneById(sceneId)
-			if dbScene == nil {
-				logger.Error("get dbScene is nil, sceneId: %v, uid: %v", sceneId, player.PlayerId)
-				continue
-			}
-			unlock := dbScene.CheckPointUnlock(pointId)
-			if !unlock {
-				continue
-			}
-			g.TriggerQuest(player, constant.QUEST_FINISH_COND_TYPE_UNLOCK_TRANS_POINT, "", int32(sceneId), int32(pointId))
+			logger.Error("not support quest exec type: %v, questId: %v, uid: %v", questExec.Type, questId, player.PlayerId)
 		}
 	}
 }
@@ -456,7 +439,7 @@ func (g *Game) CheckQuestFinishedCond(player *model.Player, questId uint32) {
 func (g *Game) TriggerQuest(player *model.Player, cond int32, complexParam string, param ...int32) {
 	g.EndlessLoopCheck(EndlessLoopCheckTypeTriggerQuest)
 	dbQuest := player.GetDbQuest()
-	updateQuestIdList := make([]uint32, 0)
+	updateQuestIdMap := make(map[uint32]struct{})
 	for _, quest := range dbQuest.GetQuestMap() {
 		if quest.State != constant.QUEST_STATE_UNFINISHED {
 			continue
@@ -465,89 +448,106 @@ func (g *Game) TriggerQuest(player *model.Player, cond int32, complexParam strin
 		if questDataConfig == nil {
 			continue
 		}
-		for _, questCond := range questDataConfig.FailCondList {
-			if questCond.Type != cond {
+		for _, failCond := range questDataConfig.FailCondList {
+			if failCond.Type != cond {
 				continue
 			}
 			switch cond {
 			case constant.QUEST_FINISH_COND_TYPE_LUA_NOTIFY:
 				// LUA侧通知 复杂参数
-				if questCond.ComplexParam != complexParam {
+				if failCond.ComplexParam != complexParam {
 					continue
 				}
 				dbQuest.FailQuest(quest.QuestId)
-				updateQuestIdList = append(updateQuestIdList, quest.QuestId)
+			default:
+				logger.Error("not support quest cond type: %v, questId: %v, uid: %v", cond, quest.QuestId, player.PlayerId)
 			}
+			updateQuestIdMap[quest.QuestId] = struct{}{}
 		}
-		for _, questCond := range questDataConfig.FinishCondList {
-			if questCond.Type != cond {
+		for index, finishCond := range questDataConfig.FinishCondList {
+			if finishCond.Type != cond {
 				continue
 			}
 			switch cond {
 			case constant.QUEST_FINISH_COND_TYPE_FINISH_PLOT:
-				ok := matchParamEqual(questCond.Param, param, 1)
+				// 完成剧情 参数1:剧情id
+				ok := matchParamEqual(finishCond.Param, param, 1)
 				if !ok {
 					continue
 				}
-				dbQuest.ForceFinishQuest(quest.QuestId)
-				updateQuestIdList = append(updateQuestIdList, quest.QuestId)
+				dbQuest.AddQuestFinishCount(quest.QuestId, index)
 			case constant.QUEST_FINISH_COND_TYPE_TRIGGER_FIRE:
 				// 场景触发器跳了 参数1:触发器id
-				ok := matchParamEqual(questCond.Param, param, 1)
+				ok := matchParamEqual(finishCond.Param, param, 1)
 				if !ok {
 					continue
 				}
-				dbQuest.ForceFinishQuest(quest.QuestId)
-				updateQuestIdList = append(updateQuestIdList, quest.QuestId)
+				dbQuest.AddQuestFinishCount(quest.QuestId, index)
 			case constant.QUEST_FINISH_COND_TYPE_UNLOCK_TRANS_POINT:
 				// 解锁传送锚点 参数1:场景id 参数2:传送锚点id
-				ok := matchParamEqual(questCond.Param, param, 2)
-				if !ok {
+				dbWorld := player.GetDbWorld()
+				dbScene := dbWorld.GetSceneById(uint32(finishCond.Param[0]))
+				if dbScene == nil {
 					continue
 				}
-				dbQuest.ForceFinishQuest(quest.QuestId)
-				updateQuestIdList = append(updateQuestIdList, quest.QuestId)
+				unlock := dbScene.CheckPointUnlock(uint32(finishCond.Param[1]))
+				if !unlock {
+					continue
+				}
+				dbQuest.AddQuestFinishCount(quest.QuestId, index)
 			case constant.QUEST_FINISH_COND_TYPE_COMPLETE_TALK:
 				// 与NPC对话 参数1:对话id
-				ok := matchParamEqual(questCond.Param, param, 1)
+				ok := matchParamEqual(finishCond.Param, param, 1)
 				if !ok {
 					continue
 				}
-				dbQuest.ForceFinishQuest(quest.QuestId)
-				updateQuestIdList = append(updateQuestIdList, quest.QuestId)
+				dbQuest.AddQuestFinishCount(quest.QuestId, index)
 			case constant.QUEST_FINISH_COND_TYPE_LUA_NOTIFY:
 				// LUA侧通知 复杂参数
-				if questCond.ComplexParam != complexParam {
+				if finishCond.ComplexParam != complexParam {
 					continue
 				}
-				dbQuest.ForceFinishQuest(quest.QuestId)
-				updateQuestIdList = append(updateQuestIdList, quest.QuestId)
+				dbQuest.AddQuestFinishCount(quest.QuestId, index)
 			case constant.QUEST_FINISH_COND_TYPE_SKILL:
 				// 使用技能 参数1:技能id
-				ok := matchParamEqual(questCond.Param, param, 1)
+				ok := matchParamEqual(finishCond.Param, param, 1)
 				if !ok {
 					continue
 				}
-				dbQuest.ForceFinishQuest(quest.QuestId)
-				updateQuestIdList = append(updateQuestIdList, quest.QuestId)
+				dbQuest.AddQuestFinishCount(quest.QuestId, index)
 			case constant.QUEST_FINISH_COND_TYPE_OBTAIN_ITEM:
 				// 获得道具 参数1:道具id
-				ok := matchParamEqual(questCond.Param, param, 1)
+				ok := matchParamEqual(finishCond.Param, param, 1)
 				if !ok {
 					continue
 				}
-				dbQuest.ForceFinishQuest(quest.QuestId)
-				updateQuestIdList = append(updateQuestIdList, quest.QuestId)
+				dbQuest.AddQuestFinishCount(quest.QuestId, index)
 			case constant.QUEST_FINISH_COND_TYPE_UNLOCK_AREA:
 				// 解锁场景区域 参数1:场景id 参数2:场景区域id
+				dbWorld := player.GetDbWorld()
+				dbScene := dbWorld.GetSceneById(uint32(finishCond.Param[0]))
+				if dbScene == nil {
+					continue
+				}
+				unlock := dbScene.CheckAreaUnlock(uint32(finishCond.Param[1]))
+				if !unlock {
+					continue
+				}
+				dbQuest.AddQuestFinishCount(quest.QuestId, index)
+			case constant.QUEST_FINISH_COND_TYPE_ADD_QUEST_PROGRESS:
+				// TODO 这你妈到底是加父任务的进度还是子任务的进度
+				continue
 			default:
-				logger.Error("not support quest cond type: %v, uid: %v", cond, player.PlayerId)
+				logger.Error("not support quest cond type: %v, questId: %v, uid: %v", cond, quest.QuestId, player.PlayerId)
 			}
+			updateQuestIdMap[quest.QuestId] = struct{}{}
 		}
+		dbQuest.CheckQuestFinish(quest.QuestId)
 	}
-	if len(updateQuestIdList) > 0 {
+	if len(updateQuestIdMap) > 0 {
+		// 更新客户端任务列表
 		questList := make([]*proto.Quest, 0)
-		for _, questId := range updateQuestIdList {
+		for questId := range updateQuestIdMap {
 			pbQuest := g.PacketQuest(player, questId)
 			if pbQuest == nil {
 				continue
@@ -557,30 +557,32 @@ func (g *Game) TriggerQuest(player *model.Player, cond int32, complexParam strin
 		g.SendMsg(cmd.QuestListUpdateNotify, player.PlayerId, player.ClientSeq, &proto.QuestListUpdateNotify{
 			QuestList: questList,
 		})
-
-		parentQuestList := g.PacketParentQuestList(player, updateQuestIdList)
+		// 更新客户端父任务
+		parentQuestList := g.PacketParentQuestList(player, object.ConvMapKeyToList[uint32, struct{}](updateQuestIdMap))
 		if len(parentQuestList) > 0 {
 			g.SendMsg(cmd.FinishedParentQuestUpdateNotify, player.PlayerId, player.ClientSeq, &proto.FinishedParentQuestUpdateNotify{
 				ParentQuestList: parentQuestList,
 			})
 		}
-
-		for _, questId := range updateQuestIdList {
+		// 任务事件
+		for questId := range updateQuestIdMap {
 			quest := dbQuest.GetQuestById(questId)
-			questDataConfig := gdconf.GetQuestDataById(int32(quest.QuestId))
-			if questDataConfig == nil {
-				continue
-			}
 			if quest.State == constant.QUEST_STATE_FINISHED {
+				// 任务完成执行
 				g.ExecQuest(player, quest.QuestId, QuestExecTypeFinish)
+				// 任务完成发奖
+				questDataConfig := gdconf.GetQuestDataById(int32(quest.QuestId))
+				if questDataConfig == nil {
+					continue
+				}
 				if len(questDataConfig.ItemIdList) != 0 {
 					for index, itemId := range questDataConfig.ItemIdList {
 						questItem := []*ChangeItem{{ItemId: uint32(itemId), ChangeCount: uint32(questDataConfig.ItemCountList[index])}}
 						g.AddPlayerItem(player.PlayerId, questItem, proto.ActionReasonType_ACTION_REASON_QUEST_ITEM)
 					}
 				}
-			}
-			if quest.State == constant.QUEST_STATE_FAILED {
+			} else if quest.State == constant.QUEST_STATE_FAILED {
+				// 任务失败执行
 				g.ExecQuest(player, quest.QuestId, QuestExecTypeFail)
 			}
 		}
@@ -611,7 +613,7 @@ func (g *Game) PacketQuest(player *model.Player, questId uint32) *proto.Quest {
 		ParentQuestId:      uint32(questDataConfig.ParentQuestId),
 		StartGameTime:      0,
 		AcceptTime:         quest.AcceptTime,
-		FinishProgressList: quest.FinishProgressList,
+		FinishProgressList: quest.FinishCountList,
 	}
 	return pbQuest
 }
