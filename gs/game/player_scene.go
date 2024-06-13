@@ -281,13 +281,13 @@ func (g *Game) SceneInitFinishReq(player *model.Player, payloadMsg pb.Message) {
 	if player.WeatherInfo.WeatherAreaId == 0 || player.PropMap[constant.PLAYER_PROP_IS_WEATHER_LOCKED] == 0 {
 		// 初始化天气区域id
 		weatherAreaId := g.GetPlayerInWeatherAreaId(player, player.GetPos())
-		if weatherAreaId == 0 {
+		if weatherAreaId != 0 {
+			// 获取天气气象
+			climateType := g.GetWeatherAreaClimate(weatherAreaId)
+			g.SetPlayerWeather(player, weatherAreaId, climateType, false)
+		} else {
 			logger.Error("weather area id error, weatherAreaId: %v", weatherAreaId)
-			return
 		}
-		// 获取天气气象
-		climateType := g.GetWeatherAreaClimate(weatherAreaId)
-		g.SetPlayerWeather(player, weatherAreaId, climateType, false)
 	}
 
 	g.UpdateWorldScenePlayerInfo(player, world)
