@@ -1,6 +1,8 @@
 package net
 
 import (
+	"bytes"
+	"encoding/json"
 	"reflect"
 	"strings"
 
@@ -11,6 +13,7 @@ import (
 	"hk4e/protocol/cmd"
 	"hk4e/protocol/proto"
 
+	"google.golang.org/protobuf/encoding/protojson"
 	pb "google.golang.org/protobuf/proto"
 )
 
@@ -104,14 +107,18 @@ func ProtoDecode(kcpMsg *KcpMsg,
 			msg.PayloadMessage = protoMessage.message
 			protoMsgList = append(protoMsgList, msg)
 		}
-		// for _, msg := range protoMsgList {
-		// 	cmdName := "???"
-		// 	if msg.PayloadMessage != nil {
-		// 		cmdName = string(msg.PayloadMessage.ProtoReflect().Descriptor().FullName())
-		// 	}
-		// 	logger.Debug("[RECV UNION CMD] cmdId: %v, cmdName: %v, sessionId: %v, headMsg: %v",
-		// 		msg.CmdId, cmdName, msg.SessionId, msg.HeadMessage)
-		// }
+		for _, msg := range protoMsgList {
+			cmdName := "???"
+			if msg.PayloadMessage != nil {
+				cmdName = string(msg.PayloadMessage.ProtoReflect().Descriptor().FullName())
+			}
+			logger.Debug("[RECV UNION CMD] cmdId: %v, cmdName: %v, sessionId: %v, headMsg: %v",
+				msg.CmdId, cmdName, msg.SessionId, msg.HeadMessage)
+			data, _ := protojson.Marshal(msg.PayloadMessage)
+			var buf bytes.Buffer
+			_ = json.Indent(&buf, data, "", "\t")
+			logger.Debug("%v", buf.String())
+		}
 	} else {
 		protoMsg.PayloadMessage = protoMessageList[0].message
 		protoMsgList = append(protoMsgList, protoMsg)
@@ -121,6 +128,10 @@ func ProtoDecode(kcpMsg *KcpMsg,
 		}
 		logger.Debug("[RECV] cmdId: %v, cmdName: %v, sessionId: %v, headMsg: %v",
 			protoMsg.CmdId, cmdName, protoMsg.SessionId, protoMsg.HeadMessage)
+		data, _ := protojson.Marshal(protoMsg.PayloadMessage)
+		var buf bytes.Buffer
+		_ = json.Indent(&buf, data, "", "\t")
+		logger.Debug("%v", buf.String())
 	}
 	return protoMsgList
 }
@@ -200,6 +211,10 @@ func ProtoEncode(protoMsg *ProtoMsg,
 	}
 	logger.Debug("[SEND] cmdId: %v, cmdName: %v, sessionId: %v, headMsg: %v",
 		protoMsg.CmdId, cmdName, protoMsg.SessionId, protoMsg.HeadMessage)
+	data, _ := protojson.Marshal(protoMsg.PayloadMessage)
+	var buf bytes.Buffer
+	_ = json.Indent(&buf, data, "", "\t")
+	logger.Debug("%v", buf.String())
 	kcpMsg = new(KcpMsg)
 	kcpMsg.SessionId = protoMsg.SessionId
 	kcpMsg.CmdId = protoMsg.CmdId

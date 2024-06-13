@@ -426,13 +426,15 @@ func (g *Game) GadgetInteractReq(player *model.Player, payloadMsg pb.Message) {
 			// 掉落物捡起
 			interactType = proto.InteractType_INTERACT_PICK_ITEM
 			gadgetTrifleItemEntity := entity.(*GadgetTrifleItemEntity)
-			g.AddPlayerItem(player.PlayerId, []*ChangeItem{{ItemId: gadgetTrifleItemEntity.GetItemId(), ChangeCount: 1}}, proto.ActionReasonType_ACTION_REASON_SUBFIELD_DROP)
+			itemList := []*ChangeItem{{ItemId: gadgetTrifleItemEntity.GetItemId(), ChangeCount: gadgetTrifleItemEntity.GetCount()}}
+			g.AddPlayerItem(player.PlayerId, itemList, proto.ActionReasonType_ACTION_REASON_SUBFIELD_DROP)
 			g.KillEntity(player, scene, entity.GetId(), proto.PlayerDieType_PLAYER_DIE_NONE)
 		case constant.GADGET_TYPE_GATHER_OBJECT:
 			// 采集物摘取
 			interactType = proto.InteractType_INTERACT_GATHER
 			gadgetGatherEntity := entity.(*GadgetGatherEntity)
-			g.AddPlayerItem(player.PlayerId, []*ChangeItem{{ItemId: gadgetGatherEntity.GetItemId(), ChangeCount: 1}}, proto.ActionReasonType_ACTION_REASON_GATHER)
+			itemList := []*ChangeItem{{ItemId: gadgetGatherEntity.GetItemId(), ChangeCount: gadgetGatherEntity.GetCount()}}
+			g.AddPlayerItem(player.PlayerId, itemList, proto.ActionReasonType_ACTION_REASON_GATHER)
 			g.KillEntity(player, scene, entity.GetId(), proto.PlayerDieType_PLAYER_DIE_NONE)
 		case constant.GADGET_TYPE_CHEST:
 			// 宝箱开启

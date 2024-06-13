@@ -831,7 +831,9 @@ func (e *Entity) AbilityAction(ability *Ability, action *gdconf.ActionData, enti
 				continue
 			}
 			count := math.Ceil(float64(totalEnergy) / float64(sameEnergy))
-			GAME.CreateDropGadget(owner, entity.GetPos(), uint32(itemDataConfig.GadgetId), uint32(action.ConfigID), uint32(count))
+			for i := 0; i < int(count); i++ {
+				GAME.CreateDropGadget(owner, entity.GetPos(), uint32(itemDataConfig.GadgetId), uint32(action.ConfigID), 1)
+			}
 		}
 	}
 }
@@ -1034,14 +1036,20 @@ func (g *GadgetTrifleItemEntity) CreateGadgetTrifleItemEntity(itemId, count uint
 type GadgetGatherEntity struct {
 	*GadgetEntity
 	itemId uint32
+	count  uint32
 }
 
 func (g *GadgetGatherEntity) GetItemId() uint32 {
 	return g.itemId
 }
 
-func (g *GadgetGatherEntity) CreateGadgetGatherEntity(itemId uint32) {
+func (g *GadgetGatherEntity) GetCount() uint32 {
+	return g.count
+}
+
+func (g *GadgetGatherEntity) CreateGadgetGatherEntity(itemId, count uint32) {
 	g.itemId = itemId
+	g.count = count
 }
 
 type GadgetWorktopEntity struct {

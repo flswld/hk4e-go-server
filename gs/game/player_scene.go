@@ -1333,9 +1333,9 @@ func (g *Game) CreateConfigEntity(scene *Scene, groupId uint32, entityConfig any
 			gadgetGatherEntity := scene.CreateEntityGadgetGather(
 				&model.Vector{X: float64(gadget.Pos.X), Y: float64(gadget.Pos.Y), Z: float64(gadget.Pos.Z)},
 				&model.Vector{X: float64(gadget.Rot.X), Y: float64(gadget.Rot.Y), Z: float64(gadget.Rot.Z)},
-				uint32(gadget.ConfigId), groupId, int(gadget.VisionLevel), uint32(gatherDataConfig.GadgetId), uint32(constant.GADGET_STATE_DEFAULT),
+				uint32(gadget.ConfigId), groupId, int(gadget.VisionLevel), uint32(gatherDataConfig.GadgetId), constant.GADGET_STATE_DEFAULT,
 			)
-			gadgetGatherEntity.CreateGadgetGatherEntity(uint32(gatherDataConfig.ItemId))
+			gadgetGatherEntity.CreateGadgetGatherEntity(uint32(gatherDataConfig.ItemId), 1)
 			scene.CreateEntity(gadgetGatherEntity)
 			return gadgetGatherEntity.GetId()
 		case constant.GADGET_TYPE_WORKTOP:
@@ -1484,8 +1484,9 @@ func (g *Game) CreateGadget(player *model.Player, pos *model.Vector, gadgetId ui
 
 // CreateDropGadget 创建掉落物的物件实体
 func (g *Game) CreateDropGadget(player *model.Player, pos *model.Vector, gadgetId, itemId, count uint32) uint32 {
-	if gadgetId == 0 {
-		logger.Error("create gadget id is zero, pos: %+v, itemId: %v, count: %v, uid: %v", pos, itemId, count, player.PlayerId)
+	gadgetDataConfig := gdconf.GetGadgetDataById(int32(gadgetId))
+	if gadgetDataConfig == nil {
+		logger.Error("get gadget data config is nil, gadgetId: %v", gadgetId)
 		return 0
 	}
 	world := WORLD_MANAGER.GetWorldById(player.WorldId)
@@ -1500,11 +1501,20 @@ func (g *Game) CreateDropGadget(player *model.Player, pos *model.Vector, gadgetI
 	}
 	rot := new(model.Vector)
 	rot.Y = random.GetRandomFloat64(0.0, 360.0)
-	gadgetTrifleItemEntity := scene.CreateEntityGadgetTrifleItem(pos, rot, constant.VISION_LEVEL_NORMAL, gadgetId, constant.GADGET_STATE_DEFAULT)
-	gadgetTrifleItemEntity.CreateGadgetTrifleItemEntity(itemId, count)
-	scene.CreateEntity(gadgetTrifleItemEntity)
-	g.AddSceneEntityNotify(player, proto.VisionType_VISION_BORN, []uint32{gadgetTrifleItemEntity.GetId()}, true, false)
-	return gadgetTrifleItemEntity.GetId()
+	entityId := uint32(0)
+	if gadgetDataConfig.Type == constant.GADGET_TYPE_GATHER_OBJECT {
+		gadgetGatherEntity := scene.CreateEntityGadgetGather(pos, rot, 0, 0, constant.VISION_LEVEL_NORMAL, gadgetId, constant.GADGET_STATE_DEFAULT)
+		gadgetGatherEntity.CreateGadgetGatherEntity(itemId, count)
+		scene.CreateEntity(gadgetGatherEntity)
+		entityId = gadgetGatherEntity.GetId()
+	} else {
+		gadgetTrifleItemEntity := scene.CreateEntityGadgetTrifleItem(pos, rot, constant.VISION_LEVEL_NORMAL, gadgetId, constant.GADGET_STATE_DEFAULT)
+		gadgetTrifleItemEntity.CreateGadgetTrifleItemEntity(itemId, count)
+		scene.CreateEntity(gadgetTrifleItemEntity)
+		entityId = gadgetTrifleItemEntity.GetId()
+	}
+	g.AddSceneEntityNotify(player, proto.VisionType_VISION_BORN, []uint32{entityId}, true, false)
+	return entityId
 }
 
 // GetPosIsInWeatherArea 获取坐标是否在指定的天气区域
