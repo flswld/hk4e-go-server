@@ -642,6 +642,19 @@ func (g *GMCmd) AvPlayAudio(fileDataBase64 string) {
 	go PlayAudio(fileData)
 }
 
+func (g *GMCmd) AvStartMidiInputDev(v bool) {
+	err := StartMidiInputDev()
+	if err != nil {
+		logger.Error("start midi input dev error: %v", err)
+	}
+	logger.Info("start midi input dev ok")
+}
+
+func (g *GMCmd) AvStopMidiInputDev(v bool) {
+	StopMidiInputDev()
+	logger.Info("stop midi input dev ok")
+}
+
 func (g *GMCmd) AvUpdateFrame(fileDataBase64 string, rgb bool, posX, posY, posZ float64) {
 	fileData, err := base64.StdEncoding.DecodeString(fileDataBase64)
 	if err != nil {

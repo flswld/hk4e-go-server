@@ -16,17 +16,41 @@ import (
 	"hk4e/protocol/proto"
 
 	"gitlab.com/gomidi/midi/v2"
+	_ "gitlab.com/gomidi/midi/v2/drivers/rtmididrv"
 	"gitlab.com/gomidi/midi/v2/smf"
 )
 
 const (
-	KeyOffset = -12 * 1 // 八度修正偏移
+	KeyOffset              = -12 * 1 // 八度修正偏移
+	MidiInputDevPortNumber = 0
 )
 
-var AUDIO_CHAN chan uint32
+var (
+	AUDIO_CHAN                        = make(chan uint32, 1000)
+	MidiInputDevStopListenFunc func() = nil
+)
 
-func init() {
-	AUDIO_CHAN = make(chan uint32, 1000)
+func sendMidiMsg(msg midi.Message) {
+	if msg.Type() != midi.NoteOnMsg {
+		return
+	}
+	var channel, key, velocity uint8
+	msg.GetNoteOn(&channel, &key, &velocity)
+	// TODO 测试一下客户端是否支持更宽的音域
+	// 60 -> 中央C C4
+	// if key < 36 || key > 71 {
+	// 	continue
+	// }
+	note := int32(key) + int32(KeyOffset)
+	if note < 21 || note > 108 {
+		// 非88键钢琴音域
+		return
+	}
+	if velocity == 0 {
+		// 可能是NoteOffMsg
+		return
+	}
+	AUDIO_CHAN <- uint32(note)
 }
 
 func PlayAudio(fileData []byte) {
@@ -54,31 +78,7 @@ func PlayAudio(fileData []byte) {
 			// busyPollWaitMilliSecond(delay)
 			interruptWaitMilliSecond(delay)
 			totalTick += uint64(delay)
-
-			msg := event.Message
-			if msg.Type() != midi.NoteOnMsg {
-				continue
-			}
-			midiMsg := midi.Message(msg)
-			var channel, key, velocity uint8
-			midiMsg.GetNoteOn(&channel, &key, &velocity)
-			// TODO 测试一下客户端是否支持更宽的音域
-			// 60 -> 中央C C4
-			// if key < 36 || key > 71 {
-			// 	continue
-			// }
-			note := int32(key) + int32(KeyOffset)
-			if note < 21 || note > 108 {
-				// 非88键钢琴音域
-				continue
-			}
-			if velocity == 0 {
-				// 可能是NoteOffMsg
-				continue
-			}
-
-			AUDIO_CHAN <- uint32(note)
-			// logger.Debug("send midi note: %v, delay: %v, totalTick: %v", note, delay, totalTick)
+			sendMidiMsg(midi.Message(event.Message))
 		}
 	}
 }
@@ -96,6 +96,27 @@ func busyPollWaitMilliSecond(delay uint32) {
 			break
 		}
 	}
+}
+
+func StartMidiInputDev() error {
+	logger.Info("midi input dev port: %v", midi.GetInPorts())
+	in, err := midi.InPort(MidiInputDevPortNumber)
+	if err != nil {
+		return err
+	}
+	MidiInputDevStopListenFunc, err = midi.ListenTo(in, func(msg midi.Message, timestampms int32) {
+		logger.Debug("midi input dev msg: %v", msg)
+		sendMidiMsg(msg)
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func StopMidiInputDev() {
+	MidiInputDevStopListenFunc()
+	midi.CloseDriver()
 }
 
 const (
