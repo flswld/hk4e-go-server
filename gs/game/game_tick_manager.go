@@ -358,12 +358,12 @@ func (t *TickManager) onTick100MilliSecond(now int64) {
 
 func (t *TickManager) onTick50MilliSecond(now int64) {
 	// 音乐播放器
-	for i := 0; i < len(AUDIO_CHAN); i++ {
+	for i := 0; i < len(AudioChan); i++ {
 		world := WORLD_MANAGER.GetAiWorld()
 		GAME.SendToWorldA(world, cmd.SceneAudioNotify, 0, &proto.SceneAudioNotify{
 			Type:      5,
 			SourceUid: world.GetOwner().PlayerId,
-			Param1:    []uint32{1, <-AUDIO_CHAN},
+			Param1:    []uint32{1, <-AudioChan},
 			Param2:    nil,
 			Param3:    nil,
 		}, 0)

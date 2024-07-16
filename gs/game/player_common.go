@@ -265,7 +265,11 @@ func (g *Game) GmTalkReq(player *model.Player, payloadMsg pb.Message) {
 			return
 		}
 		funcName := commandText[:beginIndex]
-		paramList := strings.Split(commandText[beginIndex+1:endIndex], ",")
+		funcParam := commandText[beginIndex+1 : endIndex]
+		paramList := make([]string, 0)
+		if funcParam != "" {
+			paramList = strings.Split(funcParam, ",")
+		}
 		commandMessageInput <- &CommandMessage{
 			GMType:    SystemFuncGM,
 			FuncName:  funcName,

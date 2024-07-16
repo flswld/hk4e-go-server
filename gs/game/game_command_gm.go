@@ -590,8 +590,6 @@ func (g *GMCmd) GMSetPlayerStaminaInf(userId uint32, open bool) {
 
 // 系统级GM指令
 
-// TODO 不知道为什么0个参数的函数会反射调用失败
-
 func (g *GMCmd) ChangePlayerCmdPerm(userId uint32, cmdPerm uint8) {
 	player := USER_MANAGER.GetOnlineUser(userId)
 	if player == nil {
@@ -639,10 +637,10 @@ func (g *GMCmd) AvPlayAudio(fileDataBase64 string) {
 		logger.Error("file data base64 format error: %v", err)
 		return
 	}
-	go PlayAudio(fileData)
+	PlayAudio(fileData)
 }
 
-func (g *GMCmd) AvStartMidiInputDev(v bool) {
+func (g *GMCmd) AvStartMidiInputDev() {
 	err := StartMidiInputDev()
 	if err != nil {
 		logger.Error("start midi input dev error: %v", err)
@@ -650,7 +648,7 @@ func (g *GMCmd) AvStartMidiInputDev(v bool) {
 	logger.Info("start midi input dev ok")
 }
 
-func (g *GMCmd) AvStopMidiInputDev(v bool) {
+func (g *GMCmd) AvStopMidiInputDev() {
 	StopMidiInputDev()
 	logger.Info("stop midi input dev ok")
 }
@@ -748,7 +746,7 @@ func (g *GMCmd) SendMsgToPlayer(cmdName string, userId uint32, msgJson string) {
 	GAME.SendMsg(cmdId, userId, 0, msg)
 }
 
-func (g *GMCmd) StartPubg(v bool) {
+func (g *GMCmd) StartPubg() {
 	iPlugin, err := PLUGIN_MANAGER.GetPlugin(&PluginPubg{})
 	if err != nil {
 		logger.Error("get plugin pubg error: %v", err)
@@ -758,7 +756,7 @@ func (g *GMCmd) StartPubg(v bool) {
 	pluginPubg.StartPubg()
 }
 
-func (g *GMCmd) StopPubg(v bool) {
+func (g *GMCmd) StopPubg() {
 	iPlugin, err := PLUGIN_MANAGER.GetPlugin(&PluginPubg{})
 	if err != nil {
 		logger.Error("get plugin pubg error: %v", err)
@@ -774,13 +772,13 @@ func (g *GMCmd) SetPhysicsEngineParam(pathTracing bool) {
 	engine.SetPhysicsEngineParam(pathTracing)
 }
 
-func (g *GMCmd) ShowAvatarCollider(v bool) {
+func (g *GMCmd) ShowAvatarCollider() {
 	world := WORLD_MANAGER.GetAiWorld()
 	engine := world.GetBulletPhysicsEngine()
 	engine.ShowAvatarCollider()
 }
 
-func (g *GMCmd) AiWorldAoiDebug(v bool) {
+func (g *GMCmd) AiWorldAoiDebug() {
 	aiWorld := WORLD_MANAGER.GetAiWorld()
 	if aiWorld == nil {
 		return
