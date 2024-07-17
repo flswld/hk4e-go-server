@@ -37,10 +37,12 @@ var (
 	byteCheckMode       int
 )
 
-func enableByteCheckMode(mode int) {
-	byteCheckModeEnable = true
+func setByteCheckMode(mode int) {
 	byteCheckMode = mode
-	IKCP_OVERHEAD += 4
+	if mode != -1 {
+		byteCheckModeEnable = true
+		IKCP_OVERHEAD += 4
+	}
 }
 
 // monotonic reference time point

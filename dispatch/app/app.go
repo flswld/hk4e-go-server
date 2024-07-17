@@ -20,9 +20,7 @@ import (
 var APPID string
 var APPVERSION string
 
-func Run(ctx context.Context, configFile string) error {
-	config.InitConfig(configFile)
-
+func Run(ctx context.Context) error {
 	// natsrpc client
 	discoveryClient, err := rpc.NewDiscoveryClient()
 	if err != nil {
@@ -58,10 +56,15 @@ func Run(ctx context.Context, configFile string) error {
 		})
 	}()
 
-	logger.InitLogger("dispatch_" + APPID)
+	if !config.GetConfig().Hk4e.StandaloneModeEnable {
+		logger.InitLogger("dispatch_" + APPID)
+		defer func() {
+			logger.CloseLogger()
+		}()
+	}
 	logger.Warn("dispatch start, appid: %v", APPID)
 	defer func() {
-		logger.CloseLogger()
+		logger.Warn("dispatch exit")
 	}()
 
 	messageQueue := mq.NewMessageQueue(api.DISPATCH, APPID, nil)
@@ -76,7 +79,9 @@ func Run(ctx context.Context, configFile string) error {
 	_ = controller.NewController(db, discoveryClient, messageQueue)
 
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
+	if !config.GetConfig().Hk4e.StandaloneModeEnable {
+		signal.Notify(c, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
+	}
 	for {
 		select {
 		case <-ctx.Done():
@@ -85,7 +90,6 @@ func Run(ctx context.Context, configFile string) error {
 			logger.Warn("get a signal %s", s.String())
 			switch s {
 			case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT:
-				logger.Warn("dispatch exit")
 				return nil
 			case syscall.SIGHUP:
 			default:

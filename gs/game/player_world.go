@@ -778,7 +778,7 @@ func (g *Game) TeleportPlayer(
 		logger.Error("get world is nil, worldId: %v, uid: %v", player.WorldId, player.PlayerId)
 		return
 	}
-	if WORLD_MANAGER.IsAiWorld(world) {
+	if CommandPerm(player.CmdPerm) != CommandPermGM && WORLD_MANAGER.IsAiWorld(world) {
 		return
 	}
 

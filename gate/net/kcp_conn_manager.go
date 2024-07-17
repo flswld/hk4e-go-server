@@ -133,9 +133,7 @@ func (k *KcpConnManager) run() error {
 		return err
 	}
 	kcpListener.EnetHandle()
-	if config.GetConfig().Hk4e.ByteCheckEnable {
-		kcpListener.EnableByteCheckMode(1)
-	}
+	kcpListener.SetByteCheckMode(int(config.GetConfig().Hk4e.ByteCheckMode))
 	k.kcpListener = kcpListener
 	logger.Info("listen kcp at addr: %v", addr)
 	go k.kcpNetInfo()

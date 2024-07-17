@@ -1,0 +1,40 @@
+[hk4e]
+dispatch_http_port = 8080 # dispatch的http端口
+dispatch_url = "http://127.0.0.1:8080/query_cur_region" # 二级dispatch地址 将域名改为dispatch的外网地址
+login_sdk_account_key = "" # sdk服务器账号验证的签名密钥
+forward_mode_enable = false # 是否开启网关到机器人的转发功能
+forward_region_url = "" # 转发的一级dispatch地址
+forward_dispatch_url = "" # 转发的二级dispatch地址
+
+kcp_addr = "127.0.0.1" # kcp地址 该地址只用来注册到节点服务器 填网关的外网地址 网关本地监听为0.0.0.0
+kcp_port = 22222 # kcp端口号
+tcp_mode_enable = false # 是否开启tcp模式 需要hook客户端网络库才能支持 共用kcp端口号
+client_proto_proxy_enable = false # 是否开启客户端协议代理功能
+version = "300,310,315,320" # 支持的客户端协议版本号 三位数字 多个以逗号分隔 如300,310,315,320
+gate_tcp_mq_addr = "127.0.0.1" # 访问网关tcp直连消息队列的地址 填网关的内网地址
+gate_tcp_mq_port = 33333 # tcp消息队列端口号
+login_sdk_url = "http://127.0.0.1:8080/gate/token/verify" # 网关登录验证token的sdk服务器地址 目前填dispatch的内网地址
+byte_check_mode = -1 # 网络包数据校验模式
+
+game_data_config_path = "./game_data_config" # 配置表路径
+load_scene_lua_config = true # 是否加载场景详情LUA配置数据
+
+gm_http_port = 9001 # gm的http端口
+gm_auth_key = "flswld" # gm认证密钥
+
+standalone_mode_enable = true # 是否开启单进程模式
+
+[logger]
+level = "debug"
+track_line = true
+track_thread = true
+
+[database]
+url = "mongodb://mongo:27017"
+
+[redis]
+addr = "redis://redis:6379"
+password = ""
+
+[mq]
+nats_url = "nats://nats:4222"

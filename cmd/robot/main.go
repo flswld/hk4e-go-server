@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	cfg "hk4e/common/config"
 	"hk4e/robot/app"
 )
 
@@ -18,7 +19,8 @@ var VERSION = "UNKNOWN"
 func main() {
 	flag.Parse()
 	app.APPVERSION = VERSION
-	err := app.Run(context.TODO(), *config)
+	cfg.InitConfig(*config)
+	err := app.Run(context.TODO())
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

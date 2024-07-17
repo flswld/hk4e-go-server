@@ -7,6 +7,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 
+	cfg "hk4e/common/config"
 	"hk4e/multi/app"
 	"hk4e/pkg/statsviz_serve"
 )
@@ -23,7 +24,8 @@ func main() {
 		_ = statsviz_serve.Serve("0.0.0.0:5678")
 	}()
 	app.APPVERSION = VERSION
-	err := app.Run(context.TODO(), *config)
+	cfg.InitConfig(*config)
+	err := app.Run(context.TODO())
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

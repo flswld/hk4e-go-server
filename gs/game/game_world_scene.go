@@ -2,10 +2,11 @@ package game
 
 import (
 	"fmt"
-	"hk4e/pkg/endec"
 	"math"
 	"strconv"
 	"time"
+
+	"hk4e/pkg/endec"
 
 	"hk4e/gdconf"
 

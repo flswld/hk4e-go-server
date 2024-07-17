@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 
+	cfg "hk4e/common/config"
 	"hk4e/dispatch/app"
 
 	"github.com/spf13/cobra"
@@ -15,7 +16,8 @@ func DispatchCmd() *cobra.Command {
 		Use:   "dispatch",
 		Short: "dispatch server",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return app.Run(context.Background(), configFile)
+			cfg.InitConfig(configFile)
+			return app.Run(context.Background())
 		},
 	}
 	c.Flags().StringVar(&configFile, "config", "application.toml", "config file")

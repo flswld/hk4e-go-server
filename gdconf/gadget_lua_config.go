@@ -2,9 +2,10 @@ package gdconf
 
 import (
 	"fmt"
-	"hk4e/pkg/logger"
 	"os"
 	"strings"
+
+	"hk4e/pkg/logger"
 
 	lua "github.com/yuin/gopher-lua"
 )

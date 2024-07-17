@@ -17,13 +17,16 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-func Run(ctx context.Context, configFile string) error {
-	config.InitConfig(configFile)
-
-	logger.InitLogger("node")
+func Run(ctx context.Context) error {
+	if !config.GetConfig().Hk4e.StandaloneModeEnable {
+		logger.InitLogger("node")
+		defer func() {
+			logger.CloseLogger()
+		}()
+	}
 	logger.Warn("node start")
 	defer func() {
-		logger.CloseLogger()
+		logger.Warn("node exit")
 	}()
 
 	// natsrpc server
@@ -51,7 +54,9 @@ func Run(ctx context.Context, configFile string) error {
 	defer s.Close()
 
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
+	if !config.GetConfig().Hk4e.StandaloneModeEnable {
+		signal.Notify(c, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
+	}
 	for {
 		select {
 		case <-ctx.Done():
@@ -60,7 +65,6 @@ func Run(ctx context.Context, configFile string) error {
 			logger.Warn("get a signal %s", s.String())
 			switch s {
 			case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT:
-				logger.Warn("node exit")
 				return nil
 			case syscall.SIGHUP:
 			default:

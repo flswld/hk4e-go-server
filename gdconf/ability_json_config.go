@@ -3,11 +3,12 @@ package gdconf
 import (
 	"encoding/json"
 	"fmt"
-	"hk4e/pkg/endec"
-	"hk4e/pkg/logger"
 	"os"
 	"sort"
 	"strings"
+
+	"hk4e/pkg/endec"
+	"hk4e/pkg/logger"
 
 	"github.com/hjson/hjson-go/v4"
 )

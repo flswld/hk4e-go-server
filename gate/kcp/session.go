@@ -740,8 +740,8 @@ func (l *Listener) EnetHandle() {
 	}()
 }
 
-func (l *Listener) EnableByteCheckMode(mode int) {
-	enableByteCheckMode(mode)
+func (l *Listener) SetByteCheckMode(mode int) {
+	setByteCheckMode(mode)
 }
 
 // packet input stage

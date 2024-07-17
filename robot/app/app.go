@@ -34,12 +34,16 @@ import (
 var APPID string
 var APPVERSION string
 
-func Run(ctx context.Context, configFile string) error {
-	config.InitConfig(configFile)
-
-	logger.InitLogger("robot")
+func Run(ctx context.Context) error {
+	if !config.GetConfig().Hk4e.StandaloneModeEnable {
+		logger.InitLogger("robot")
+		defer func() {
+			logger.CloseLogger()
+		}()
+	}
+	logger.Warn("robot start")
 	defer func() {
-		logger.CloseLogger()
+		logger.Warn("robot exit")
 	}()
 
 	if config.GetConfig().Hk4e.ForwardModeEnable {
@@ -91,15 +95,22 @@ func Run(ctx context.Context, configFile string) error {
 	go runPacketCaptureApi()
 
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
+	if !config.GetConfig().Hk4e.StandaloneModeEnable {
+		signal.Notify(c, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
+	}
 	for {
-		s := <-c
-		switch s {
-		case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT:
+		select {
+		case <-ctx.Done():
 			return nil
-		case syscall.SIGHUP:
-		default:
-			return nil
+		case s := <-c:
+			logger.Warn("get a signal %s", s.String())
+			switch s {
+			case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT:
+				return nil
+			case syscall.SIGHUP:
+			default:
+				return nil
+			}
 		}
 	}
 }

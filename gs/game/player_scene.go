@@ -1,10 +1,11 @@
 package game
 
 import (
-	"hk4e/pkg/alg"
 	"math"
 	"strconv"
 	"time"
+
+	"hk4e/pkg/alg"
 
 	"hk4e/common/constant"
 	"hk4e/gdconf"

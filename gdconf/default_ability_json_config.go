@@ -2,8 +2,9 @@ package gdconf
 
 import (
 	"fmt"
-	"hk4e/pkg/logger"
 	"os"
+
+	"hk4e/pkg/logger"
 
 	"github.com/hjson/hjson-go/v4"
 )

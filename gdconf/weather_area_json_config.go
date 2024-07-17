@@ -1,9 +1,10 @@
 package gdconf
 
 import (
-	"hk4e/pkg/alg"
 	"os"
 	"strconv"
+
+	"hk4e/pkg/alg"
 
 	"hk4e/pkg/logger"
 

@@ -39,7 +39,8 @@ type Hk4e struct {
 	ForwardDispatchUrl      string `toml:"forward_dispatch_url"`       // 转发的二级dispatch地址
 	GmAuthKey               string `toml:"gm_auth_key"`                // gm认证密钥
 	RegisterAllProtoMessage bool   `toml:"register_all_proto_message"` // 注册全部pb消息
-	ByteCheckEnable         bool   `toml:"byte_check_enable"`
+	ByteCheckMode           int32  `toml:"byte_check_mode"`            // 网络包数据校验模式
+	StandaloneModeEnable    bool   `toml:"standalone_mode_enable"`     // 是否开启单进程模式
 }
 
 // Hk4eRobot 原神机器人
