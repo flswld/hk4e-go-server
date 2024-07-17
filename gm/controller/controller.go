@@ -107,7 +107,7 @@ func (c *Controller) registerRouter() {
 	engine.POST("/server/white/add", c.serverWhiteAdd)
 	engine.POST("/server/white/del", c.serverWhiteDel)
 	engine.POST("/server/dispatch/cancel", c.serverDispatchCancel)
-	port := config.GetConfig().HttpPort
+	port := config.GetConfig().Hk4e.GmHttpPort
 	addr := ":" + strconv.Itoa(int(port))
 	err := engine.Run(addr)
 	if err != nil {

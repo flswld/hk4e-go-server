@@ -49,9 +49,13 @@ func (c *Conn) GetConv() uint32 {
 	}
 }
 
-func (c *Conn) Close() {
+func (c *Conn) Close(enetType ...uint32) {
 	if c.isKcp {
-		_ = c.kcpConn.Close()
+		if len(enetType) == 0 {
+			_ = c.kcpConn.CloseConn(kcp.EnetTimeout)
+		} else {
+			_ = c.kcpConn.CloseConn(enetType[0])
+		}
 	} else {
 		_ = c.tcpConn.Close()
 	}

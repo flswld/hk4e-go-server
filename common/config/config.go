@@ -10,7 +10,6 @@ var CONF *Config = nil
 
 // Config 配置
 type Config struct {
-	HttpPort  int32     `toml:"http_port"`
 	Hk4e      Hk4e      `toml:"hk4e"`
 	Hk4eRobot Hk4eRobot `toml:"hk4e_robot"`
 	Logger    Logger    `toml:"logger"`
@@ -21,6 +20,8 @@ type Config struct {
 
 // Hk4e 原神服务器
 type Hk4e struct {
+	DispatchHttpPort        int32  `toml:"dispatch_http_port"`         // dispatch的http端口
+	GmHttpPort              int32  `toml:"gm_http_port"`               // gm的http端口
 	KcpAddr                 string `toml:"kcp_addr"`                   // kcp地址 该地址只用来注册到节点服务器 填网关的外网地址 网关本地监听为0.0.0.0
 	KcpPort                 int32  `toml:"kcp_port"`                   // kcp端口号
 	TcpModeEnable           bool   `toml:"tcp_mode_enable"`            // 是否开启tcp模式 需要hook客户端网络库才能支持 共用kcp端口号
@@ -38,10 +39,12 @@ type Hk4e struct {
 	ForwardDispatchUrl      string `toml:"forward_dispatch_url"`       // 转发的二级dispatch地址
 	GmAuthKey               string `toml:"gm_auth_key"`                // gm认证密钥
 	RegisterAllProtoMessage bool   `toml:"register_all_proto_message"` // 注册全部pb消息
+	ByteCheckEnable         bool   `toml:"byte_check_enable"`
 }
 
 // Hk4eRobot 原神机器人
 type Hk4eRobot struct {
+	RobotHttpPort                int32  `toml:"robot_http_port"`                 // robot的http端口
 	RegionListUrl                string `toml:"region_list_url"`                 // 一级dispatch地址
 	RegionListParam              string `toml:"region_list_param"`               // 一级dispatch的url参数
 	SelectRegionIndex            int32  `toml:"select_region_index"`             // 选择的二级dispatch索引

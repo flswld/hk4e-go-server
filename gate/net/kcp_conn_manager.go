@@ -39,9 +39,8 @@ const (
 var CLIENT_CONN_NUM int32 = 0 // 当前客户端连接数
 
 const (
-	KcpConnEstNotify        = "KcpConnEstNotify"
-	KcpConnAddrChangeNotify = "KcpConnAddrChangeNotify"
-	KcpConnCloseNotify      = "KcpConnCloseNotify"
+	KcpConnEstNotify   = "KcpConnEstNotify"
+	KcpConnCloseNotify = "KcpConnCloseNotify"
 )
 
 type KcpEvent struct {
@@ -133,10 +132,13 @@ func (k *KcpConnManager) run() error {
 		logger.Error("listen kcp err: %v", err)
 		return err
 	}
+	kcpListener.EnetHandle()
+	if config.GetConfig().Hk4e.ByteCheckEnable {
+		kcpListener.EnableByteCheckMode(1)
+	}
 	k.kcpListener = kcpListener
 	logger.Info("listen kcp at addr: %v", addr)
 	go k.kcpNetInfo()
-	go k.kcpEnetHandle(kcpListener)
 	go k.acceptHandle(false, kcpListener, nil)
 	if config.GetConfig().Hk4e.TcpModeEnable {
 		// tcp
@@ -302,49 +304,6 @@ func (k *KcpConnManager) acceptHandle(tcpMode bool, kcpListener *kcp.Listener, t
 			EventMessage: session.conn.RemoteAddr(),
 		}
 		atomic.AddInt32(&CLIENT_CONN_NUM, 1)
-	}
-}
-
-// kcp连接事件处理函数
-func (k *KcpConnManager) kcpEnetHandle(listener *kcp.Listener) {
-	logger.Info("kcp enet handle start")
-	for {
-		enetNotify := <-listener.GetEnetNotifyChan()
-		logger.Info("[Kcp Enet] addr: %v, conv: %v, sessionId: %v, connType: %v, enetType: %v",
-			enetNotify.Addr, enetNotify.Conv, enetNotify.SessionId, enetNotify.ConnType, enetNotify.EnetType)
-		switch enetNotify.ConnType {
-		case kcp.ConnEnetSyn:
-			if enetNotify.EnetType != kcp.EnetClientConnectKey {
-				logger.Error("enet type not match, sessionId: %v", enetNotify.SessionId)
-				continue
-			}
-			sessionId := atomic.AddUint32(&k.sessionIdCounter, 1)
-			listener.SendEnetNotifyToPeer(&kcp.Enet{
-				Addr:      enetNotify.Addr,
-				SessionId: sessionId,
-				Conv:      binary.BigEndian.Uint32(random.GetRandomByte(4)),
-				ConnType:  kcp.ConnEnetEst,
-				EnetType:  enetNotify.EnetType,
-			})
-		case kcp.ConnEnetFin:
-			session := k.GetSession(enetNotify.SessionId)
-			if session == nil {
-				continue
-			}
-			if session.conn.GetConv() != enetNotify.Conv {
-				logger.Error("conv not match, sessionId: %v", enetNotify.SessionId)
-				continue
-			}
-			k.closeKcpConn(session, enetNotify.EnetType)
-		case kcp.ConnEnetAddrChange:
-			// 连接地址改变通知
-			k.kcpEventChan <- &KcpEvent{
-				SessionId:    enetNotify.SessionId,
-				EventId:      KcpConnAddrChangeNotify,
-				EventMessage: enetNotify.Addr,
-			}
-		default:
-		}
 	}
 }
 
@@ -583,16 +542,7 @@ func (k *KcpConnManager) closeKcpConn(session *Session, enetType uint32) {
 	// 清理数据
 	k.DeleteSession(session.sessionId, session.userId)
 	// 关闭连接
-	if !session.conn.IsTcpMode() {
-		k.kcpListener.SendEnetNotifyToPeer(&kcp.Enet{
-			Addr:      session.conn.RemoteAddr(),
-			SessionId: session.conn.GetSessionId(),
-			Conv:      session.conn.GetConv(),
-			ConnType:  kcp.ConnEnetFin,
-			EnetType:  enetType,
-		})
-	}
-	session.conn.Close()
+	session.conn.Close(enetType)
 	// 连接关闭通知
 	k.kcpEventChan <- &KcpEvent{
 		SessionId:    session.sessionId,

@@ -162,7 +162,7 @@ func (c *Controller) registerRouter() {
 		engine.StaticFS("/pictures", http.Dir("./static/geetest/pictures"))
 	}
 	engine.POST("/gate/token/verify", c.gateTokenVerify)
-	port := config.GetConfig().HttpPort
+	port := config.GetConfig().Hk4e.DispatchHttpPort
 	addr := ":" + strconv.Itoa(int(port))
 	err := engine.Run(addr)
 	if err != nil {

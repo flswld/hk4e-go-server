@@ -111,7 +111,7 @@ func (s *Session) Close() {
 		return
 	}
 	s.IsClose = true
-	_ = s.Conn.Close()
+	_ = s.Conn.CloseConn(kcp.EnetClientClose)
 	s.DeadEvent <- true
 }
 

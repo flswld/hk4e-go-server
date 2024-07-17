@@ -1,5 +1,3 @@
-http_port = 9999
-
 [logger]
 level = "debug"
 track_line = true
@@ -11,6 +9,7 @@ forward_mode_enable = false # 是否开启网关到机器人的转发功能
 register_all_proto_message = true # 注册全部pb消息
 
 [hk4e_robot]
+robot_http_port = 9999 # robot的http端口
 region_list_url = "https://hk4e.flswld.com/query_region_list" # 一级dispatch地址
 region_list_param = "" # 一级dispatch的url参数
 select_region_index = 0 # 选择的二级dispatch索引

@@ -355,6 +355,17 @@ func (s *UDPSession) Close() error {
 	}
 }
 
+func (s *UDPSession) CloseConn(enetType uint32) error {
+	s.SendEnetNotifyToPeer(&Enet{
+		Addr:      s.RemoteAddr().String(),
+		SessionId: s.GetSessionId(),
+		Conv:      s.GetConv(),
+		ConnType:  ConnEnetFin,
+		EnetType:  enetType,
+	})
+	return s.Close()
+}
+
 // LocalAddr returns the local network address. The Addr returned is shared by all invocations of LocalAddr, so do not modify it.
 func (s *UDPSession) LocalAddr() net.Addr { return s.conn.LocalAddr() }
 
@@ -679,12 +690,58 @@ type (
 		xconn           batchConn // for x/net
 		xconnWriteError error
 
-		enetNotifyChan chan *Enet // Enet事件上报管道
+		enetNotifyChan   chan *Enet // Enet事件上报管道
+		sessionIdCounter uint32
 	}
 )
 
-func (l *Listener) GetEnetNotifyChan() chan *Enet {
-	return l.enetNotifyChan
+func (l *Listener) EnetHandle() {
+	go func() {
+		for {
+			enetNotify := <-l.enetNotifyChan
+			switch enetNotify.ConnType {
+			case ConnEnetSyn:
+				if enetNotify.EnetType != EnetClientConnectKey {
+					continue
+				}
+				sessionId := atomic.AddUint32(&l.sessionIdCounter, 1)
+				var conv uint32
+				_ = binary.Read(rand.Reader, binary.LittleEndian, &conv)
+				l.SendEnetNotifyToPeer(&Enet{
+					Addr:      enetNotify.Addr,
+					SessionId: sessionId,
+					Conv:      conv,
+					ConnType:  ConnEnetEst,
+					EnetType:  enetNotify.EnetType,
+				})
+			case ConnEnetFin:
+				rawConvData := make([]byte, 8)
+				binary.LittleEndian.PutUint32(rawConvData[0:4], enetNotify.SessionId)
+				binary.LittleEndian.PutUint32(rawConvData[4:8], enetNotify.Conv)
+				rawConv := binary.LittleEndian.Uint64(rawConvData)
+				l.sessionLock.RLock()
+				conn, exist := l.sessions[rawConv]
+				l.sessionLock.RUnlock()
+				if !exist {
+					continue
+				}
+				_ = conn.CloseConn(enetNotify.EnetType)
+			case ConnEnetPing:
+				l.SendEnetNotifyToPeer(&Enet{
+					Addr:      enetNotify.Addr,
+					SessionId: 0,
+					Conv:      0,
+					ConnType:  ConnEnetPing,
+					EnetType:  enetNotify.EnetType,
+				})
+			default:
+			}
+		}
+	}()
+}
+
+func (l *Listener) EnableByteCheckMode(mode int) {
+	enableByteCheckMode(mode)
 }
 
 // packet input stage

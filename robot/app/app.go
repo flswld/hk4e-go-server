@@ -114,7 +114,7 @@ func runPacketCaptureApi() {
 	e.GET("/packet/capture/ws", packetCaptureWs)
 	e.GET("/packet/capture/list", packetCaptureList)
 	e.GET("/packet/capture/clear", packetCaptureClear)
-	port := config.GetConfig().HttpPort
+	port := config.GetConfig().Hk4eRobot.RobotHttpPort
 	addr := ":" + strconv.Itoa(int(port))
 	err := e.Run(addr)
 	if err != nil {

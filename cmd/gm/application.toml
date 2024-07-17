@@ -1,6 +1,5 @@
-http_port = 9001
-
 [hk4e]
+gm_http_port = 9001 # gm的http端口
 gm_auth_key = "flswld" # gm认证密钥
 
 [logger]
