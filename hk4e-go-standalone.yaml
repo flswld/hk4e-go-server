@@ -7,6 +7,7 @@ services:
     ports:
       - "8080:8080/tcp"
       - "22222:22222/udp"
+      - "9001:9001/tcp"
     environment:
       TZ: Asia/Shanghai
       GOLANG_PROTOBUF_REGISTRATION_CONFLICT: ignore
@@ -17,6 +18,7 @@ services:
       - ./standalone/bin/application.toml:/standalone/application.toml
       - ./standalone/bin/key:/standalone/key
       - ./standalone/bin/static:/standalone/static
+      - ../gdconf/game_data_config:/gs/game_data_config
     deploy:
       resources:
         limits:
