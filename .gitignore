@@ -31,8 +31,6 @@ node/api/*.pb.go
 # Log file
 *.log
 
-# Local game data config table file
-gdconf/game_data_config/csv/*.csv
-
 # Deploy
-docker/docker-compose.yaml
+docker/hk4e-go-cluster.yaml
+docker/hk4e-go-standalone.yaml

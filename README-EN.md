@@ -60,8 +60,8 @@ make docker_build  # Build a Docker image
 
 ```shell
 cd docker
-# Checkout all configurations before launch(e.g. docker/node/bin/application.toml)
-docker-compose up -d # Launch server
+# Checkout all configurations before launch(e.g. docker/standalone/bin/application.toml)
+docker-compose -f hk4e-go-standalone.yaml up -d # Launch server
 ```
 
 #### Third-party dependencies

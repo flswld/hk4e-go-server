@@ -59,8 +59,8 @@ make docker_build  # 构建镜像
 
 ```shell
 cd docker
-# 启动前请先确保各服务器的配置文件正确(如docker/node/bin/application.toml)
-docker-compose up -d # 启动服务器
+# 启动前请先确保各服务器的配置文件正确(如docker/standalone/bin/application.toml)
+docker-compose -f hk4e-go-standalone.yaml up -d # 启动服务器
 ```
 
 #### 第三方组件

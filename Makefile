@@ -29,23 +29,27 @@ docker_clean:
 	rm -rf ./docker/multi/bin/multi
 	rm -rf ./docker/gs/bin/gs
 	rm -rf ./docker/gm/bin/gm
+	rm -rf ./docker/standalone/bin/standalone
 	docker rmi flswld/node:$(VERSION)
 	docker rmi flswld/dispatch:$(VERSION)
 	docker rmi flswld/gate:$(VERSION)
 	docker rmi flswld/multi:$(VERSION)
 	docker rmi flswld/gs:$(VERSION)
 	docker rmi flswld/gm:$(VERSION)
+	docker rmi flswld/standalone:$(VERSION)
 
 # 复制配置模板等文件
 .PHONY: docker_config
 docker_config:
-	mkdir -p ./docker && cp -rf ./docker-compose.yaml ./docker/
+	mkdir -p ./docker && cp -rf ./hk4e-go-cluster.yaml ./docker/
+	mkdir -p ./docker && cp -rf ./hk4e-go-standalone.yaml ./docker/
 	mkdir -p ./docker/node/bin && cp -rf ./cmd/node/* ./docker/node/bin/ && rm -rf ./docker/node/bin/*.go
 	mkdir -p ./docker/dispatch/bin && cp -rf ./cmd/dispatch/* ./docker/dispatch/bin/ && rm -rf ./docker/dispatch/bin/*.go
 	mkdir -p ./docker/gate/bin && cp -rf ./cmd/gate/* ./docker/gate/bin/ && rm -rf ./docker/gate/bin/*.go
 	mkdir -p ./docker/multi/bin && cp -rf ./cmd/multi/* ./docker/multi/bin/ && rm -rf ./docker/multi/bin/*.go
 	mkdir -p ./docker/gs/bin && cp -rf ./cmd/gs/* ./docker/gs/bin/ && rm -rf ./docker/gs/bin/*.go
 	mkdir -p ./docker/gm/bin && cp -rf ./cmd/gm/* ./docker/gm/bin/ && rm -rf ./docker/gm/bin/*.go
+	mkdir -p ./docker/standalone/bin && cp -rf ./cmd/standalone/* ./docker/standalone/bin/ && rm -rf ./docker/standalone/bin/*.go
 
 # 构建镜像
 .PHONY: docker_build
@@ -56,12 +60,14 @@ docker_build:
 	mkdir -p ./docker/multi/bin && cp -rf ./bin/multi ./docker/multi/bin/
 	mkdir -p ./docker/gs/bin && cp -rf ./bin/gs ./docker/gs/bin/
 	mkdir -p ./docker/gm/bin && cp -rf ./bin/gm ./docker/gm/bin/
+	mkdir -p ./docker/standalone/bin && cp -rf ./bin/standalone ./docker/standalone/bin/
 	docker build -t flswld/node:$(VERSION) ./docker/node
 	docker build -t flswld/dispatch:$(VERSION) ./docker/dispatch
 	docker build -t flswld/gate:$(VERSION) ./docker/gate
 	docker build -t flswld/multi:$(VERSION) ./docker/multi
 	docker build -t flswld/gs:$(VERSION) ./docker/gs
 	docker build -t flswld/gm:$(VERSION) ./docker/gm
+	docker build -t flswld/standalone:$(VERSION) ./docker/standalone
 
 # 安装natsrpc生成工具
 .PHONY: dev_tool

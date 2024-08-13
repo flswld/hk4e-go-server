@@ -1,0 +1,24 @@
+version: '3'
+services:
+  standalone_services:
+    restart: always
+    image: flswld/standalone:1.0.0
+    container_name: standalone
+    ports:
+      - "8080:8080/tcp"
+      - "22222:22222/udp"
+    environment:
+      TZ: Asia/Shanghai
+      GOLANG_PROTOBUF_REGISTRATION_CONFLICT: ignore
+    volumes:
+      - /etc/localtime:/etc/localtime
+      - /etc/timezone:/etc/timezone
+      - /usr/share/zoneinfo:/usr/share/zoneinfo
+      - ./standalone/bin/application.toml:/standalone/application.toml
+      - ./standalone/bin/key:/standalone/key
+      - ./standalone/bin/static:/standalone/static
+    deploy:
+      resources:
+        limits:
+          cpus: '8.00'
+          memory: 8192M
