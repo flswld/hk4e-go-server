@@ -18,7 +18,7 @@ services:
       - ./standalone/bin/application.toml:/standalone/application.toml
       - ./standalone/bin/key:/standalone/key
       - ./standalone/bin/static:/standalone/static
-      - ../gdconf/game_data_config:/gs/game_data_config
+      - ../gdconf/game_data_config:/standalone/game_data_config
     deploy:
       resources:
         limits:
