@@ -42,5 +42,8 @@ func (g *GameDataConfig) loadGachaDropGroupData() {
 }
 
 func GetGachaDropGroupDataByDropId(dropId int32) *GachaDropGroupData {
+	if CONF.GachaDropGroupDataMap == nil {
+		return nil
+	}
 	return CONF.GachaDropGroupDataMap[dropId]
 }

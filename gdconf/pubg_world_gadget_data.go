@@ -33,6 +33,9 @@ func (g *GameDataConfig) loadPubgWorldGadgetData() {
 }
 
 func GetPubgWorldGadgetDataById(worldGadgetId int32) *PubgWorldGadgetData {
+	if CONF.PubgWorldGadgetDataMap == nil {
+		return nil
+	}
 	return CONF.PubgWorldGadgetDataMap[worldGadgetId]
 }
 

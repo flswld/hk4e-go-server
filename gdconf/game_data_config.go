@@ -31,6 +31,7 @@ type GameDataConfig struct {
 	jsonPrefix string
 	luaPrefix  string
 	extPrefix  string
+	loadExt    bool
 	// 配置表数据
 	SceneDataMap               map[int32]*SceneData                       // 场景
 	SceneLuaConfigMap          map[int32]*SceneLuaConfig                  // 场景LUA配置
@@ -147,8 +148,9 @@ func (g *GameDataConfig) loadAll(loadSceneLua bool) {
 	g.extPrefix = pathPrefix + "/ext"
 	dirInfo, err = os.Stat(g.extPrefix)
 	if err != nil || !dirInfo.IsDir() {
-		info := fmt.Sprintf("open game data config ext dir error: %v", err)
-		panic(info)
+		logger.Error("open game data config ext dir error: %v", err)
+	} else {
+		g.loadExt = true
 	}
 	g.extPrefix += "/"
 
@@ -191,12 +193,10 @@ func (g *GameDataConfig) load(loadSceneLua bool) {
 	g.loadRefreshPolicyData()          // 刷新策略
 	g.loadGCGCharData()                // 七圣召唤角色卡牌
 	g.loadGCGSkillData()               // 七圣召唤卡牌技能
-	g.loadGachaDropGroupData()         // 卡池掉落组 临时的
 	g.loadOpenStateData()              // 开放状态
 	g.loadWeatherData()                // 天气
 	g.loadWeatherTemplateData()        // 天气模版
 	g.loadWeatherAreaJsonConfig()      // 天气区域JSON配置
-	g.loadPubgWorldGadgetData()        // pubg世界物件
 	g.loadMonsterRelationshipData()    // 怪物关联
 	g.loadMonsterData()                // 怪物
 	g.loadProudSkillData()             // 天赋
@@ -204,6 +204,10 @@ func (g *GameDataConfig) load(loadSceneLua bool) {
 	g.loadWeaponCurveData()            // 武器曲线
 	g.loadReliquaryLevelData()         // 圣遗物等级
 	g.loadMonsterCurveData()           // 怪物曲线
+	if g.loadExt {
+		g.loadGachaDropGroupData()  // 卡池掉落组 临时的
+		g.loadPubgWorldGadgetData() // pubg世界物件
+	}
 }
 
 // CSV相关
