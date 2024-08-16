@@ -529,6 +529,58 @@ func (g *Game) SelectWorktopOptionReq(player *model.Player, payloadMsg pb.Messag
 	})
 }
 
+func (g *Game) GetWidgetSlotReq(player *model.Player, payloadMsg pb.Message) {
+	req := payloadMsg.(*proto.GetWidgetSlotReq)
+	_ = req
+
+	g.SendMsg(cmd.GetWidgetSlotRsp, player.PlayerId, player.ClientSeq, &proto.GetWidgetSlotRsp{
+		SlotList: g.PacketWidgetSlotDataList(player),
+	})
+}
+
+func (g *Game) SetWidgetSlotReq(player *model.Player, payloadMsg pb.Message) {
+	req := payloadMsg.(*proto.SetWidgetSlotReq)
+
+	widgetJsonConfig := gdconf.GetWidgetJsonConfigByMaterialId(int32(req.MaterialId))
+	if widgetJsonConfig == nil {
+		g.SendError(cmd.SetWidgetSlotRsp, player, new(proto.SetWidgetSlotRsp), proto.Retcode_RET_NOT_FOUND_CONFIG)
+		return
+	}
+	tagList := make([]uint8, 0)
+	for _, tag := range widgetJsonConfig.Tags {
+		switch tag {
+		case gdconf.WidgetTagTypeActionPanel:
+			tagList = append(tagList, uint8(proto.WidgetSlotTag_WIDGET_SLOT_QUICK_USE))
+		case gdconf.WidgetTagTypeFlyAttach:
+			tagList = append(tagList, uint8(proto.WidgetSlotTag_WIDGET_SLOT_ATTACH_AVATAR))
+		}
+	}
+	dbWorld := player.GetDbWorld()
+	switch req.Op {
+	case proto.WidgetSlotOp_WIDGET_SLOT_OP_ATTACH:
+		for _, tag := range tagList {
+			widget, exist := dbWorld.WidgetSlotMap[tag]
+			if !exist {
+				widget = &model.Widget{
+					Tag: tag,
+				}
+				dbWorld.WidgetSlotMap[tag] = widget
+			}
+			widget.MaterialId = req.MaterialId
+		}
+	case proto.WidgetSlotOp_WIDGET_SLOT_OP_DETACH:
+		for _, tag := range tagList {
+			delete(dbWorld.WidgetSlotMap, tag)
+		}
+	}
+
+	g.SendMsg(cmd.SetWidgetSlotRsp, player.PlayerId, player.ClientSeq, &proto.SetWidgetSlotRsp{
+		TagList:    req.TagList,
+		MaterialId: req.MaterialId,
+		Op:         req.Op,
+	})
+}
+
 /************************************************** 游戏功能 **************************************************/
 
 // UnlockPlayerScenePoint 解锁场景锚点
@@ -839,4 +891,17 @@ func (g *Game) PacketMapMarkPointList(player *model.Player) []*proto.MapMarkPoin
 		})
 	}
 	return pbMarkList
+}
+
+func (g *Game) PacketWidgetSlotDataList(player *model.Player) []*proto.WidgetSlotData {
+	widgetSlotDataList := make([]*proto.WidgetSlotData, 0)
+	dbWorld := player.GetDbWorld()
+	for _, widget := range dbWorld.WidgetSlotMap {
+		widgetSlotDataList = append(widgetSlotDataList, &proto.WidgetSlotData{
+			Tag:        proto.WidgetSlotTag(widget.Tag),
+			MaterialId: widget.MaterialId,
+			IsActive:   true,
+		})
+	}
+	return widgetSlotDataList
 }

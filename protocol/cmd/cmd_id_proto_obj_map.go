@@ -168,6 +168,12 @@ func (c *CmdProtoMap) registerMessage() {
 	c.regMsg(SelectWorktopOptionReq, func() any { return new(proto.SelectWorktopOptionReq) })                 // 操作台选项选择请求
 	c.regMsg(SelectWorktopOptionRsp, func() any { return new(proto.SelectWorktopOptionRsp) })                 // 操作台选项选择响应
 	c.regMsg(WorktopOptionNotify, func() any { return new(proto.WorktopOptionNotify) })                       // 操作台选项通知
+	c.regMsg(GetWidgetSlotReq, func() any { return new(proto.GetWidgetSlotReq) })                             // 获取小道具槽位请求
+	c.regMsg(GetWidgetSlotRsp, func() any { return new(proto.GetWidgetSlotRsp) })                             // 获取小道具槽位响应
+	c.regMsg(SetWidgetSlotReq, func() any { return new(proto.SetWidgetSlotReq) })                             // 设置小道具槽位请求
+	c.regMsg(SetWidgetSlotRsp, func() any { return new(proto.SetWidgetSlotRsp) })                             // 设置小道具槽位响应
+	c.regMsg(WidgetSlotChangeNotify, func() any { return new(proto.WidgetSlotChangeNotify) })                 // 小道具槽位更新通知
+	c.regMsg(AllWidgetDataNotify, func() any { return new(proto.AllWidgetDataNotify) })                       // 小道具槽位数据通知
 
 	// 战斗与同步
 	c.regMsg(AvatarFightPropNotify, func() any { return new(proto.AvatarFightPropNotify) })                         // 角色战斗属性通知

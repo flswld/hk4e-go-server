@@ -5,9 +5,10 @@ import (
 )
 
 type DbWorld struct {
-	SceneMap    map[uint32]*DbScene
-	MapMarkList []*MapMark
-	GameTime    uint32 // 游戏内提瓦特大陆的时间
+	SceneMap      map[uint32]*DbScene
+	MapMarkList   []*MapMark
+	GameTime      uint32 // 游戏内提瓦特大陆的时间
+	WidgetSlotMap map[uint8]*Widget
 }
 
 type DbScene struct {
@@ -24,6 +25,11 @@ type MapMark struct {
 	Name      string
 }
 
+type Widget struct {
+	Tag        uint8
+	MaterialId uint32
+}
+
 func (p *Player) GetDbWorld() *DbWorld {
 	if p.DbWorld == nil {
 		p.DbWorld = new(DbWorld)
@@ -34,6 +40,9 @@ func (p *Player) GetDbWorld() *DbWorld {
 	}
 	if p.DbWorld.MapMarkList == nil {
 		p.DbWorld.MapMarkList = make([]*MapMark, 0)
+	}
+	if p.DbWorld.WidgetSlotMap == nil {
+		p.DbWorld.WidgetSlotMap = make(map[uint8]*Widget)
 	}
 	return p.DbWorld
 }

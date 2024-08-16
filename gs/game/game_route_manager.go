@@ -144,6 +144,8 @@ func (r *RouteManager) initRoute() {
 		cmd.ReadMailNotify:                    GAME.ReadMailNotify,
 		cmd.ChangeMailStarNotify:              GAME.ChangeMailStarNotify,
 		cmd.SelectWorktopOptionReq:            GAME.SelectWorktopOptionReq,
+		cmd.GetWidgetSlotReq:                  GAME.GetWidgetSlotReq,
+		cmd.SetWidgetSlotReq:                  GAME.SetWidgetSlotReq,
 	}
 }
 
