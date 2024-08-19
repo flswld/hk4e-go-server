@@ -146,6 +146,9 @@ func (r *RouteManager) initRoute() {
 		cmd.SelectWorktopOptionReq:            GAME.SelectWorktopOptionReq,
 		cmd.GetWidgetSlotReq:                  GAME.GetWidgetSlotReq,
 		cmd.SetWidgetSlotReq:                  GAME.SetWidgetSlotReq,
+		cmd.QuickUseWidgetReq:                 GAME.QuickUseWidgetReq,
+		cmd.SceneAudioNotify:                  GAME.SceneAudioNotify,
+		cmd.WidgetDoBagReq:                    GAME.WidgetDoBagReq,
 	}
 }
 

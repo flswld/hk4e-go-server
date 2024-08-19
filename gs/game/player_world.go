@@ -556,28 +556,84 @@ func (g *Game) SetWidgetSlotReq(player *model.Player, payloadMsg pb.Message) {
 		}
 	}
 	dbWorld := player.GetDbWorld()
-	switch req.Op {
-	case proto.WidgetSlotOp_WIDGET_SLOT_OP_ATTACH:
-		for _, tag := range tagList {
-			widget, exist := dbWorld.WidgetSlotMap[tag]
-			if !exist {
-				widget = &model.Widget{
-					Tag: tag,
-				}
-				dbWorld.WidgetSlotMap[tag] = widget
+
+	for _, tag := range tagList {
+		widget, exist := dbWorld.WidgetSlotMap[tag]
+		if !exist {
+			widget = &model.Widget{
+				Tag: tag,
 			}
-			widget.MaterialId = req.MaterialId
+			dbWorld.WidgetSlotMap[tag] = widget
 		}
-	case proto.WidgetSlotOp_WIDGET_SLOT_OP_DETACH:
-		for _, tag := range tagList {
+		switch req.Op {
+		case proto.WidgetSlotOp_WIDGET_SLOT_OP_ATTACH:
+			widget.MaterialId = req.MaterialId
+		case proto.WidgetSlotOp_WIDGET_SLOT_OP_DETACH:
 			delete(dbWorld.WidgetSlotMap, tag)
 		}
+		g.SendMsg(cmd.WidgetSlotChangeNotify, player.PlayerId, player.ClientSeq, &proto.WidgetSlotChangeNotify{
+			Op: req.Op,
+			Slot: &proto.WidgetSlotData{
+				Tag:        proto.WidgetSlotTag(widget.Tag),
+				MaterialId: widget.MaterialId,
+				IsActive:   true,
+			},
+		})
 	}
 
 	g.SendMsg(cmd.SetWidgetSlotRsp, player.PlayerId, player.ClientSeq, &proto.SetWidgetSlotRsp{
 		TagList:    req.TagList,
 		MaterialId: req.MaterialId,
 		Op:         req.Op,
+	})
+}
+
+func (g *Game) QuickUseWidgetReq(player *model.Player, payloadMsg pb.Message) {
+	req := payloadMsg.(*proto.QuickUseWidgetReq)
+	_ = req
+
+	dbWorld := player.GetDbWorld()
+	widget, exist := dbWorld.WidgetSlotMap[uint8(proto.WidgetSlotTag_WIDGET_SLOT_QUICK_USE)]
+	if !exist {
+		g.SendError(cmd.QuickUseWidgetRsp, player, new(proto.QuickUseWidgetRsp))
+		return
+	}
+	widgetJsonConfig := gdconf.GetWidgetJsonConfigByMaterialId(int32(widget.MaterialId))
+	if widgetJsonConfig == nil {
+		g.SendError(cmd.QuickUseWidgetRsp, player, new(proto.QuickUseWidgetRsp), proto.Retcode_RET_NOT_FOUND_CONFIG)
+		return
+	}
+	if widgetJsonConfig.IsConsumeMaterial {
+		ok := g.CostPlayerItem(player.PlayerId, []*ChangeItem{{ItemId: widget.MaterialId, ChangeCount: 1}})
+		if !ok {
+			g.SendError(cmd.QuickUseWidgetRsp, player, new(proto.QuickUseWidgetRsp), proto.Retcode_RET_ITEM_COUNT_NOT_ENOUGH)
+			return
+		}
+		g.UseItem(player.PlayerId, widget.MaterialId)
+	}
+
+	g.SendMsg(cmd.QuickUseWidgetRsp, player.PlayerId, player.ClientSeq, &proto.QuickUseWidgetRsp{
+		MaterialId: widget.MaterialId,
+	})
+}
+
+func (g *Game) WidgetDoBagReq(player *model.Player, payloadMsg pb.Message) {
+	req := payloadMsg.(*proto.WidgetDoBagReq)
+
+	widgetJsonConfig := gdconf.GetWidgetJsonConfigByMaterialId(int32(req.MaterialId))
+	if widgetJsonConfig == nil {
+		g.SendError(cmd.WidgetDoBagRsp, player, new(proto.WidgetDoBagRsp), proto.Retcode_RET_NOT_FOUND_CONFIG)
+		return
+	}
+	var pos *model.Vector = nil
+	locPos := req.GetWidgetCreatorInfo().GetLocationInfo().GetPos()
+	if locPos != nil {
+		pos = &model.Vector{X: float64(locPos.X), Y: float64(locPos.Y), Z: float64(locPos.Z)}
+	}
+	g.CreateGadget(player, pos, uint32(widgetJsonConfig.GadgetId))
+
+	g.SendMsg(cmd.WidgetDoBagRsp, player.PlayerId, player.ClientSeq, &proto.WidgetDoBagRsp{
+		MaterialId: req.MaterialId,
 	})
 }
 

@@ -20,6 +20,7 @@ type WidgetJsonConfig struct {
 
 type ConfigWidget struct {
 	Type              string   `json:"$type"`
+	GadgetId          int32    `json:"gadgetId"`
 	Tags              []string `json:"tags"`
 	IsConsumeMaterial bool     `json:"isConsumeMaterial"`
 	CdGroup           int32    `json:"cdGroup"`
