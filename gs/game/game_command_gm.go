@@ -460,6 +460,10 @@ func (g *GMCmd) GMClearQuest(userId uint32) {
 		return
 	}
 	player.DbQuest = nil
+	player.SceneId = 3
+	player.Pos = &model.Vector{X: 2747, Y: 194, Z: -1719}
+	player.Rot = &model.Vector{X: 0, Y: 307, Z: 0}
+	GAME.AcceptQuest(player, false)
 	GAME.LogoutPlayer(userId)
 }
 
@@ -495,6 +499,26 @@ func (g *GMCmd) GMUnlockAllOpenState(userId uint32) {
 		player.OpenStateMap[uint32(openStateData.OpenStateId)] = 1
 	}
 	GAME.LogoutPlayer(userId)
+}
+
+// GMAddAllSceneTag 解锁全部场景标签
+func (g *GMCmd) GMAddAllSceneTag(userId uint32, sceneId uint32) {
+	player := USER_MANAGER.GetOnlineUser(userId)
+	if player == nil {
+		logger.Error("player is nil, uid: %v", userId)
+		return
+	}
+	dbWorld := player.GetDbWorld()
+	dbScene := dbWorld.GetSceneById(sceneId)
+	if dbScene == nil {
+		logger.Error("db scene is nil, sceneId: %v, uid: %v", sceneId, userId)
+		return
+	}
+	for _, sceneTagDataConfig := range gdconf.GetSceneTagDataMap() {
+		if uint32(sceneTagDataConfig.SceneId) == sceneId {
+			dbScene.AddSceneTag(uint32(sceneTagDataConfig.SceneTagId))
+		}
+	}
 }
 
 // GMFreeMode 自由探索模式

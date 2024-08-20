@@ -149,9 +149,13 @@ func (g *Game) AcceptQuest(player *model.Player, notify bool) {
 				}
 				result = true
 			default:
-				break
+				// logger.Error("not support quest accept cond type: %v, questId: %v, uid: %v", acceptCond.Type, questData.QuestId, player.PlayerId)
+				continue
 			}
 			resultList = append(resultList, result)
+		}
+		if len(resultList) != len(questData.AcceptCondList) {
+			continue
 		}
 		accept := false
 		switch questData.AcceptCondCompose {
@@ -173,6 +177,66 @@ func (g *Game) AcceptQuest(player *model.Player, notify bool) {
 					break
 				}
 			}
+		case constant.QUEST_LOGIC_TYPE_A_AND_ETCOR:
+			if len(resultList) < 2 {
+				accept = false
+				break
+			}
+			acceptA := resultList[0]
+			acceptEtc := false
+			for _, result := range resultList[1:] {
+				if result {
+					acceptEtc = true
+					break
+				}
+			}
+			accept = acceptA && acceptEtc
+		case constant.QUEST_LOGIC_TYPE_A_AND_B_AND_ETCOR:
+			if len(resultList) < 3 {
+				accept = false
+				break
+			}
+			acceptA := resultList[0]
+			acceptB := resultList[1]
+			acceptEtc := false
+			for _, result := range resultList[2:] {
+				if result {
+					acceptEtc = true
+					break
+				}
+			}
+			accept = acceptA && acceptB && acceptEtc
+		case constant.QUEST_LOGIC_TYPE_A_OR_ETCAND:
+			if len(resultList) < 2 {
+				accept = false
+				break
+			}
+			acceptA := resultList[0]
+			acceptEtc := true
+			for _, result := range resultList[1:] {
+				if !result {
+					acceptEtc = false
+					break
+				}
+			}
+			accept = acceptA || acceptEtc
+		case constant.QUEST_LOGIC_TYPE_A_OR_B_OR_ETCAND:
+			if len(resultList) < 3 {
+				accept = false
+				break
+			}
+			acceptA := resultList[0]
+			acceptB := resultList[1]
+			acceptEtc := true
+			for _, result := range resultList[2:] {
+				if !result {
+					acceptEtc = false
+					break
+				}
+			}
+			accept = acceptA || acceptB || acceptEtc
+		default:
+			logger.Error("not support quest accept cond logic type: %v, questId: %v, uid: %v", questData.AcceptCondCompose, questData.QuestId, player.PlayerId)
 		}
 		if accept {
 			if questData.QuestId == 35304 {
@@ -182,19 +246,9 @@ func (g *Game) AcceptQuest(player *model.Player, notify bool) {
 					g.AddPlayerAvatarEnergy(player.PlayerId, world.GetPlayerActiveAvatarId(player), 0.0, true)
 				}
 			}
-			if questData.QuestId == 35721 {
+			if questData.QuestId == 35722 {
 				// TODO 由于风龙任务进入秘境客户端会无限重连相关原因暂时屏蔽
-				// 直接福瑞
-				if player.OpenStateMap[constant.OPEN_STATE_LIMIT_REGION_FRESHMEAT] == 0 {
-					COMMAND_MANAGER.gmCmd.GMFreeMode(player.PlayerId)
-					for _, openStateData := range gdconf.GetOpenStateDataMap() {
-						player.OpenStateMap[uint32(openStateData.OpenStateId)] = 1
-					}
-					GAME.SendMsg(cmd.OpenStateChangeNotify, player.PlayerId, player.ClientSeq, &proto.OpenStateChangeNotify{
-						OpenStateMap: player.OpenStateMap,
-					})
-				}
-				continue
+				g.SendPrivateChat(COMMAND_MANAGER.system, player.PlayerId, "quest finish 35722")
 			}
 			if questData.QuestId == 36301 {
 				// TODO 懒得搞
@@ -460,8 +514,15 @@ func (g *Game) TriggerQuest(player *model.Player, cond int32, complexParam strin
 					continue
 				}
 				dbQuest.FailQuest(quest.QuestId)
+			case constant.QUEST_FINISH_COND_TYPE_COMPLETE_TALK:
+				// 与NPC对话 参数1:对话id
+				ok := matchParamEqual(failCond.Param, param, 1)
+				if !ok {
+					continue
+				}
+				dbQuest.FailQuest(quest.QuestId)
 			default:
-				logger.Error("not support quest cond type: %v, questId: %v, uid: %v", cond, quest.QuestId, player.PlayerId)
+				logger.Error("not support quest fail cond type: %v, questId: %v, uid: %v", cond, quest.QuestId, player.PlayerId)
 			}
 			updateQuestIdMap[quest.QuestId] = struct{}{}
 		}
@@ -538,8 +599,55 @@ func (g *Game) TriggerQuest(player *model.Player, cond int32, complexParam strin
 			case constant.QUEST_FINISH_COND_TYPE_ADD_QUEST_PROGRESS:
 				// TODO 这你妈到底是加父任务的进度还是子任务的进度
 				continue
+			case constant.QUEST_FINISH_COND_TYPE_ENTER_DUNGEON:
+				// 进入地牢 参数1:地牢id 参数2:传送锚点id
+				ok := matchParamEqual(finishCond.Param, param, 2)
+				if !ok {
+					continue
+				}
+				dbQuest.AddQuestFinishCount(quest.QuestId, index)
+			case constant.QUEST_FINISH_COND_TYPE_ENTER_MY_WORLD:
+				// 进入世界 参数1:场景id
+				ok := matchParamEqual(finishCond.Param, param, 1)
+				if !ok {
+					continue
+				}
+				dbQuest.AddQuestFinishCount(quest.QuestId, index)
+			case constant.QUEST_FINISH_COND_TYPE_ENTER_ROOM:
+				// 进入房间 参数1:场景id
+				ok := matchParamEqual(finishCond.Param, param, 1)
+				if !ok {
+					continue
+				}
+				dbQuest.AddQuestFinishCount(quest.QuestId, index)
+			case constant.QUEST_FINISH_COND_TYPE_GAME_TIME_TICK:
+				// 游戏时间
+				split := strings.Split(finishCond.ComplexParam, ",")
+				if len(split) != 2 {
+					continue
+				}
+				split0, err := strconv.Atoi(split[0])
+				if err != nil {
+					continue
+				}
+				split1, err := strconv.Atoi(split[1])
+				if err != nil {
+					continue
+				}
+				startGameTimeHour := uint32(split0)
+				endGameTimeHour := uint32(split1)
+				world := WORLD_MANAGER.GetWorldById(player.WorldId)
+				if world == nil {
+					continue
+				}
+				gameTime := world.GetGameTime()
+				gameTimeHour := gameTime / 60
+				if gameTimeHour < startGameTimeHour || gameTimeHour > endGameTimeHour {
+					continue
+				}
+				dbQuest.AddQuestFinishCount(quest.QuestId, index)
 			default:
-				logger.Error("not support quest cond type: %v, questId: %v, uid: %v", cond, quest.QuestId, player.PlayerId)
+				logger.Error("not support quest finish cond type: %v, questId: %v, uid: %v", cond, quest.QuestId, player.PlayerId)
 			}
 			updateQuestIdMap[quest.QuestId] = struct{}{}
 		}

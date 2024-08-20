@@ -16,6 +16,7 @@ type DbScene struct {
 	UnlockPointMap map[uint32]bool
 	UnHidePointMap map[uint32]bool
 	UnlockAreaMap  map[uint32]bool
+	SceneTagMap    map[uint32]bool
 }
 
 type MapMark struct {
@@ -70,6 +71,9 @@ func (w *DbWorld) GetSceneById(sceneId uint32) *DbScene {
 	}
 	if scene.UnlockAreaMap == nil {
 		scene.UnlockAreaMap = make(map[uint32]bool)
+	}
+	if scene.SceneTagMap == nil {
+		scene.SceneTagMap = make(map[uint32]bool)
 	}
 	return scene
 }
@@ -132,4 +136,27 @@ func (s *DbScene) UnlockArea(areaId uint32) {
 func (s *DbScene) CheckAreaUnlock(areaId uint32) bool {
 	_, exist := s.UnlockAreaMap[areaId]
 	return exist
+}
+
+func (s *DbScene) GetSceneTagList() []uint32 {
+	sceneTagList := make([]uint32, 0, len(s.SceneTagMap))
+	for sceneTag := range s.SceneTagMap {
+		sceneTagList = append(sceneTagList, sceneTag)
+	}
+	return sceneTagList
+}
+
+func (s *DbScene) AddSceneTag(sceneTag uint32) {
+	sceneTagDataConfig := gdconf.GetSceneTagDataById(int32(sceneTag))
+	if sceneTagDataConfig == nil {
+		return
+	}
+	if uint32(sceneTagDataConfig.SceneId) != s.SceneId {
+		return
+	}
+	s.SceneTagMap[sceneTag] = true
+}
+
+func (s *DbScene) DelSceneTag(sceneTag uint32) {
+	delete(s.SceneTagMap, sceneTag)
 }

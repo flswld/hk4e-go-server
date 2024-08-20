@@ -363,8 +363,14 @@ func (g *Game) JoinOtherWorld(player *model.Player, hostPlayer *model.Player) {
 		g.WorldAddPlayer(hostWorld, player)
 
 		enterSceneToken := hostWorld.AddEnterSceneContext(&EnterSceneContext{
-			OldSceneId: 0,
-			Uid:        player.PlayerId,
+			OldSceneId:     0,
+			OldPos:         nil,
+			NewSceneId:     hostPlayer.GetSceneId(),
+			NewPos:         hostPlayer.GetPos(),
+			NewRot:         hostPlayer.GetRot(),
+			DungeonId:      0,
+			DungeonPointId: 0,
+			Uid:            player.PlayerId,
 		})
 
 		playerEnterSceneNotify := g.PacketPlayerEnterSceneNotifyMp(
@@ -409,13 +415,14 @@ func (g *Game) HostEnterMpWorld(hostPlayer *model.Player) {
 	currPos := g.GetPlayerPos(hostPlayer)
 
 	enterSceneToken := world.AddEnterSceneContext(&EnterSceneContext{
-		OldSceneId:        enterSceneId,
-		OldPos:            currPos,
-		NewSceneId:        enterSceneId,
-		NewPos:            enterPos,
-		NewRot:            enterRot,
-		OldDungeonPointId: 0,
-		Uid:               hostPlayer.PlayerId,
+		OldSceneId:     enterSceneId,
+		OldPos:         currPos,
+		NewSceneId:     enterSceneId,
+		NewPos:         enterPos,
+		NewRot:         enterRot,
+		DungeonId:      0,
+		DungeonPointId: 0,
+		Uid:            hostPlayer.PlayerId,
 	})
 
 	hostPlayerEnterSceneNotify := g.PacketPlayerEnterSceneNotifyMp(

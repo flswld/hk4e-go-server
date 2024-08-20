@@ -211,13 +211,14 @@ func (w *WorldManager) GetMultiplayerWorldNum() uint32 {
 
 // EnterSceneContext 场景切换上下文数据结构
 type EnterSceneContext struct {
-	OldSceneId        uint32
-	OldPos            *model.Vector
-	NewSceneId        uint32
-	NewPos            *model.Vector
-	NewRot            *model.Vector
-	OldDungeonPointId uint32
-	Uid               uint32
+	OldSceneId     uint32
+	OldPos         *model.Vector
+	NewSceneId     uint32
+	NewPos         *model.Vector
+	NewRot         *model.Vector
+	DungeonId      uint32
+	DungeonPointId uint32
+	Uid            uint32
 }
 
 // World 世界数据结构

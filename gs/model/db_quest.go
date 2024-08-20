@@ -152,6 +152,66 @@ func (q *DbQuest) CheckQuestFinish(questId uint32) {
 				break
 			}
 		}
+	case constant.QUEST_LOGIC_TYPE_A_AND_ETCOR:
+		if len(resultList) < 2 {
+			finish = false
+			break
+		}
+		finishA := resultList[0]
+		finishEtc := false
+		for _, result := range resultList[1:] {
+			if result {
+				finishEtc = true
+				break
+			}
+		}
+		finish = finishA && finishEtc
+	case constant.QUEST_LOGIC_TYPE_A_AND_B_AND_ETCOR:
+		if len(resultList) < 3 {
+			finish = false
+			break
+		}
+		finishA := resultList[0]
+		finishB := resultList[1]
+		finishEtc := false
+		for _, result := range resultList[2:] {
+			if result {
+				finishEtc = true
+				break
+			}
+		}
+		finish = finishA && finishB && finishEtc
+	case constant.QUEST_LOGIC_TYPE_A_OR_ETCAND:
+		if len(resultList) < 2 {
+			finish = false
+			break
+		}
+		finishA := resultList[0]
+		finishEtc := true
+		for _, result := range resultList[1:] {
+			if !result {
+				finishEtc = false
+				break
+			}
+		}
+		finish = finishA || finishEtc
+	case constant.QUEST_LOGIC_TYPE_A_OR_B_OR_ETCAND:
+		if len(resultList) < 3 {
+			finish = false
+			break
+		}
+		finishA := resultList[0]
+		finishB := resultList[1]
+		finishEtc := true
+		for _, result := range resultList[2:] {
+			if !result {
+				finishEtc = false
+				break
+			}
+		}
+		finish = finishA || finishB || finishEtc
+	default:
+		logger.Error("not support quest finish cond logic type: %v, questId: %v", questDataConfig.FinishCondCompose, questId)
 	}
 	if finish {
 		quest.State = constant.QUEST_STATE_FINISHED

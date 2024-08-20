@@ -108,7 +108,24 @@ type QuestData struct {
 
 func (g *GameDataConfig) loadQuestData() {
 	g.QuestDataMap = make(map[int32]*QuestData)
-	fileNameList := []string{"QuestData.txt", "QuestData_Exported.txt"}
+	fileNameList := []string{
+		"QuestData.txt",
+		"QuestData_Activity.txt",
+		"QuestData_Coop.txt",
+		"QuestData_Exported.txt",
+		"QuestData_LiyueIQ.txt",
+		"QuestData_LiyueIQ_2.txt",
+		"QuestData_LiyueIQ_3.txt",
+		"QuestData_LiyueLQ_Adult.txt",
+		"QuestData_LiyueMQ.txt",
+		"QuestData_LiyueWQ.txt",
+		"QuestData_MengdeIQ.txt",
+		"QuestData_MengdeIQ_2.txt",
+		"QuestData_MengdeLQ_Adult.txt",
+		"QuestData_MengdeLQ_Teen.txt",
+		"QuestData_MengdeMQ.txt",
+		"QuestData_NPC.txt",
+	}
 	for _, fileName := range fileNameList {
 		questDataList := make([]*QuestData, 0)
 		readTable[QuestData](g.txtPrefix+fileName, &questDataList)

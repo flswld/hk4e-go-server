@@ -178,6 +178,8 @@ func (c *CmdProtoMap) registerMessage() {
 	c.regMsg(AllWidgetDataNotify, func() any { return new(proto.AllWidgetDataNotify) })                       // 小道具槽位数据通知
 	c.regMsg(WidgetDoBagReq, func() any { return new(proto.WidgetDoBagReq) })                                 // 小道具下包请求
 	c.regMsg(WidgetDoBagRsp, func() any { return new(proto.WidgetDoBagRsp) })                                 // 小道具下包响应
+	c.regMsg(PersonalSceneJumpReq, func() any { return new(proto.PersonalSceneJumpReq) })                     // 场景跳转请求
+	c.regMsg(PersonalSceneJumpRsp, func() any { return new(proto.PersonalSceneJumpRsp) })                     // 场景跳转响应
 
 	// 战斗与同步
 	c.regMsg(AvatarFightPropNotify, func() any { return new(proto.AvatarFightPropNotify) })                         // 角色战斗属性通知

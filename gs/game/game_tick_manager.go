@@ -307,6 +307,7 @@ func (t *TickManager) onTickSecond(now int64) {
 			// 场景时间增加
 			if !world.GetOwner().Pause && world.GetOwner().PropMap[constant.PLAYER_PROP_IS_GAME_TIME_LOCKED] != 1 {
 				world.ChangeGameTime(world.GetGameTime() + 1)
+				GAME.TriggerQuest(world.GetOwner(), constant.QUEST_FINISH_COND_TYPE_GAME_TIME_TICK, "")
 			}
 		}
 	}

@@ -277,7 +277,7 @@ func (g *Game) EndlessLoopCheck(checkType int) {
 	}
 	switch checkType {
 	case EndlessLoopCheckTypeAcceptQuest:
-		if checkCount > 100 {
+		if checkCount > 1000 {
 			EndlessLoopHandleFunc()
 		}
 	case EndlessLoopCheckTypeStartQuest:

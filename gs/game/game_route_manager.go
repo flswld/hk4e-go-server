@@ -149,6 +149,7 @@ func (r *RouteManager) initRoute() {
 		cmd.QuickUseWidgetReq:                 GAME.QuickUseWidgetReq,
 		cmd.SceneAudioNotify:                  GAME.SceneAudioNotify,
 		cmd.WidgetDoBagReq:                    GAME.WidgetDoBagReq,
+		cmd.PersonalSceneJumpReq:              GAME.PersonalSceneJumpReq,
 	}
 }
 
