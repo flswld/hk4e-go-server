@@ -523,6 +523,7 @@ type IEntity interface {
 	RemoveModifier(instancedModifierId uint32)
 	AbilityAction(ability *Ability, action *gdconf.ActionData, entity IEntity)
 	AbilityMixin(ability *Ability, mixin *gdconf.MixinData, entity IEntity)
+	GetDynamicValueMap() map[uint32]float32
 }
 
 // Entity 场景实体数据结构
@@ -544,6 +545,7 @@ type Entity struct {
 	visionLevel         int
 	abilityMap          map[uint32]*Ability
 	modifierMap         map[uint32]*Modifier
+	dynamicValueMap     map[uint32]float32
 }
 
 func (e *Entity) IsEntity() {
@@ -836,6 +838,8 @@ func (e *Entity) AbilityAction(ability *Ability, action *gdconf.ActionData, enti
 				GAME.CreateDropGadget(owner, entity.GetPos(), uint32(itemDataConfig.GadgetId), uint32(action.ConfigID), 1)
 			}
 		}
+	default:
+		logger.Error("not support ability action type: %v, abilityName: %v, entityId: %v", action.Type, ability.abilityName, entity.GetId())
 	}
 }
 
@@ -852,6 +856,10 @@ func (e *Entity) AbilityMixin(ability *Ability, mixin *gdconf.MixinData, entity 
 		staminaCost := ability.GetDynamicFloat(abilityDataConfig, mixin.CostStaminaDelta)
 		GAME.UpdatePlayerStamina(owner, int32(staminaCost)*-100)
 	}
+}
+
+func (e *Entity) GetDynamicValueMap() map[uint32]float32 {
+	return e.dynamicValueMap
 }
 
 type AvatarEntity struct {
@@ -871,6 +879,7 @@ func (a *AvatarEntity) GetAvatarId() uint32 {
 func (a *AvatarEntity) InitAbility() {
 	a.abilityMap = make(map[uint32]*Ability)
 	a.modifierMap = make(map[uint32]*Modifier)
+	a.dynamicValueMap = make(map[uint32]float32)
 }
 
 type WeaponEntity struct {
@@ -880,6 +889,7 @@ type WeaponEntity struct {
 func (w *WeaponEntity) InitAbility() {
 	w.abilityMap = make(map[uint32]*Ability)
 	w.modifierMap = make(map[uint32]*Modifier)
+	w.dynamicValueMap = make(map[uint32]float32)
 }
 
 type MonsterEntity struct {
@@ -894,6 +904,7 @@ func (m *MonsterEntity) GetMonsterId() uint32 {
 func (m *MonsterEntity) InitAbility() {
 	m.abilityMap = make(map[uint32]*Ability)
 	m.modifierMap = make(map[uint32]*Modifier)
+	m.dynamicValueMap = make(map[uint32]float32)
 	monsterDataConfig := gdconf.GetMonsterDataById(int32(m.GetMonsterId()))
 	if monsterDataConfig == nil {
 		logger.Error("get monster data config is nil, monsterId: %v", m.GetMonsterId())
@@ -950,6 +961,7 @@ func (n *NpcEntity) GetBlockId() uint32 {
 func (n *NpcEntity) InitAbility() {
 	n.abilityMap = make(map[uint32]*Ability)
 	n.modifierMap = make(map[uint32]*Modifier)
+	n.dynamicValueMap = make(map[uint32]float32)
 }
 
 func (n *NpcEntity) CreateNpcEntity(npcId, roomId, parentQuestId, blockId uint32) {
@@ -987,6 +999,7 @@ func (g *GadgetEntity) SetGadgetState(state uint32) {
 func (g *GadgetEntity) InitAbility() {
 	g.abilityMap = make(map[uint32]*Ability)
 	g.modifierMap = make(map[uint32]*Modifier)
+	g.dynamicValueMap = make(map[uint32]float32)
 	gadgetDataConfig := gdconf.GetGadgetDataById(int32(g.GetGadgetId()))
 	if gadgetDataConfig == nil {
 		logger.Error("get gadget data config is nil, gadgetId: %v", g.GetGadgetId())

@@ -927,17 +927,17 @@ func (g *Game) TeleportPlayer(
 	var enterType proto.EnterType
 	if newSceneId != oldSceneId {
 		player.SceneJump = true
-		logger.Debug("player jump scene, scene: %v, pos: %v", player.GetSceneId(), newPos)
+		logger.Debug("player jump scene, scene: %v, pos: %v", newSceneId, newPos)
 		enterType = proto.EnterType_ENTER_JUMP
 		if enterReason == proto.EnterReason_ENTER_REASON_DUNGEON_ENTER {
-			logger.Debug("player tp to dungeon scene, sceneId: %v, pos: %v", player.GetSceneId(), newPos)
+			logger.Debug("player tp to dungeon scene, sceneId: %v, pos: %v", newSceneId, newPos)
 			enterType = proto.EnterType_ENTER_DUNGEON
 		}
 		delTeamEntityNotify := g.PacketDelTeamEntityNotify(world, player)
 		g.SendMsg(cmd.DelTeamEntityNotify, player.PlayerId, player.ClientSeq, delTeamEntityNotify)
 	} else {
 		player.SceneJump = false
-		logger.Debug("player goto scene, scene: %v, pos: %v", player.GetSceneId(), newPos)
+		logger.Debug("player goto scene, scene: %v, pos: %v", newSceneId, newPos)
 		enterType = proto.EnterType_ENTER_GOTO
 	}
 

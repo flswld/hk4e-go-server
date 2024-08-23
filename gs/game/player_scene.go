@@ -31,12 +31,17 @@ const (
 func (g *Game) EnterSceneReadyReq(player *model.Player, payloadMsg pb.Message) {
 	req := payloadMsg.(*proto.EnterSceneReadyReq)
 
-	logger.Debug("player enter scene ready, uid: %v", player.PlayerId)
 	world := WORLD_MANAGER.GetWorldById(player.WorldId)
 	if world == nil {
 		logger.Error("get world is nil, worldId: %v, uid: %v", player.WorldId, player.PlayerId)
 		return
 	}
+	ctx := world.GetEnterSceneContextByToken(req.EnterSceneToken)
+	if ctx == nil {
+		logger.Error("get enter scene context is nil, uid: %v", player.PlayerId)
+		return
+	}
+	logger.Debug("player enter scene ready, ctx: %+v, uid: %v", ctx, player.PlayerId)
 
 	if world.IsMultiplayerWorld() && world.IsPlayerFirstEnter(player) {
 		playerPreEnterMpNotify := &proto.PlayerPreEnterMpNotify{
@@ -47,11 +52,6 @@ func (g *Game) EnterSceneReadyReq(player *model.Player, payloadMsg pb.Message) {
 		g.SendToWorldH(world, cmd.PlayerPreEnterMpNotify, 0, playerPreEnterMpNotify)
 	}
 
-	ctx := world.GetEnterSceneContextByToken(req.EnterSceneToken)
-	if ctx == nil {
-		logger.Error("get enter scene context is nil, uid: %v", player.PlayerId)
-		return
-	}
 	if ctx.OldSceneId != 0 {
 		oldSceneId := ctx.OldSceneId
 		oldPos := ctx.OldPos
@@ -149,12 +149,18 @@ func (g *Game) EnterSceneReadyReq(player *model.Player, payloadMsg pb.Message) {
 func (g *Game) SceneInitFinishReq(player *model.Player, payloadMsg pb.Message) {
 	req := payloadMsg.(*proto.SceneInitFinishReq)
 
-	logger.Debug("player scene init finish, uid: %v", player.PlayerId)
 	world := WORLD_MANAGER.GetWorldById(player.WorldId)
 	if world == nil {
 		logger.Error("get world is nil, worldId: %v, uid: %v", player.WorldId, player.PlayerId)
 		return
 	}
+	ctx := world.GetEnterSceneContextByToken(req.EnterSceneToken)
+	if ctx == nil {
+		logger.Error("get enter scene context is nil, uid: %v", player.PlayerId)
+		return
+	}
+	logger.Debug("player scene init finish, ctx: %+v, uid: %v", ctx, player.PlayerId)
+
 	scene := world.GetSceneById(player.GetSceneId())
 
 	if world.IsMultiplayerWorld() && world.IsPlayerFirstEnter(player) {
@@ -298,11 +304,6 @@ func (g *Game) SceneInitFinishReq(player *model.Player, payloadMsg pb.Message) {
 
 	g.UpdateWorldScenePlayerInfo(player, world)
 
-	ctx := world.GetEnterSceneContextByToken(req.EnterSceneToken)
-	if ctx == nil {
-		logger.Error("get enter scene context is nil, uid: %v", player.PlayerId)
-		return
-	}
 	if ctx.DungeonId != 0 {
 		// 进入的场景是地牢副本
 		g.GCGTavernInit(player) // GCG酒馆信息通知
@@ -337,12 +338,18 @@ func (g *Game) SceneInitFinishReq(player *model.Player, payloadMsg pb.Message) {
 func (g *Game) EnterSceneDoneReq(player *model.Player, payloadMsg pb.Message) {
 	req := payloadMsg.(*proto.EnterSceneDoneReq)
 
-	logger.Debug("player enter scene done, uid: %v", player.PlayerId)
 	world := WORLD_MANAGER.GetWorldById(player.WorldId)
 	if world == nil {
 		logger.Error("get world is nil, worldId: %v, uid: %v", player.WorldId, player.PlayerId)
 		return
 	}
+	ctx := world.GetEnterSceneContextByToken(req.EnterSceneToken)
+	if ctx == nil {
+		logger.Error("get enter scene context is nil, uid: %v", player.PlayerId)
+		return
+	}
+	logger.Debug("player enter scene done, ctx: %+v, uid: %v", ctx, player.PlayerId)
+
 	scene := world.GetSceneById(player.GetSceneId())
 
 	var visionType = proto.VisionType_VISION_NONE
@@ -436,12 +443,17 @@ func (g *Game) EnterSceneDoneReq(player *model.Player, payloadMsg pb.Message) {
 func (g *Game) PostEnterSceneReq(player *model.Player, payloadMsg pb.Message) {
 	req := payloadMsg.(*proto.PostEnterSceneReq)
 
-	logger.Debug("player post enter scene, uid: %v", player.PlayerId)
 	world := WORLD_MANAGER.GetWorldById(player.WorldId)
 	if world == nil {
 		logger.Error("get world is nil, worldId: %v, uid: %v", player.WorldId, player.PlayerId)
 		return
 	}
+	ctx := world.GetEnterSceneContextByToken(req.EnterSceneToken)
+	if ctx == nil {
+		logger.Error("get enter scene context is nil, uid: %v", player.PlayerId)
+		return
+	}
+	logger.Debug("player post enter scene, ctx: %+v, uid: %v", ctx, player.PlayerId)
 
 	if world.IsMultiplayerWorld() && world.IsPlayerFirstEnter(player) {
 		guestPostEnterSceneNotify := &proto.GuestPostEnterSceneNotify{
@@ -453,11 +465,6 @@ func (g *Game) PostEnterSceneReq(player *model.Player, payloadMsg pb.Message) {
 
 	world.PlayerEnter(player.PlayerId)
 
-	ctx := world.GetEnterSceneContextByToken(req.EnterSceneToken)
-	if ctx == nil {
-		logger.Error("get enter scene context is nil, uid: %v", player.PlayerId)
-		return
-	}
 	sceneDataConfig := gdconf.GetSceneDataById(int32(ctx.NewSceneId))
 	if sceneDataConfig == nil {
 		logger.Error("get scene data config is nil, sceneId: %v, uid: %v", ctx.NewSceneId, player.PlayerId)
@@ -555,6 +562,9 @@ type SceneBlockLoadInfoCtx struct {
 
 // LoadSceneBlockAsync 异步加载场景区块存档
 func (g *Game) LoadSceneBlockAsync(player *model.Player, oldScene *Scene, newScene *Scene, oldPos *model.Vector, newPos *model.Vector, origin string, ctx *SceneBlockLoadInfoCtx) bool {
+	if player.SceneBlockAsyncLoad {
+		return false
+	}
 	oldSceneBlockAoi := WORLD_MANAGER.GetSceneBlockAoiMap()[oldScene.GetId()]
 	if oldSceneBlockAoi == nil {
 		logger.Error("scene not exist in aoi, sceneId: %v", oldScene.GetId())
@@ -567,44 +577,51 @@ func (g *Game) LoadSceneBlockAsync(player *model.Player, oldScene *Scene, newSce
 	}
 	oldGid := oldSceneBlockAoi.GetGidByPos(float32(oldPos.X), 0.0, float32(oldPos.Z))
 	newGid := newSceneBlockAoi.GetGidByPos(float32(newPos.X), 0.0, float32(newPos.Z))
-	if oldGid == newGid {
-		return false
-	}
-	// 跨越了block格子
-	logger.Debug("player cross scene block grid, oldGid: %v, newGid: %v, uid: %v", oldGid, newGid, player.PlayerId)
-	if player.SceneBlockAsyncLoad {
-		return false
-	}
-	logger.Info("async load player scene block from db, uid: %v", player.PlayerId)
-	oldGridList := oldSceneBlockAoi.GetSurrGridListByGid(oldGid, 1)
-	newGridList := newSceneBlockAoi.GetSurrGridListByGid(newGid, 1)
 	delGridIdList := make([]uint32, 0)
-	for _, oldGrid := range oldGridList {
-		exist := false
-		for _, newGrid := range newGridList {
-			if oldGrid.GetGid() == newGrid.GetGid() {
-				exist = true
-				break
-			}
-		}
-		if exist {
-			continue
-		}
-		delGridIdList = append(delGridIdList, oldGrid.GetGid())
-	}
 	addGridIdList := make([]uint32, 0)
-	for _, newGrid := range newGridList {
-		exist := false
+	if oldScene.GetId() == newScene.GetId() {
+		if oldGid == newGid {
+			return false
+		}
+		// 跨越了block格子
+		logger.Debug("player cross scene block grid, oldGid: %v, newGid: %v, uid: %v", oldGid, newGid, player.PlayerId)
+		oldGridList := oldSceneBlockAoi.GetSurrGridListByGid(oldGid, 1)
+		newGridList := newSceneBlockAoi.GetSurrGridListByGid(newGid, 1)
 		for _, oldGrid := range oldGridList {
-			if newGrid.GetGid() == oldGrid.GetGid() {
-				exist = true
-				break
+			exist := false
+			for _, newGrid := range newGridList {
+				if oldGrid.GetGid() == newGrid.GetGid() {
+					exist = true
+					break
+				}
 			}
+			if exist {
+				continue
+			}
+			delGridIdList = append(delGridIdList, oldGrid.GetGid())
 		}
-		if exist {
-			continue
+		for _, newGrid := range newGridList {
+			exist := false
+			for _, oldGrid := range oldGridList {
+				if newGrid.GetGid() == oldGrid.GetGid() {
+					exist = true
+					break
+				}
+			}
+			if exist {
+				continue
+			}
+			addGridIdList = append(addGridIdList, newGrid.GetGid())
 		}
-		addGridIdList = append(addGridIdList, newGrid.GetGid())
+	} else {
+		oldGridList := oldSceneBlockAoi.GetSurrGridListByGid(oldGid, 1)
+		newGridList := newSceneBlockAoi.GetSurrGridListByGid(newGid, 1)
+		for _, oldGrid := range oldGridList {
+			delGridIdList = append(delGridIdList, oldGrid.GetGid())
+		}
+		for _, newGrid := range newGridList {
+			addGridIdList = append(addGridIdList, newGrid.GetGid())
+		}
 	}
 	loadSceneBlockMap := make(map[uint32]*gdconf.Block)
 	for _, addGridId := range addGridIdList {
@@ -620,6 +637,7 @@ func (g *Game) LoadSceneBlockAsync(player *model.Player, oldScene *Scene, newSce
 	if len(loadSceneBlockMap) == 0 {
 		return false
 	}
+	logger.Info("async load player scene block from db: %v, uid: %v", loadSceneBlockMap, player.PlayerId)
 	player.SceneBlockAsyncLoad = true
 	go func() {
 		loadSceneBlockList := make([]*model.SceneBlock, 0)
@@ -2135,17 +2153,30 @@ func (g *Game) PacketSceneAvatarInfo(scene *Scene, player *model.Player, avatarI
 
 func (g *Game) PacketSceneMonsterInfo(entity IEntity) *proto.SceneMonsterInfo {
 	blockId := uint32(0)
+	titleId := uint32(0)
+	specialNameId := uint32(0)
 	if entity.GetGroupId() != 0 {
 		groupConfig := gdconf.GetSceneGroup(int32(entity.GetGroupId()))
+		if groupConfig == nil {
+			logger.Error("get scene group config is nil, groupId: %v", entity.GetGroupId())
+			return new(proto.SceneMonsterInfo)
+		}
 		blockId = uint32(groupConfig.BlockId)
+		monsterConfig, exist := groupConfig.MonsterMap[int32(entity.GetConfigId())]
+		if !exist {
+			logger.Error("monster config not exist, configId: %v", entity.GetConfigId())
+			return new(proto.SceneMonsterInfo)
+		}
+		titleId = uint32(monsterConfig.TitleId)
+		specialNameId = uint32(monsterConfig.SpecialNameId)
 	}
 	sceneMonsterInfo := &proto.SceneMonsterInfo{
 		MonsterId:       entity.(*MonsterEntity).GetMonsterId(),
 		AuthorityPeerId: 1,
 		BornType:        proto.MonsterBornType_MONSTER_BORN_DEFAULT,
 		BlockId:         blockId,
-		TitleId:         blockId,
-		SpecialNameId:   0,
+		TitleId:         titleId,
+		SpecialNameId:   specialNameId,
 	}
 	return sceneMonsterInfo
 }

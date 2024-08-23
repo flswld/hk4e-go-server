@@ -103,7 +103,7 @@ func (g *Game) QueryPathReq(player *model.Player, payloadMsg pb.Message) {
 	queryPathRsp := &proto.QueryPathRsp{
 		QueryId:     req.QueryId,
 		QueryStatus: proto.QueryPathRsp_STATUS_SUCC,
-		Corners:     []*proto.Vector{req.DestinationPos[0]},
+		Corners:     []*proto.Vector{req.SourcePos, req.DestinationPos[0]},
 	}
 	g.SendMsg(cmd.QueryPathRsp, player.PlayerId, player.ClientSeq, queryPathRsp)
 }

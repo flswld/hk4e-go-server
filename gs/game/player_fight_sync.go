@@ -773,7 +773,7 @@ func (g *Game) handleAbilityInvoke(player *model.Player, entry *proto.AbilityInv
 			}
 			for _, abilityScalarValueEntry := range reInitOverrideMap.OverrideMap {
 				if abilityScalarValueEntry.ValueType != proto.AbilityScalarType_ABILITY_SCALAR_TYPE_FLOAT {
-					logger.Error("override param type not support, type: %v, uid: %v", abilityScalarValueEntry.ValueType, player.PlayerId)
+					logger.Error("param type not support, type: %v, uid: %v", abilityScalarValueEntry.ValueType, player.PlayerId)
 					return
 				}
 				key := abilityScalarValueEntry.Key.GetHash()
@@ -793,12 +793,27 @@ func (g *Game) handleAbilityInvoke(player *model.Player, entry *proto.AbilityInv
 				return
 			}
 			if abilityScalarValueEntry.ValueType != proto.AbilityScalarType_ABILITY_SCALAR_TYPE_FLOAT {
-				logger.Error("override param type not support, type: %v, uid: %v", abilityScalarValueEntry.ValueType, player.PlayerId)
+				logger.Error("param type not support, type: %v, uid: %v", abilityScalarValueEntry.ValueType, player.PlayerId)
 				return
 			}
 			key := abilityScalarValueEntry.Key.GetHash()
 			value := abilityScalarValueEntry.Value.(*proto.AbilityScalarValueEntry_FloatValue).FloatValue
 			ability.abilitySpecialOverrideMap[key] = value
+		case proto.AbilityInvokeArgument_ABILITY_META_GLOBAL_FLOAT_VALUE:
+			abilityScalarValueEntry := new(proto.AbilityScalarValueEntry)
+			err := pb.Unmarshal(entry.AbilityData, abilityScalarValueEntry)
+			if err != nil {
+				logger.Error("parse AbilityScalarValueEntry error: %v", err)
+				return
+			}
+			if abilityScalarValueEntry.ValueType != proto.AbilityScalarType_ABILITY_SCALAR_TYPE_FLOAT {
+				logger.Error("param type not support, type: %v, uid: %v", abilityScalarValueEntry.ValueType, player.PlayerId)
+				return
+			}
+			key := abilityScalarValueEntry.Key.GetHash()
+			value := abilityScalarValueEntry.Value.(*proto.AbilityScalarValueEntry_FloatValue).FloatValue
+			dynamicValueMap := entity.GetDynamicValueMap()
+			dynamicValueMap[key] = value
 		}
 	} else {
 		logger.Error("???")

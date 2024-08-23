@@ -85,16 +85,18 @@ type Replaceable struct {
 }
 
 type Monster struct {
-	ConfigId    int32   `json:"config_id"`
-	MonsterId   int32   `json:"monster_id"`
-	Pos         *Vector `json:"pos"`
-	Rot         *Vector `json:"rot"`
-	Level       int32   `json:"level"`
-	AreaId      int32   `json:"area_id"`
-	DropTag     string  `json:"drop_tag"` // 关联MonsterDropData表
-	DropId      int32   `json:"drop_id"`
-	IsOneOff    bool    `json:"isOneoff"`
-	VisionLevel int32   `json:"vision_level"`
+	ConfigId      int32   `json:"config_id"`
+	MonsterId     int32   `json:"monster_id"`
+	Pos           *Vector `json:"pos"`
+	Rot           *Vector `json:"rot"`
+	Level         int32   `json:"level"`
+	AreaId        int32   `json:"area_id"`
+	DropTag       string  `json:"drop_tag"` // 关联MonsterDropData表
+	DropId        int32   `json:"drop_id"`
+	IsOneOff      bool    `json:"isOneoff"`
+	VisionLevel   int32   `json:"vision_level"`
+	TitleId       int32   `json:"title_id"`
+	SpecialNameId int32   `json:"special_name_id"`
 }
 
 type Npc struct {
