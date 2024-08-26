@@ -2155,6 +2155,7 @@ func (g *Game) PacketSceneMonsterInfo(entity IEntity) *proto.SceneMonsterInfo {
 	blockId := uint32(0)
 	titleId := uint32(0)
 	specialNameId := uint32(0)
+	affixList := make([]uint32, 0)
 	if entity.GetGroupId() != 0 {
 		groupConfig := gdconf.GetSceneGroup(int32(entity.GetGroupId()))
 		if groupConfig == nil {
@@ -2169,6 +2170,14 @@ func (g *Game) PacketSceneMonsterInfo(entity IEntity) *proto.SceneMonsterInfo {
 		}
 		titleId = uint32(monsterConfig.TitleId)
 		specialNameId = uint32(monsterConfig.SpecialNameId)
+		monsterDataConfig := gdconf.GetMonsterDataById(monsterConfig.MonsterId)
+		if monsterDataConfig == nil {
+			logger.Error("monster data config not exist, monsterId: %v", monsterConfig.MonsterId)
+			return new(proto.SceneMonsterInfo)
+		}
+		for _, affix := range monsterDataConfig.AffixList {
+			affixList = append(affixList, uint32(affix))
+		}
 	}
 	sceneMonsterInfo := &proto.SceneMonsterInfo{
 		MonsterId:       entity.(*MonsterEntity).GetMonsterId(),
@@ -2177,6 +2186,7 @@ func (g *Game) PacketSceneMonsterInfo(entity IEntity) *proto.SceneMonsterInfo {
 		BlockId:         blockId,
 		TitleId:         titleId,
 		SpecialNameId:   specialNameId,
+		AffixList:       affixList,
 	}
 	return sceneMonsterInfo
 }

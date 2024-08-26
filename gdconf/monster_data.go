@@ -3,6 +3,8 @@ package gdconf
 import (
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
 	"hk4e/common/constant"
 	"hk4e/pkg/logger"
@@ -21,6 +23,7 @@ type MonsterData struct {
 	MonsterId  int32  `csv:"ID"`
 	Name       string `csv:"名称$text_name_Name,omitempty"`
 	ConfigJson string `csv:"战斗Config,omitempty"`
+	Affix      string `csv:"精英词缀,omitempty"`
 	// 战斗属性
 	HpBase          float32 `csv:"基础生命值,omitempty"`
 	AttackBase      float32 `csv:"基础攻击力,omitempty"`
@@ -64,6 +67,7 @@ type MonsterData struct {
 	PropGrowList  []*PropGrow        // 属性成长列表
 	HpDropList    []*HpDrop          // 血量掉落列表
 	ConfigAbility *ConfigAbilityJson // 能力配置
+	AffixList     []int32            // 词缀列表
 }
 
 func (g *GameDataConfig) loadMonsterData() {
@@ -260,6 +264,15 @@ func (g *GameDataConfig) loadMonsterData() {
 				Id:        monsterData.Drop3Id,
 				HpPercent: monsterData.Drop3HpPercent,
 			})
+		}
+		if monsterData.Affix != "" {
+			for _, affixStr := range strings.Split(monsterData.Affix, ",") {
+				affix, err := strconv.Atoi(affixStr)
+				if err != nil {
+					panic(err)
+				}
+				monsterData.AffixList = append(monsterData.AffixList, int32(affix))
+			}
 		}
 		g.MonsterDataMap[monsterData.MonsterId] = monsterData
 	}

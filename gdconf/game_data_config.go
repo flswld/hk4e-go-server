@@ -89,6 +89,8 @@ type GameDataConfig struct {
 	ReliquaryLevelDataMap      map[int32]map[int32]*ReliquaryLevelData    // 圣遗物等级
 	MonsterCurveDataMap        map[int32]*MonsterCurveData                // 怪物曲线
 	WidgetJsonConfigMap        map[string]*ConfigWidget                   // 小道具JSON配置
+	ChapterDataMap             map[int32]*ChapterData                     // 章节
+	MainQuestDataMap           map[int32]*MainQuestData                   // 主线任务
 }
 
 func InitGameDataConfig() {
@@ -206,6 +208,8 @@ func (g *GameDataConfig) load(loadSceneLua bool) {
 	g.loadReliquaryLevelData()         // 圣遗物等级
 	g.loadMonsterCurveData()           // 怪物曲线
 	g.loadWidgetJsonConfig()           // 小道具JSON配置
+	g.loadChapterData()                // 章节
+	g.loadMainQuestData()              // 主线任务
 	if g.loadExt {
 		g.loadGachaDropGroupData()  // 卡池掉落组 临时的
 		g.loadPubgWorldGadgetData() // pubg世界物件

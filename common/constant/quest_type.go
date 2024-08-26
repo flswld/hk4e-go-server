@@ -9,6 +9,13 @@ const (
 )
 
 const (
+	PARENT_QUEST_STATE_NONE     = 0
+	PARENT_QUEST_STATE_FINISHED = 1
+	PARENT_QUEST_STATE_FAILED   = 2
+	PARENT_QUEST_STATE_CANCELED = 3
+)
+
+const (
 	QUEST_LOGIC_TYPE_NONE              = 0
 	QUEST_LOGIC_TYPE_AND               = 1
 	QUEST_LOGIC_TYPE_OR                = 2

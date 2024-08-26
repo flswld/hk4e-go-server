@@ -10,7 +10,8 @@ import (
 
 // DbQuest 玩家任务数据
 type DbQuest struct {
-	QuestMap map[uint32]*Quest // 任务列表 key:任务id value:任务
+	QuestMap       map[uint32]*Quest       // 任务列表 key:任务id value:任务
+	ParentQuestMap map[uint32]*ParentQuest // 父任务列表 key:父任务id value:父任务
 }
 
 // Quest 任务
@@ -22,12 +23,22 @@ type Quest struct {
 	FinishCountList []uint32 // 任务完成进度
 }
 
+// ParentQuest 父任务
+type ParentQuest struct {
+	ParentQuestId uint32   // 父任务id
+	State         uint8    // 任务状态
+	QuestVar      [5]int32 // 任务变量
+}
+
 func (p *Player) GetDbQuest() *DbQuest {
 	if p.DbQuest == nil {
 		p.DbQuest = new(DbQuest)
 	}
 	if p.DbQuest.QuestMap == nil {
 		p.DbQuest.QuestMap = make(map[uint32]*Quest)
+	}
+	if p.DbQuest.ParentQuestMap == nil {
+		p.DbQuest.ParentQuestMap = make(map[uint32]*ParentQuest)
 	}
 	return p.DbQuest
 }
@@ -61,6 +72,7 @@ func (q *DbQuest) AddQuest(questId uint32) {
 		StartTime:       0,
 		FinishCountList: make([]uint32, len(questDataConfig.FinishCondList)),
 	}
+	q.AddParentQuest(uint32(questDataConfig.ParentQuestId))
 }
 
 // StartQuest 开始执行一个任务
@@ -215,6 +227,7 @@ func (q *DbQuest) CheckQuestFinish(questId uint32) {
 	}
 	if finish {
 		quest.State = constant.QUEST_STATE_FINISHED
+		q.CheckParentQuestFinish(uint32(questDataConfig.ParentQuestId))
 	}
 }
 
@@ -226,6 +239,12 @@ func (q *DbQuest) ForceFinishQuest(questId uint32) {
 		return
 	}
 	quest.State = constant.QUEST_STATE_FINISHED
+	questDataConfig := gdconf.GetQuestDataById(int32(questId))
+	if questDataConfig == nil {
+		logger.Error("get quest data config is nil, questId: %v", questId)
+		return
+	}
+	q.CheckParentQuestFinish(uint32(questDataConfig.ParentQuestId))
 }
 
 // FailQuest 失败一个任务
@@ -245,4 +264,62 @@ func (q *DbQuest) FailQuest(questId uint32) {
 		return
 	}
 	quest.FinishCountList = make([]uint32, len(questDataConfig.FinishCondList))
+}
+
+// GetParentQuestMap 获取全部父任务
+func (q *DbQuest) GetParentQuestMap() map[uint32]*ParentQuest {
+	return q.ParentQuestMap
+}
+
+// GetParentQuestById 获取一个父任务
+func (q *DbQuest) GetParentQuestById(parentQuestId uint32) *ParentQuest {
+	return q.ParentQuestMap[parentQuestId]
+}
+
+// AddParentQuest 添加一个父任务
+func (q *DbQuest) AddParentQuest(parentQuestId uint32) {
+	_, exist := q.ParentQuestMap[parentQuestId]
+	if exist {
+		return
+	}
+	q.ParentQuestMap[parentQuestId] = &ParentQuest{
+		ParentQuestId: parentQuestId,
+		State:         constant.PARENT_QUEST_STATE_NONE,
+		QuestVar:      [5]int32{0, 0, 0, 0, 0},
+	}
+}
+
+// CheckParentQuestFinish 检查父任务是否完成
+func (q *DbQuest) CheckParentQuestFinish(parentQuestId uint32) {
+	parentQuest, exist := q.ParentQuestMap[parentQuestId]
+	if !exist {
+		logger.Error("get parent quest is nil, parentQuestId: %v", parentQuestId)
+		return
+	}
+	finish := true
+	questDataMap := gdconf.GetQuestDataMapByParentQuestId(int32(parentQuestId))
+	for _, questData := range questDataMap {
+		quest, exist := q.QuestMap[uint32(questData.QuestId)]
+		if !exist {
+			finish = false
+			break
+		}
+		if quest.State != constant.QUEST_STATE_FINISHED {
+			finish = false
+			break
+		}
+	}
+	if finish {
+		parentQuest.State = constant.PARENT_QUEST_STATE_FINISHED
+	}
+}
+
+// ForceFinishParentQuest 强制完成一个父任务
+func (q *DbQuest) ForceFinishParentQuest(parentQuestId uint32) {
+	parentQuest, exist := q.ParentQuestMap[parentQuestId]
+	if !exist {
+		logger.Error("get parent quest is nil, parentQuestId: %v", parentQuestId)
+		return
+	}
+	parentQuest.State = constant.PARENT_QUEST_STATE_FINISHED
 }

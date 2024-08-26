@@ -2,18 +2,11 @@ package gdconf
 
 import (
 	"fmt"
+	"hk4e/common/constant"
 	"strconv"
 	"strings"
 
 	"hk4e/pkg/logger"
-)
-
-const (
-	RefreshTypeNone         = 0
-	RefreshTypeAfterTime    = 1
-	RefreshTypeDayTime      = 2
-	RefreshTypeDayTimeRange = 3
-	RefreshTypeDay          = 4
 )
 
 // RefreshPolicyData 刷新策略配置表
@@ -31,11 +24,11 @@ func (g *GameDataConfig) loadRefreshPolicyData() {
 	refreshPolicyDataList := make([]*RefreshPolicyData, 0)
 	readTable[RefreshPolicyData](g.txtPrefix+"RefreshPolicyData.txt", &refreshPolicyDataList)
 	for _, refreshPolicyData := range refreshPolicyDataList {
-		if refreshPolicyData.RefreshType < RefreshTypeNone || refreshPolicyData.RefreshType > RefreshTypeDay {
+		if refreshPolicyData.RefreshType < constant.REFRESH_NONE || refreshPolicyData.RefreshType > constant.REFRESH_DAYBEGIN_INTERVAL {
 			info := fmt.Sprintf("invalid refresh type: %v", refreshPolicyData)
 			panic(info)
 		}
-		if refreshPolicyData.RefreshType == RefreshTypeDayTimeRange {
+		if refreshPolicyData.RefreshType == constant.REFRESH_WEEKlY {
 			split := strings.Split(refreshPolicyData.RefreshTimeStr, ";")
 			if len(split) != 2 {
 				info := fmt.Sprintf("refresh time format error: %v", refreshPolicyData)
@@ -50,7 +43,7 @@ func (g *GameDataConfig) loadRefreshPolicyData() {
 				panic(err)
 			}
 			refreshPolicyData.RefreshTimeRange = [2]int32{int32(startTime), int32(endTime)}
-		} else if refreshPolicyData.RefreshType == RefreshTypeNone {
+		} else if refreshPolicyData.RefreshType == constant.REFRESH_NONE {
 			refreshPolicyData.RefreshTime = 0
 		} else {
 			refreshTime, err := strconv.Atoi(refreshPolicyData.RefreshTimeStr)

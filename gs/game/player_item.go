@@ -380,6 +380,24 @@ func (g *Game) CostPlayerItem(userId uint32, itemList []*ChangeItem) bool {
 	return true
 }
 
+// RewardItem 奖励玩家物品
+func (g *Game) RewardItem(userId uint32, rewardId uint32, hintReason proto.ActionReasonType) bool {
+	rewardConfig := gdconf.GetRewardDataById(int32(rewardId))
+	if rewardConfig == nil {
+		logger.Error("reward config error, rewardId: %v", rewardId)
+		return false
+	}
+	rewardItemList := make([]*ChangeItem, 0, len(rewardConfig.RewardItemMap))
+	for itemId, count := range rewardConfig.RewardItemMap {
+		rewardItemList = append(rewardItemList, &ChangeItem{
+			ItemId:      itemId,
+			ChangeCount: count,
+		})
+	}
+	g.AddPlayerItem(userId, rewardItemList, hintReason)
+	return true
+}
+
 /************************************************** 打包封装 **************************************************/
 
 // PacketStoreWeightLimitNotify 背包容量限制通知

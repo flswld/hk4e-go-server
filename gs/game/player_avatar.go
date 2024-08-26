@@ -211,27 +211,17 @@ func (g *Game) AvatarPromoteGetRewardReq(player *model.Player, payloadMsg pb.Mes
 		g.SendError(cmd.AvatarPromoteGetRewardRsp, player, &proto.AvatarPromoteGetRewardRsp{}, proto.Retcode_RET_REWARD_HAS_TAKEN)
 		return
 	}
-	// 获取奖励配置表
-	rewardConfig := gdconf.GetRewardDataById(int32(avatarDataConfig.PromoteRewardMap[req.PromoteLevel]))
-	if rewardConfig == nil {
-		logger.Error("reward config error, rewardId: %v", avatarDataConfig.PromoteRewardMap[req.PromoteLevel])
+	// 发放奖励
+	rewardId := avatarDataConfig.PromoteRewardMap[req.PromoteLevel]
+	ok = g.RewardItem(player.PlayerId, rewardId, proto.ActionReasonType_ACTION_REASON_AVATAR_PROMOTE)
+	if !ok {
 		g.SendError(cmd.AvatarPromoteGetRewardRsp, player, &proto.AvatarPromoteGetRewardRsp{})
 		return
 	}
 	// 设置该奖励为已被获取状态
 	avatar.PromoteRewardMap[req.PromoteLevel] = true
-	// 给予突破奖励
-	rewardItemList := make([]*ChangeItem, 0, len(rewardConfig.RewardItemMap))
-	for itemId, count := range rewardConfig.RewardItemMap {
-		rewardItemList = append(rewardItemList, &ChangeItem{
-			ItemId:      itemId,
-			ChangeCount: count,
-		})
-	}
-	g.AddPlayerItem(player.PlayerId, rewardItemList, proto.ActionReasonType_ACTION_REASON_AVATAR_PROMOTE)
-
 	avatarPromoteGetRewardRsp := &proto.AvatarPromoteGetRewardRsp{
-		RewardId:     uint32(rewardConfig.RewardId),
+		RewardId:     rewardId,
 		AvatarGuid:   req.AvatarGuid,
 		PromoteLevel: req.PromoteLevel,
 	}
