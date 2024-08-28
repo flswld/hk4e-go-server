@@ -23,22 +23,25 @@ import (
 // 玩家定时保存 写入db和redis
 
 type UserManager struct {
-	db                  *dao.Dao                 // db对象
-	playerMap           map[uint32]*model.Player // 内存玩家数据
-	saveUserChan        chan *SaveUserData       // 用于主协程发送玩家数据给定时保存协程
-	remotePlayerMap     map[uint32]string        // 远程玩家 key:userId value:玩家所在gs的appid
-	remotePlayerMapLock sync.RWMutex
+	db                  *dao.Dao                  // db对象
+	playerMap           map[uint32]*model.Player  // 内存玩家数据
+	saveUserChan        chan *SaveUserData        // 用于主协程发送玩家数据给定时保存协程
+	remotePlayerMap     map[uint32]string         // 远程玩家 key:userId value:玩家所在gs的appid
+	remotePlayerMapLock sync.RWMutex              // 远程玩家读写锁
+	asyncWriteDbChan    chan func(u *UserManager) // 异步写入db队列
 }
 
 func NewUserManager(db *dao.Dao) (r *UserManager) {
 	r = new(UserManager)
 	r.db = db
 	r.playerMap = make(map[uint32]*model.Player)
-	r.saveUserChan = make(chan *SaveUserData, 1)
+	r.saveUserChan = make(chan *SaveUserData, 100)
 	r.remotePlayerMap = make(map[uint32]string)
-	go r.saveUserHandle()
+	r.asyncWriteDbChan = make(chan func(u *UserManager), 100)
+	r.saveUserHandle()
 	r.syncRemotePlayerMap()
-	go r.autoSyncRemotePlayerMap()
+	r.autoSyncRemotePlayerMap()
+	r.asyncWriteDbHandle()
 	return r
 }
 
@@ -209,7 +212,9 @@ func (u *UserManager) UserOfflineSave(player *model.Player, changeGsInfo *Change
 		return
 	}
 	if player.OfflineClear {
-		go u.DeleteUserAllChatMsgToDbSync(player.PlayerId)
+		u.AsyncWriteDb(func(u *UserManager) {
+			u.DeleteUserAllChatMsgToDbSync(player.PlayerId)
+		})
 		newPlayer := GAME.CreatePlayer(player.PlayerId)
 		newPlayer.DbState = player.DbState
 		player = newPlayer
@@ -332,11 +337,13 @@ func (u *UserManager) ChangeUserDbState(player *model.Player, state int) {
 // 远程玩家相关操作
 
 func (u *UserManager) autoSyncRemotePlayerMap() {
-	ticker := time.NewTicker(time.Second * 60)
-	for {
-		<-ticker.C
-		u.syncRemotePlayerMap()
-	}
+	go func() {
+		ticker := time.NewTicker(time.Second * 60)
+		for {
+			<-ticker.C
+			u.syncRemotePlayerMap()
+		}
+	}()
 }
 
 func (u *UserManager) syncRemotePlayerMap() {
@@ -818,4 +825,17 @@ func (u *UserManager) SaveUserToRedisSync(player *model.Player) {
 
 func (u *UserManager) SaveUserListToRedisSync(setPlayerList []*model.Player) {
 	u.db.SetRedisPlayerList(setPlayerList)
+}
+
+func (u *UserManager) AsyncWriteDb(fn func(u *UserManager)) {
+	u.asyncWriteDbChan <- fn
+}
+
+func (u *UserManager) asyncWriteDbHandle() {
+	go func() {
+		for {
+			fn := <-u.asyncWriteDbChan
+			fn(u)
+		}
+	}()
 }

@@ -563,6 +563,9 @@ func (p *PluginPubg) StopPubg() {
 	}
 	logger.Debug("StopPubg, seq: %v", p.seq)
 	owner := p.world.GetOwner()
+	for eid := range p.entityIdWorldGadgetIdMap {
+		GAME.KillEntity(owner, p.world.GetSceneById(owner.GetSceneId()), eid, proto.PlayerDieType_PLAYER_DIE_GM)
+	}
 	p.world = nil
 	p.blueAreaCenterPos = &model.Vector{X: 0.0, Y: 0.0, Z: 0.0}
 	p.blueAreaRadius = 0.0
@@ -664,7 +667,7 @@ func (p *PluginPubg) SyncMapMarkArea() {
 			x := p.blueAreaRadius*math.Cos(float64(angleStep)/360.0*2*math.Pi) + p.blueAreaCenterPos.X
 			z := p.blueAreaRadius*math.Sin(float64(angleStep)/360.0*2*math.Pi) + p.blueAreaCenterPos.Z
 			p.areaPointList = append(p.areaPointList, &proto.MapMarkPoint{
-				SceneId:   3,
+				SceneId:   p.world.GetOwner().GetSceneId(),
 				Name:      "",
 				Pos:       &proto.Vector{X: float32(x), Y: 0, Z: float32(z)},
 				PointType: proto.MapMarkPointType_SPECIAL,
@@ -676,7 +679,7 @@ func (p *PluginPubg) SyncMapMarkArea() {
 			x := p.safeAreaRadius*math.Cos(float64(angleStep)/360.0*2*math.Pi) + p.safeAreaCenterPos.X
 			z := p.safeAreaRadius*math.Sin(float64(angleStep)/360.0*2*math.Pi) + p.safeAreaCenterPos.Z
 			p.areaPointList = append(p.areaPointList, &proto.MapMarkPoint{
-				SceneId:   3,
+				SceneId:   p.world.GetOwner().GetSceneId(),
 				Name:      "",
 				Pos:       &proto.Vector{X: float32(x), Y: 0, Z: float32(z)},
 				PointType: proto.MapMarkPointType_COLLECTION,
@@ -743,22 +746,22 @@ func (p *PluginPubg) PubgHit(scene *Scene, defAvatarEntityId uint32, atkAvatarEn
 			DamageShield: dmg,
 		},
 	})
-	if attackResultTemplate == nil {
-		return
-	}
-	evtBeingHitInfo := &proto.EvtBeingHitInfo{
-		PeerId:       0,
-		AttackResult: attackResultTemplate,
-		FrameNum:     0,
-	}
-	evtBeingHitInfo.AttackResult.AttackerId = atkEntity.GetId()
-	evtBeingHitInfo.AttackResult.DefenseId = defEntity.GetId()
-	evtBeingHitInfo.AttackResult.Damage = dmg
-	if evtBeingHitInfo.AttackResult.HitCollision == nil {
-		return
-	}
 	pos := GAME.GetPlayerPos(defPlayer)
-	evtBeingHitInfo.AttackResult.HitCollision.HitPoint = &proto.Vector{X: float32(pos.X), Y: float32(pos.Y), Z: float32(pos.Z)}
+	evtBeingHitInfo := &proto.EvtBeingHitInfo{
+		AttackResult: &proto.AttackResult{
+			AttackerId:        atkEntity.GetId(),
+			DefenseId:         defEntity.GetId(),
+			Damage:            dmg,
+			DamageShield:      dmg,
+			HitEffResult:      &proto.AttackHitEffectResult{},
+			ResolvedDir:       &proto.Vector{},
+			HashedAnimEventId: 2152758737,
+			HitCollision: &proto.HitCollision{
+				HitPoint: &proto.Vector{X: float32(pos.X), Y: float32(pos.Y), Z: float32(pos.Z)},
+				HitDir:   &proto.Vector{},
+			},
+		},
+	}
 	combatData, err := pb.Marshal(evtBeingHitInfo)
 	if err != nil {
 		return

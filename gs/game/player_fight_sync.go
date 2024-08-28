@@ -16,7 +16,6 @@ import (
 )
 
 var cmdProtoMap *cmd.CmdProtoMap = nil
-var attackResultTemplate *proto.AttackResult = nil
 
 func DoForward[IET model.InvokeEntryType](player *model.Player, invokeHandler *model.InvokeHandler[IET],
 	cmdId uint16, newNtf pb.Message, forwardField string,
@@ -176,9 +175,6 @@ func (g *Game) handleEvtBeingHit(player *model.Player, scene *Scene, hitInfo *pr
 	attackResult := hitInfo.AttackResult
 	if attackResult == nil {
 		return
-	}
-	if attackResultTemplate == nil {
-		attackResultTemplate = attackResult
 	}
 	defEntity := scene.GetEntity(attackResult.DefenseId)
 	if defEntity == nil {

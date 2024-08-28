@@ -129,7 +129,9 @@ func (g *Game) ReadPrivateChatReq(player *model.Player, payloadMsg pb.Message) {
 	player.ChatMsgMap[targetUid] = msgList
 
 	// 更新db
-	go USER_MANAGER.ReadUserChatMsgToDbSync(player.PlayerId, targetUid)
+	USER_MANAGER.AsyncWriteDb(func(u *UserManager) {
+		u.ReadUserChatMsgToDbSync(player.PlayerId, targetUid)
+	})
 
 	g.SendMsg(cmd.ReadPrivateChatRsp, player.PlayerId, player.ClientSeq, new(proto.ReadPrivateChatRsp))
 }
@@ -170,7 +172,6 @@ func (g *Game) PlayerChatReq(player *model.Player, payloadMsg pb.Message) {
 	world.AddChat(sendChatInfo)
 	chatMsg := g.ConvChatInfoToChatMsg(chatInfo)
 	chatMsg.IsDelete = true
-	go USER_MANAGER.SaveUserChatMsgToDbSync(chatMsg)
 
 	ntf := &proto.PlayerChatNotify{
 		ChannelId: channelId,
@@ -179,6 +180,13 @@ func (g *Game) PlayerChatReq(player *model.Player, payloadMsg pb.Message) {
 	g.SendToWorldA(world, cmd.PlayerChatNotify, player.ClientSeq, ntf, 0)
 
 	g.SendMsg(cmd.PlayerChatRsp, player.PlayerId, player.ClientSeq, new(proto.PlayerChatRsp))
+
+	USER_MANAGER.AsyncWriteDb(func(u *UserManager) {
+		if chatMsg.Uid < PlayerBaseUid || chatMsg.ToUid < PlayerBaseUid {
+			return
+		}
+		u.SaveUserChatMsgToDbSync(chatMsg)
+	})
 }
 
 func (g *Game) GetChatEmojiCollectionReq(player *model.Player, payloadMsg pb.Message) {
@@ -211,11 +219,6 @@ func (g *Game) SendPrivateChat(player *model.Player, targetUid uint32, content a
 		chatMsg.Icon = content.(uint32)
 	}
 
-	if player.PlayerId != COMMAND_MANAGER.system.PlayerId && targetUid != COMMAND_MANAGER.system.PlayerId {
-		// 写入db
-		go USER_MANAGER.SaveUserChatMsgToDbSync(chatMsg)
-	}
-
 	// 消息加入自己的队列
 	msgList, exist := player.ChatMsgMap[targetUid]
 	// 处理序号
@@ -237,6 +240,13 @@ func (g *Game) SendPrivateChat(player *model.Player, targetUid uint32, content a
 		ChatInfo: chatInfo,
 	}
 	g.SendMsg(cmd.PrivateChatNotify, player.PlayerId, player.ClientSeq, privateChatNotify)
+
+	USER_MANAGER.AsyncWriteDb(func(u *UserManager) {
+		if chatMsg.Uid < PlayerBaseUid || chatMsg.ToUid < PlayerBaseUid {
+			return
+		}
+		u.SaveUserChatMsgToDbSync(chatMsg)
+	})
 
 	targetPlayer := USER_MANAGER.GetOnlineUser(targetUid)
 	if targetPlayer == nil {
