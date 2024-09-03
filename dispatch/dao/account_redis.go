@@ -8,20 +8,20 @@ import (
 const RedisPlayerKeyPrefix = "HK4E"
 
 const (
-	AccountIdRedisKey        = "AccountId"
-	AccountIdBegin    uint32 = 10000
+	SdkAccountIdRedisKey        = "SdkAccountId"
+	SdkAccountIdBegin    uint32 = 10000
 )
 
-func (d *Dao) GetNextAccountId() (uint32, error) {
-	return d.redisInc(RedisPlayerKeyPrefix + ":" + AccountIdRedisKey)
+func (d *Dao) GetNextSdkAccountId() (uint32, error) {
+	return d.redisInc(RedisPlayerKeyPrefix + ":" + SdkAccountIdRedisKey)
 }
 
-func (d *Dao) GetAccountId() (uint32, error) {
-	return d.redisGet(RedisPlayerKeyPrefix + ":" + AccountIdRedisKey)
+func (d *Dao) GetSdkAccountId() (uint32, error) {
+	return d.redisGet(RedisPlayerKeyPrefix + ":" + SdkAccountIdRedisKey)
 }
 
-func (d *Dao) SetAccountId(accountId uint32) error {
-	return d.redisSet(RedisPlayerKeyPrefix+":"+AccountIdRedisKey, accountId)
+func (d *Dao) SetSdkAccountId(accountId uint32) error {
+	return d.redisSet(RedisPlayerKeyPrefix+":"+SdkAccountIdRedisKey, accountId)
 }
 
 func (d *Dao) redisInc(keyName string) (uint32, error) {
@@ -38,9 +38,9 @@ func (d *Dao) redisInc(keyName string) (uint32, error) {
 	if exist == 0 {
 		var err error = nil
 		if d.redisCluster != nil {
-			err = d.redisCluster.Set(context.TODO(), keyName, AccountIdBegin, 0).Err()
+			err = d.redisCluster.Set(context.TODO(), keyName, SdkAccountIdBegin, 0).Err()
 		} else {
-			err = d.redis.Set(context.TODO(), keyName, AccountIdBegin, 0).Err()
+			err = d.redis.Set(context.TODO(), keyName, SdkAccountIdBegin, 0).Err()
 		}
 		if err != nil {
 			return 0, err

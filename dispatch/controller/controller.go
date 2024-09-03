@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"hk4e/dispatch/model"
 	"net/http"
 	"strconv"
 	"sync"
@@ -20,32 +21,33 @@ import (
 )
 
 type Controller struct {
-	db              *dao.Dao
-	discoveryClient *rpc.DiscoveryClient
-	signRsaKey      []byte
-	encRsaKeyMap    map[string][]byte
-	pwdRsaKey       []byte
-	ec2b            *random.Ec2b
-	messageQueue    *mq.MessageQueue
-	gateServerMap   *sync.Map
-	stopServerInfo  *api.StopServerInfo
-	whiteList       *api.GetWhiteListRsp
+	db               *dao.Dao
+	discoveryClient  *rpc.DiscoveryClient
+	signRsaKey       []byte
+	encRsaKeyMap     map[string][]byte
+	pwdRsaKey        []byte
+	ec2b             *random.Ec2b
+	messageQueue     *mq.MessageQueue
+	gateServerMap    *sync.Map
+	stopServerInfo   *api.StopServerInfo
+	whiteList        *api.GetWhiteListRsp
+	nextSdkAccountId uint32
 }
 
-func NewController(db *dao.Dao, discovery *rpc.DiscoveryClient, messageQueue *mq.MessageQueue) (r *Controller) {
-	r = new(Controller)
+func NewController(db *dao.Dao, discovery *rpc.DiscoveryClient, messageQueue *mq.MessageQueue) (*Controller, error) {
+	r := new(Controller)
 	r.db = db
 	r.discoveryClient = discovery
 	r.signRsaKey, r.encRsaKeyMap, r.pwdRsaKey = region.LoadRegionRsaKey()
 	rsp, err := r.discoveryClient.GetRegionEc2B(context.TODO(), &api.NullMsg{})
 	if err != nil {
 		logger.Error("get region ec2b error: %v", err)
-		return nil
+		return nil, err
 	}
 	ec2b, err := random.LoadEc2bKey(rsp.Data)
 	if err != nil {
 		logger.Error("parse region ec2b error: %v", err)
-		return nil
+		return nil, err
 	}
 	r.ec2b = ec2b
 	r.messageQueue = messageQueue
@@ -60,12 +62,42 @@ func NewController(db *dao.Dao, discovery *rpc.DiscoveryClient, messageQueue *mq
 	r.gateServerMap = new(sync.Map)
 	r.stopServerInfo = nil
 	r.whiteList = nil
+	if config.GetConfig().Hk4e.StandaloneModeEnable {
+		sdk, err := r.db.QuerySdk()
+		if err != nil {
+			logger.Error("load sdk from db error: %v", err)
+			return nil, err
+		}
+		if sdk == nil {
+			sdk = &model.Sdk{
+				NextSdkAccountId: dao.SdkAccountIdBegin,
+			}
+			err := r.db.InsertSdk(sdk)
+			if err != nil {
+				logger.Error("save sdk to db error: %v", err)
+				return nil, err
+			}
+		}
+		r.nextSdkAccountId = sdk.NextSdkAccountId
+	}
 	go r.registerRouter()
 	r.syncWhiteList()
 	go r.autoSyncWhiteList()
 	r.syncStopServerInfo()
 	go r.autoSyncStopServerInfo()
-	return r
+	return r, nil
+}
+
+func (c *Controller) Close() {
+	if config.GetConfig().Hk4e.StandaloneModeEnable {
+		sdk := &model.Sdk{
+			NextSdkAccountId: c.nextSdkAccountId,
+		}
+		err := c.db.UpdateSdk(sdk)
+		if err != nil {
+			logger.Error("save sdk to db error: %v", err)
+		}
+	}
 }
 
 func (c *Controller) registerRouter() {

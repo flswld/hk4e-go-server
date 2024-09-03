@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"hk4e/common/config"
 	"math"
 	"strings"
 	"sync"
@@ -68,9 +69,19 @@ func NewDiscoveryService(db *dao.Dao, messageQueue *mq.MessageQueue) (*Discovery
 	}
 	if region == nil {
 		logger.Info("init region")
+		stopServer := false
+		if !config.GetConfig().Hk4e.StandaloneModeEnable {
+			stopServer = true
+		} else {
+			stopServer = false
+		}
 		region = &dao.Region{
-			Ec2bData: random.NewEc2b().Bytes(),
-			NextUid:  UidBegin,
+			Ec2bData:            random.NewEc2b().Bytes(),
+			NextUid:             UidBegin,
+			StopServer:          stopServer,
+			StopServerStartTime: uint32(time.Now().Unix()),
+			StopServerEndTime:   uint32(time.Now().AddDate(10, 0, 0).Unix()),
+			IpAddrWhiteList:     make([]string, 0),
 		}
 		err := r.db.InsertRegion(region)
 		if err != nil {
@@ -85,6 +96,15 @@ func NewDiscoveryService(db *dao.Dao, messageQueue *mq.MessageQueue) (*Discovery
 	}
 	logger.Info("region ec2b load ok, seed: %v", r.regionEc2b.Seed())
 	r.nextUid = region.NextUid
+	r.stopServerInfo = &StopServerInfo{
+		stopServer:      region.StopServer,
+		startTime:       region.StopServerStartTime,
+		endTime:         region.StopServerEndTime,
+		ipAddrWhiteList: make(map[string]struct{}),
+	}
+	for _, ipAddr := range region.IpAddrWhiteList {
+		r.stopServerInfo.ipAddrWhiteList[ipAddr] = struct{}{}
+	}
 	r.serverInstanceMap = make(map[string]*sync.Map)
 	r.serverInstanceMap[api.GATE] = new(sync.Map)
 	r.serverInstanceMap[api.GS] = new(sync.Map)
@@ -93,34 +113,6 @@ func NewDiscoveryService(db *dao.Dao, messageQueue *mq.MessageQueue) (*Discovery
 	r.serverInstanceMap[api.DISPATCH] = new(sync.Map)
 	r.serverAppIdMap = new(sync.Map)
 	r.globalGsOnlineMap = new(sync.Map)
-	stopServerInfo, err := r.db.QueryStopServerInfo()
-	if err != nil {
-		logger.Error("load stop server info from db error: %v", err)
-		return nil, err
-	}
-	if stopServerInfo == nil {
-		logger.Info("init stop server info")
-		stopServerInfo = &dao.StopServerInfo{
-			StopServer:      true,
-			StartTime:       uint32(time.Now().Unix()),
-			EndTime:         uint32(time.Now().AddDate(10, 0, 0).Unix()),
-			IpAddrWhiteList: make([]string, 0),
-		}
-		err := r.db.InsertStopServerInfo(stopServerInfo)
-		if err != nil {
-			logger.Error("save stop server info to db error: %v", err)
-			return nil, err
-		}
-	}
-	r.stopServerInfo = &StopServerInfo{
-		stopServer:      stopServerInfo.StopServer,
-		startTime:       stopServerInfo.StartTime,
-		endTime:         stopServerInfo.EndTime,
-		ipAddrWhiteList: make(map[string]struct{}),
-	}
-	for _, ipAddr := range stopServerInfo.IpAddrWhiteList {
-		r.stopServerInfo.ipAddrWhiteList[ipAddr] = struct{}{}
-	}
 	r.messageQueue = messageQueue
 	go r.removeDeadServer()
 	go r.broadcastReceiver()
@@ -129,27 +121,21 @@ func NewDiscoveryService(db *dao.Dao, messageQueue *mq.MessageQueue) (*Discovery
 }
 
 func (s *DiscoveryService) close() {
-	region := &dao.Region{
-		Ec2bData: s.regionEc2b.Bytes(),
-		NextUid:  s.nextUid,
-	}
-	err := s.db.UpdateRegion(region)
-	if err != nil {
-		logger.Error("save region to db error: %v", err)
-	}
 	ipAddrWhiteList := make([]string, 0)
 	for ipAddr := range s.stopServerInfo.ipAddrWhiteList {
 		ipAddrWhiteList = append(ipAddrWhiteList, ipAddr)
 	}
-	stopServerInfo := &dao.StopServerInfo{
-		StopServer:      s.stopServerInfo.stopServer,
-		StartTime:       s.stopServerInfo.startTime,
-		EndTime:         s.stopServerInfo.endTime,
-		IpAddrWhiteList: ipAddrWhiteList,
+	region := &dao.Region{
+		Ec2bData:            s.regionEc2b.Bytes(),
+		NextUid:             s.nextUid,
+		StopServer:          s.stopServerInfo.stopServer,
+		StopServerStartTime: s.stopServerInfo.startTime,
+		StopServerEndTime:   s.stopServerInfo.endTime,
+		IpAddrWhiteList:     ipAddrWhiteList,
 	}
-	err = s.db.UpdateStopServerInfo(stopServerInfo)
+	err := s.db.UpdateRegion(region)
 	if err != nil {
-		logger.Error("save stop server info to db error: %v", err)
+		logger.Error("save region to db error: %v", err)
 	}
 }
 

@@ -2,10 +2,9 @@ package dao
 
 import (
 	"context"
-	"strings"
-
 	"hk4e/common/config"
 	"hk4e/pkg/logger"
+	"strings"
 
 	"github.com/go-redis/redis/v8"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -37,34 +36,36 @@ func NewDao() (*Dao, error) {
 	r.mongo = client
 	r.db = client.Database("gate_hk4e")
 
-	r.redis = nil
-	r.redisCluster = nil
-	redisAddr := strings.ReplaceAll(config.GetConfig().Redis.Addr, "redis://", "")
-	if strings.Contains(redisAddr, ",") {
-		redisAddrList := strings.Split(redisAddr, ",")
-		r.redisCluster = redis.NewClusterClient(&redis.ClusterOptions{
-			Addrs:        redisAddrList,
-			Password:     config.GetConfig().Redis.Password,
-			PoolSize:     10,
-			MinIdleConns: 1,
-		})
-	} else {
-		r.redis = redis.NewClient(&redis.Options{
-			Addr:         redisAddr,
-			Password:     config.GetConfig().Redis.Password,
-			DB:           0,
-			PoolSize:     10,
-			MinIdleConns: 1,
-		})
-	}
-	if r.redisCluster != nil {
-		err = r.redisCluster.Ping(context.TODO()).Err()
-	} else {
-		err = r.redis.Ping(context.TODO()).Err()
-	}
-	if err != nil {
-		logger.Error("redis ping error: %v", err)
-		return nil, err
+	if !config.GetConfig().Hk4e.StandaloneModeEnable {
+		r.redis = nil
+		r.redisCluster = nil
+		redisAddr := strings.ReplaceAll(config.GetConfig().Redis.Addr, "redis://", "")
+		if strings.Contains(redisAddr, ",") {
+			redisAddrList := strings.Split(redisAddr, ",")
+			r.redisCluster = redis.NewClusterClient(&redis.ClusterOptions{
+				Addrs:        redisAddrList,
+				Password:     config.GetConfig().Redis.Password,
+				PoolSize:     10,
+				MinIdleConns: 1,
+			})
+		} else {
+			r.redis = redis.NewClient(&redis.Options{
+				Addr:         redisAddr,
+				Password:     config.GetConfig().Redis.Password,
+				DB:           0,
+				PoolSize:     10,
+				MinIdleConns: 1,
+			})
+		}
+		if r.redisCluster != nil {
+			err = r.redisCluster.Ping(context.TODO()).Err()
+		} else {
+			err = r.redis.Ping(context.TODO()).Err()
+		}
+		if err != nil {
+			logger.Error("redis ping error: %v", err)
+			return nil, err
+		}
 	}
 
 	return r, nil
@@ -75,12 +76,15 @@ func (d *Dao) CloseDao() {
 	if err != nil {
 		logger.Error("mongo close error: %v", err)
 	}
-	if d.redisCluster != nil {
-		err = d.redisCluster.Close()
-	} else {
-		err = d.redis.Close()
-	}
-	if err != nil {
-		logger.Error("redis close error: %v", err)
+
+	if !config.GetConfig().Hk4e.StandaloneModeEnable {
+		if d.redisCluster != nil {
+			err = d.redisCluster.Close()
+		} else {
+			err = d.redis.Close()
+		}
+		if err != nil {
+			logger.Error("redis close error: %v", err)
+		}
 	}
 }

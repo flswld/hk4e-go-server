@@ -26,7 +26,7 @@ func (d *Dao) InsertPlayer(player *model.Player) error {
 }
 
 func (d *Dao) InsertChatMsg(chatMsg *model.ChatMsg) error {
-	db := d.db.Collection("chat_msg")
+	db := d.db.Collection("player_chat_msg")
 	_, err := db.InsertOne(context.TODO(), chatMsg)
 	if err != nil {
 		return err
@@ -35,7 +35,7 @@ func (d *Dao) InsertChatMsg(chatMsg *model.ChatMsg) error {
 }
 
 func (d *Dao) InsertSceneBlock(sceneBlock *model.SceneBlock) error {
-	db := d.db.Collection("scene_block")
+	db := d.db.Collection("player_scene_block")
 	_, err := db.InsertOne(context.TODO(), sceneBlock)
 	if err != nil {
 		return err
@@ -64,7 +64,7 @@ func (d *Dao) InsertChatMsgList(chatMsgList []*model.ChatMsg) error {
 	if len(chatMsgList) == 0 {
 		return nil
 	}
-	db := d.db.Collection("chat_msg")
+	db := d.db.Collection("player_chat_msg")
 	modelOperateList := make([]mongo.WriteModel, 0)
 	for _, chatMsg := range chatMsgList {
 		modelOperate := mongo.NewInsertOneModel().SetDocument(chatMsg)
@@ -81,7 +81,7 @@ func (d *Dao) InsertSceneBlockList(sceneBlockList []*model.SceneBlock) error {
 	if len(sceneBlockList) == 0 {
 		return nil
 	}
-	db := d.db.Collection("scene_block")
+	db := d.db.Collection("player_scene_block")
 	modelOperateList := make([]mongo.WriteModel, 0)
 	for _, sceneBlock := range sceneBlockList {
 		modelOperate := mongo.NewInsertOneModel().SetDocument(sceneBlock)
@@ -104,7 +104,7 @@ func (d *Dao) DeletePlayer(playerId uint32) error {
 }
 
 func (d *Dao) DeleteChatMsg(id primitive.ObjectID) error {
-	db := d.db.Collection("chat_msg")
+	db := d.db.Collection("player_chat_msg")
 	_, err := db.DeleteOne(context.TODO(), bson.D{{"_id", id}})
 	if err != nil {
 		return err
@@ -113,7 +113,7 @@ func (d *Dao) DeleteChatMsg(id primitive.ObjectID) error {
 }
 
 func (d *Dao) DeleteSceneBlock(id primitive.ObjectID) error {
-	db := d.db.Collection("scene_block")
+	db := d.db.Collection("player_scene_block")
 	_, err := db.DeleteOne(context.TODO(), bson.D{{"_id", id}})
 	if err != nil {
 		return err
@@ -142,7 +142,7 @@ func (d *Dao) DeleteChatMsgList(idList []primitive.ObjectID) error {
 	if len(idList) == 0 {
 		return nil
 	}
-	db := d.db.Collection("chat_msg")
+	db := d.db.Collection("player_chat_msg")
 	modelOperateList := make([]mongo.WriteModel, 0)
 	for _, id := range idList {
 		modelOperate := mongo.NewDeleteOneModel().SetFilter(bson.D{{"_id", id}})
@@ -159,7 +159,7 @@ func (d *Dao) DeleteSceneBlockList(idList []primitive.ObjectID) error {
 	if len(idList) == 0 {
 		return nil
 	}
-	db := d.db.Collection("scene_block")
+	db := d.db.Collection("player_scene_block")
 	modelOperateList := make([]mongo.WriteModel, 0)
 	for _, id := range idList {
 		modelOperate := mongo.NewDeleteOneModel().SetFilter(bson.D{{"_id", id}})
@@ -186,7 +186,7 @@ func (d *Dao) UpdatePlayer(player *model.Player) error {
 }
 
 func (d *Dao) UpdateChatMsg(chatMsg *model.ChatMsg) error {
-	db := d.db.Collection("chat_msg")
+	db := d.db.Collection("player_chat_msg")
 	_, err := db.UpdateMany(
 		context.TODO(),
 		bson.D{{"_id", chatMsg.ID}},
@@ -199,7 +199,7 @@ func (d *Dao) UpdateChatMsg(chatMsg *model.ChatMsg) error {
 }
 
 func (d *Dao) UpdateSceneBlock(sceneBlock *model.SceneBlock) error {
-	db := d.db.Collection("scene_block")
+	db := d.db.Collection("player_scene_block")
 	_, err := db.UpdateMany(
 		context.TODO(),
 		bson.D{{"_id", sceneBlock.ID}},
@@ -232,7 +232,7 @@ func (d *Dao) UpdateChatMsgList(chatMsgList []*model.ChatMsg) error {
 	if len(chatMsgList) == 0 {
 		return nil
 	}
-	db := d.db.Collection("chat_msg")
+	db := d.db.Collection("player_chat_msg")
 	modelOperateList := make([]mongo.WriteModel, 0)
 	for _, chatMsg := range chatMsgList {
 		modelOperate := mongo.NewUpdateManyModel().SetFilter(bson.D{{"_id", chatMsg.ID}}).SetUpdate(bson.D{{"$set", chatMsg}})
@@ -249,7 +249,7 @@ func (d *Dao) UpdateSceneBlockList(sceneBlockList []*model.SceneBlock) error {
 	if len(sceneBlockList) == 0 {
 		return nil
 	}
-	db := d.db.Collection("scene_block")
+	db := d.db.Collection("player_scene_block")
 	modelOperateList := make([]mongo.WriteModel, 0)
 	for _, sceneBlock := range sceneBlockList {
 		modelOperate := mongo.NewUpdateManyModel().SetFilter(bson.D{{"_id", sceneBlock.ID}}).SetUpdate(bson.D{{"$set", sceneBlock}})
@@ -281,7 +281,7 @@ func (d *Dao) QueryPlayerById(playerId uint32) (*model.Player, error) {
 }
 
 func (d *Dao) QueryChatMsgById(id primitive.ObjectID) (*model.ChatMsg, error) {
-	db := d.db.Collection("chat_msg")
+	db := d.db.Collection("player_chat_msg")
 	result := db.FindOne(
 		context.TODO(),
 		bson.D{{"_id", id}},
@@ -299,7 +299,7 @@ func (d *Dao) QueryChatMsgById(id primitive.ObjectID) (*model.ChatMsg, error) {
 }
 
 func (d *Dao) QuerySceneBlockById(id primitive.ObjectID) (*model.SceneBlock, error) {
-	db := d.db.Collection("scene_block")
+	db := d.db.Collection("player_scene_block")
 	result := db.FindOne(
 		context.TODO(),
 		bson.D{{"_id", id}},
@@ -338,7 +338,7 @@ func (d *Dao) QueryPlayerList() ([]*model.Player, error) {
 }
 
 func (d *Dao) QueryChatMsgList() ([]*model.ChatMsg, error) {
-	db := d.db.Collection("chat_msg")
+	db := d.db.Collection("player_chat_msg")
 	find, err := db.Find(
 		context.TODO(),
 		bson.D{},
@@ -359,7 +359,7 @@ func (d *Dao) QueryChatMsgList() ([]*model.ChatMsg, error) {
 }
 
 func (d *Dao) QuerySceneBlockList() ([]*model.SceneBlock, error) {
-	db := d.db.Collection("scene_block")
+	db := d.db.Collection("player_scene_block")
 	find, err := db.Find(
 		context.TODO(),
 		bson.D{},
@@ -380,7 +380,7 @@ func (d *Dao) QuerySceneBlockList() ([]*model.SceneBlock, error) {
 }
 
 func (d *Dao) QueryChatMsgListByUid(uid uint32) ([]*model.ChatMsg, error) {
-	db := d.db.Collection("chat_msg")
+	db := d.db.Collection("player_chat_msg")
 	result := make([]*model.ChatMsg, 0)
 	find, err := db.Find(
 		context.TODO(),
@@ -408,7 +408,7 @@ func (d *Dao) QueryChatMsgListByUid(uid uint32) ([]*model.ChatMsg, error) {
 }
 
 func (d *Dao) ReadUpdateChatMsgByUid(uid uint32, targetUid uint32) error {
-	db := d.db.Collection("chat_msg")
+	db := d.db.Collection("player_chat_msg")
 	_, err := db.UpdateMany(
 		context.TODO(),
 		bson.D{{"to_uid", uid}, {"uid", targetUid}},
@@ -429,7 +429,7 @@ func (d *Dao) ReadUpdateChatMsgByUid(uid uint32, targetUid uint32) error {
 }
 
 func (d *Dao) DeleteAllUpdateChatMsgByUid(uid uint32) error {
-	db := d.db.Collection("chat_msg")
+	db := d.db.Collection("player_chat_msg")
 	_, err := db.UpdateMany(
 		context.TODO(),
 		bson.D{{"$or", []bson.D{{{"to_uid", uid}}, {{"uid", uid}}}}},
@@ -442,7 +442,7 @@ func (d *Dao) DeleteAllUpdateChatMsgByUid(uid uint32) error {
 }
 
 func (d *Dao) LoadSceneBlockByUidAndBlockId(uid uint32, blockId uint32) (*model.SceneBlock, error) {
-	db := d.db.Collection("scene_block")
+	db := d.db.Collection("player_scene_block")
 	result := db.FindOne(
 		context.TODO(),
 		bson.D{{"$and", []bson.D{{{"uid", uid}}, {{"block_id", blockId}}}}},

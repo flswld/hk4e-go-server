@@ -10,8 +10,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func (d *Dao) InsertAccount(account *model.Account) (primitive.ObjectID, error) {
-	db := d.db.Collection("account")
+func (d *Dao) InsertSdkAccount(account *model.SdkAccount) (primitive.ObjectID, error) {
+	db := d.db.Collection("sdk_account")
 	id, err := db.InsertOne(context.TODO(), account)
 	if err != nil {
 		return primitive.ObjectID{}, err
@@ -25,8 +25,8 @@ func (d *Dao) InsertAccount(account *model.Account) (primitive.ObjectID, error) 
 	}
 }
 
-func (d *Dao) UpdateAccountFieldByFieldName(fieldName string, fieldValue any, fieldUpdateName string, fieldUpdateValue any) (int64, error) {
-	db := d.db.Collection("account")
+func (d *Dao) UpdateSdkAccountFieldByFieldName(fieldName string, fieldValue any, fieldUpdateName string, fieldUpdateValue any) (int64, error) {
+	db := d.db.Collection("sdk_account")
 	updateCount, err := db.UpdateMany(
 		context.TODO(),
 		bson.D{
@@ -45,8 +45,8 @@ func (d *Dao) UpdateAccountFieldByFieldName(fieldName string, fieldValue any, fi
 	}
 }
 
-func (d *Dao) QueryAccountByField(fieldName string, fieldValue any) (*model.Account, error) {
-	db := d.db.Collection("account")
+func (d *Dao) QuerySdkAccountByField(fieldName string, fieldValue any) (*model.SdkAccount, error) {
+	db := d.db.Collection("sdk_account")
 	find, err := db.Find(
 		context.TODO(),
 		bson.D{
@@ -56,9 +56,9 @@ func (d *Dao) QueryAccountByField(fieldName string, fieldValue any) (*model.Acco
 	if err != nil {
 		return nil, err
 	}
-	result := make([]*model.Account, 0)
+	result := make([]*model.SdkAccount, 0)
 	for find.Next(context.TODO()) {
-		item := new(model.Account)
+		item := new(model.SdkAccount)
 		err := find.Decode(item)
 		if err != nil {
 			return nil, err

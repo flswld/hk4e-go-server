@@ -2,7 +2,7 @@ package model
 
 import "go.mongodb.org/mongo-driver/bson/primitive"
 
-type Account struct {
+type SdkAccount struct {
 	ID                   primitive.ObjectID `bson:"_id,omitempty"`
 	AccountId            uint32             `bson:"account_id"`              // 账号id
 	Username             string             `bson:"username"`                // 用户名

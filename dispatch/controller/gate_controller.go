@@ -64,7 +64,7 @@ func (c *Controller) gateTokenVerify(ctx *gin.Context) {
 		c.gateReqErrorRsp(ctx)
 		return
 	}
-	account, err := c.db.QueryAccountByField("account_id", uint64(accountId))
+	account, err := c.db.QuerySdkAccountByField("account_id", uint64(accountId))
 	if err != nil || account == nil {
 		c.gateReqErrorRsp(ctx)
 		return

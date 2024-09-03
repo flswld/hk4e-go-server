@@ -76,7 +76,11 @@ func Run(ctx context.Context) error {
 	}
 	defer db.CloseDao()
 
-	_ = controller.NewController(db, discoveryClient, messageQueue)
+	http, err := controller.NewController(db, discoveryClient, messageQueue)
+	if err != nil {
+		return err
+	}
+	defer http.Close()
 
 	c := make(chan os.Signal, 1)
 	if !config.GetConfig().Hk4e.StandaloneModeEnable {

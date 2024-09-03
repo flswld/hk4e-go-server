@@ -24,8 +24,8 @@ type Controller struct {
 	globalGsOnlineMapLock sync.RWMutex
 }
 
-func NewController(discoveryClient *rpc.DiscoveryClient, messageQueue *mq.MessageQueue) (r *Controller) {
-	r = new(Controller)
+func NewController(discoveryClient *rpc.DiscoveryClient, messageQueue *mq.MessageQueue) (*Controller, error) {
+	r := new(Controller)
 	r.gmClientMap = make(map[uint32]*rpc.GMClient)
 	r.discoveryClient = discoveryClient
 	r.messageQueue = messageQueue
@@ -41,7 +41,10 @@ func NewController(discoveryClient *rpc.DiscoveryClient, messageQueue *mq.Messag
 	r.syncGlobalGsOnlineMap()
 	go r.autoSyncGlobalGsOnlineMap()
 	go r.registerRouter()
-	return r
+	return r, nil
+}
+
+func (c *Controller) Close() {
 }
 
 func (c *Controller) autoSyncGlobalGsOnlineMap() {

@@ -35,7 +35,11 @@ func Run(ctx context.Context) error {
 	messageQueue := mq.NewMessageQueue(api.GM, "gm", nil)
 	defer messageQueue.Close()
 
-	_ = controller.NewController(discoveryClient, messageQueue)
+	http, err := controller.NewController(discoveryClient, messageQueue)
+	if err != nil {
+		return err
+	}
+	defer http.Close()
 
 	c := make(chan os.Signal, 1)
 	if !config.GetConfig().Hk4e.StandaloneModeEnable {

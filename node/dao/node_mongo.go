@@ -10,9 +10,13 @@ import (
 )
 
 type Region struct {
-	ID       primitive.ObjectID `bson:"_id,omitempty"`
-	Ec2bData []byte             `bson:"ec2b_data"`
-	NextUid  uint32             `bson:"next_uid"`
+	ID                  primitive.ObjectID `bson:"_id,omitempty"`
+	Ec2bData            []byte             `bson:"ec2b_data"`
+	NextUid             uint32             `bson:"next_uid"`
+	StopServer          bool               `bson:"stop_server"`
+	StopServerStartTime uint32             `bson:"stop_server_start_time"`
+	StopServerEndTime   uint32             `bson:"stop_server_end_time"`
+	IpAddrWhiteList     []string           `bson:"ip_addr_white_list"`
 }
 
 func (d *Dao) InsertRegion(region *Region) error {
@@ -53,52 +57,4 @@ func (d *Dao) QueryRegion() (*Region, error) {
 		}
 	}
 	return region, nil
-}
-
-type StopServerInfo struct {
-	ID              primitive.ObjectID `bson:"_id,omitempty"`
-	StopServer      bool               `bson:"stop_server"`
-	StartTime       uint32             `bson:"start_time"`
-	EndTime         uint32             `bson:"end_time"`
-	IpAddrWhiteList []string           `bson:"ip_addr_white_list"`
-}
-
-func (d *Dao) InsertStopServerInfo(stopServerInfo *StopServerInfo) error {
-	db := d.db.Collection("stop_server_info")
-	_, err := db.InsertOne(context.TODO(), stopServerInfo)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (d *Dao) UpdateStopServerInfo(stopServerInfo *StopServerInfo) error {
-	db := d.db.Collection("stop_server_info")
-	_, err := db.UpdateMany(
-		context.TODO(),
-		bson.D{},
-		bson.D{{"$set", stopServerInfo}},
-	)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (d *Dao) QueryStopServerInfo() (*StopServerInfo, error) {
-	db := d.db.Collection("stop_server_info")
-	result := db.FindOne(
-		context.TODO(),
-		bson.D{},
-	)
-	stopServerInfo := new(StopServerInfo)
-	err := result.Decode(stopServerInfo)
-	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, nil
-		} else {
-			return nil, err
-		}
-	}
-	return stopServerInfo, nil
 }
