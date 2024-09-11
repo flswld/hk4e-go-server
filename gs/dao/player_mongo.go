@@ -441,7 +441,7 @@ func (d *Dao) DeleteAllUpdateChatMsgByUid(uid uint32) error {
 	return nil
 }
 
-func (d *Dao) LoadSceneBlockByUidAndBlockId(uid uint32, blockId uint32) (*model.SceneBlock, error) {
+func (d *Dao) QuerySceneBlockByUidAndBlockId(uid uint32, blockId uint32) (*model.SceneBlock, error) {
 	db := d.db.Collection("player_scene_block")
 	result := db.FindOne(
 		context.TODO(),
@@ -457,12 +457,4 @@ func (d *Dao) LoadSceneBlockByUidAndBlockId(uid uint32, blockId uint32) (*model.
 		}
 	}
 	return sceneBlock, nil
-}
-
-func (d *Dao) SaveSceneBlock(sceneBlock *model.SceneBlock) error {
-	if sceneBlock.IsNew {
-		return d.InsertSceneBlock(sceneBlock)
-	} else {
-		return d.UpdateSceneBlock(sceneBlock)
-	}
 }
