@@ -20,7 +20,10 @@ type Region struct {
 }
 
 func (d *Dao) InsertRegion(region *Region) error {
-	db := d.db.Collection("region")
+	if d.mongo == nil {
+		return d.InsertRegionGorm(region)
+	}
+	db := d.mongoDb.Collection("region")
 	_, err := db.InsertOne(context.TODO(), region)
 	if err != nil {
 		return err
@@ -29,7 +32,10 @@ func (d *Dao) InsertRegion(region *Region) error {
 }
 
 func (d *Dao) UpdateRegion(region *Region) error {
-	db := d.db.Collection("region")
+	if d.mongo == nil {
+		return d.UpdateRegionGorm(region)
+	}
+	db := d.mongoDb.Collection("region")
 	_, err := db.UpdateMany(
 		context.TODO(),
 		bson.D{},
@@ -42,7 +48,10 @@ func (d *Dao) UpdateRegion(region *Region) error {
 }
 
 func (d *Dao) QueryRegion() (*Region, error) {
-	db := d.db.Collection("region")
+	if d.mongo == nil {
+		return d.QueryRegionGorm()
+	}
+	db := d.mongoDb.Collection("region")
 	result := db.FindOne(
 		context.TODO(),
 		bson.D{},

@@ -11,7 +11,7 @@ type Service struct {
 // UserPasswordChange 用户密码改变
 func (s *Service) UserPasswordChange(accountId uint32) bool {
 	// http登录态失效
-	_, err := s.dao.UpdateSdkAccountFieldByFieldName("account_id", accountId, "token_create_time", 0)
+	err := s.dao.UpdateSdkAccountFieldByFieldName("account_id", accountId, "token_create_time", 0)
 	if err != nil {
 		return false
 	}

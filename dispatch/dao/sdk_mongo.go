@@ -10,7 +10,10 @@ import (
 )
 
 func (d *Dao) InsertSdk(sdk *model.Sdk) error {
-	db := d.db.Collection("sdk")
+	if d.mongo == nil {
+		return d.InsertSdkGorm(sdk)
+	}
+	db := d.mongoDb.Collection("sdk")
 	_, err := db.InsertOne(context.TODO(), sdk)
 	if err != nil {
 		return err
@@ -19,7 +22,10 @@ func (d *Dao) InsertSdk(sdk *model.Sdk) error {
 }
 
 func (d *Dao) UpdateSdk(sdk *model.Sdk) error {
-	db := d.db.Collection("sdk")
+	if d.mongo == nil {
+		return d.UpdateSdkGorm(sdk)
+	}
+	db := d.mongoDb.Collection("sdk")
 	_, err := db.UpdateMany(
 		context.TODO(),
 		bson.D{},
@@ -32,7 +38,10 @@ func (d *Dao) UpdateSdk(sdk *model.Sdk) error {
 }
 
 func (d *Dao) QuerySdk() (*model.Sdk, error) {
-	db := d.db.Collection("sdk")
+	if d.mongo == nil {
+		return d.QuerySdkGorm()
+	}
+	db := d.mongoDb.Collection("sdk")
 	result := db.FindOne(
 		context.TODO(),
 		bson.D{},

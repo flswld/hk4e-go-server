@@ -642,7 +642,7 @@ func (g *Game) LoadSceneBlockAsync(player *model.Player, oldScene *Scene, newSce
 	go func() {
 		loadSceneBlockList := make([]*model.SceneBlock, 0)
 		for _, block := range loadSceneBlockMap {
-			sceneBlock, err := g.db.LoadSceneBlockByUidAndBlockId(player.PlayerId, uint32(block.Id))
+			sceneBlock, err := g.db.QuerySceneBlockByUidAndBlockId(player.PlayerId, uint32(block.Id))
 			if err != nil {
 				logger.Error("load scene block from db error: %v, uid: %v", err, player.PlayerId)
 				continue
@@ -703,7 +703,7 @@ func (g *Game) LoadSceneBlockSync(uid uint32, sceneId uint32, pos *model.Vector)
 	sceneBlockMap := make(map[uint32]*model.SceneBlock)
 	for _, blockAny := range loadSceneBlockMap {
 		block := blockAny.(*gdconf.Block)
-		sceneBlock, err := g.db.LoadSceneBlockByUidAndBlockId(uid, uint32(block.Id))
+		sceneBlock, err := g.db.QuerySceneBlockByUidAndBlockId(uid, uint32(block.Id))
 		if err != nil {
 			logger.Error("load scene block from db error: %v, uid: %v", err, uid)
 			return nil
@@ -724,7 +724,12 @@ func (g *Game) LoadSceneBlockSync(uid uint32, sceneId uint32, pos *model.Vector)
 
 func (g *Game) SaveSceneBlockSync(uid uint32, sceneBlockMap map[uint32]*model.SceneBlock) {
 	for _, sceneBlock := range sceneBlockMap {
-		err := g.db.SaveSceneBlock(sceneBlock)
+		var err error = nil
+		if sceneBlock.IsNew {
+			err = g.db.InsertSceneBlock(sceneBlock)
+		} else {
+			err = g.db.UpdateSceneBlock(sceneBlock)
+		}
 		if err != nil {
 			logger.Error("save scene block to db error: %v, uid: %v", err, uid)
 			continue

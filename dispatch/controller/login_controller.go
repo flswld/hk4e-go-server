@@ -121,7 +121,7 @@ func (c *Controller) apiLogin(ctx *gin.Context) {
 			Token:      "",
 			ComboToken: "",
 		}
-		_, err = c.db.InsertSdkAccount(regAccount)
+		err = c.db.InsertSdkAccount(regAccount)
 		if err != nil {
 			logger.Error("insert account error: %v", err)
 			responseData.Retcode = -201
@@ -139,7 +139,7 @@ func (c *Controller) apiLogin(ctx *gin.Context) {
 	}
 	// 生成新的token
 	account.Token = base64.StdEncoding.EncodeToString(random.GetRandomByte(24))
-	_, err = c.db.UpdateSdkAccountFieldByFieldName("account_id", account.AccountId, "token", account.Token)
+	err = c.db.UpdateSdkAccountFieldByFieldName("account_id", account.AccountId, "token", account.Token)
 	if err != nil {
 		logger.Error("update account token error: %v", err)
 		responseData.Retcode = -201
@@ -147,7 +147,7 @@ func (c *Controller) apiLogin(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, responseData)
 		return
 	}
-	_, err = c.db.UpdateSdkAccountFieldByFieldName("account_id", account.AccountId, "token_create_time", time.Now().UnixMilli())
+	err = c.db.UpdateSdkAccountFieldByFieldName("account_id", account.AccountId, "token_create_time", time.Now().UnixMilli())
 	if err != nil {
 		logger.Error("update account token time error: %v", err)
 		responseData.Retcode = -201
@@ -232,7 +232,7 @@ func (c *Controller) v2Login(ctx *gin.Context) {
 	}
 	// 生成新的comboToken
 	account.ComboToken = random.GetRandomByteHexStr(20)
-	_, err = c.db.UpdateSdkAccountFieldByFieldName("account_id", account.AccountId, "combo_token", account.ComboToken)
+	err = c.db.UpdateSdkAccountFieldByFieldName("account_id", account.AccountId, "combo_token", account.ComboToken)
 	if err != nil {
 		logger.Error("update combo token error: %v", err)
 		responseData.Retcode = -201
@@ -240,7 +240,7 @@ func (c *Controller) v2Login(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, responseData)
 		return
 	}
-	_, err = c.db.UpdateSdkAccountFieldByFieldName("account_id", account.AccountId, "combo_token_create_time", time.Now().UnixMilli())
+	err = c.db.UpdateSdkAccountFieldByFieldName("account_id", account.AccountId, "combo_token_create_time", time.Now().UnixMilli())
 	if err != nil {
 		logger.Error("update combo token time error: %v", err)
 		responseData.Retcode = -201

@@ -511,7 +511,7 @@ func (k *KcpConnManager) doGateLogin(req *proto.GetPlayerTokenReq, session *Sess
 			IsForbid:      false,
 			ForbidEndTime: 0,
 		}
-		_, err = k.db.InsertAccount(account)
+		err = k.db.InsertAccount(account)
 		if err != nil {
 			logger.Error("insert account error: %v, openId: %v", err, req.AccountUid)
 			return k.loginFailRsp(0, proto.Retcode_RET_SVR_ERROR, false, 0)

@@ -10,7 +10,10 @@ import (
 )
 
 func (d *Dao) InsertClientLog(clientLog *model.ClientLog) (primitive.ObjectID, error) {
-	db := d.db.Collection("client_log")
+	if d.mongo == nil {
+		return primitive.ObjectID{}, nil
+	}
+	db := d.mongoDb.Collection("client_log")
 	id, err := db.InsertOne(context.TODO(), clientLog)
 	if err != nil {
 		return primitive.ObjectID{}, err

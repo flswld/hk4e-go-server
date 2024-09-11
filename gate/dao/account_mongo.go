@@ -2,8 +2,7 @@ package dao
 
 import (
 	"context"
-
-	"hk4e/pkg/logger"
+	"errors"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -18,23 +17,23 @@ type Account struct {
 	ForbidEndTime uint32             `bson:"forbid_end_time"`
 }
 
-func (d *Dao) InsertAccount(account *Account) (primitive.ObjectID, error) {
-	db := d.db.Collection("account")
-	id, err := db.InsertOne(context.TODO(), account)
-	if err != nil {
-		return primitive.ObjectID{}, err
-	} else {
-		_id, ok := id.InsertedID.(primitive.ObjectID)
-		if !ok {
-			logger.Error("get insert id error")
-			return primitive.ObjectID{}, nil
-		}
-		return _id, nil
+func (d *Dao) InsertAccount(account *Account) error {
+	if d.mongo == nil {
+		return d.InsertAccountGorm(account)
 	}
+	db := d.mongoDb.Collection("account")
+	_, err := db.InsertOne(context.TODO(), account)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (d *Dao) QueryAccountByOpenId(openId string) (*Account, error) {
-	db := d.db.Collection("account")
+	if d.mongo == nil {
+		return d.QueryAccountByOpenIdGorm(openId)
+	}
+	db := d.mongoDb.Collection("account")
 	result := db.FindOne(
 		context.TODO(),
 		bson.D{{"open_id", openId}},
@@ -42,7 +41,7 @@ func (d *Dao) QueryAccountByOpenId(openId string) (*Account, error) {
 	account := new(Account)
 	err := result.Decode(account)
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
+		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, nil
 		} else {
 			return nil, err
