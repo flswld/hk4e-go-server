@@ -18,7 +18,7 @@ clean:
 # 构建服务器二进制文件
 .PHONY: build
 build:
-	mkdir -p bin && go build -ldflags "-X main.VERSION=$(VERSION)" -o ./bin/ ./cmd/...
+	mkdir -p bin && go build -ldflags "-X main.VERSION=$(VERSION) -X google.golang.org/protobuf/reflect/protoregistry.conflictPolicy=warn" -o ./bin/ ./cmd/...
 
 # 清理镜像
 .PHONY: docker_clean

@@ -815,7 +815,7 @@ func (u *UserManager) SaveUserChatMsgToDbSync(chatMsg *model.ChatMsg) {
 }
 
 func (u *UserManager) ReadUserChatMsgToDbSync(uid uint32, targetUid uint32) {
-	err := u.db.ReadUpdateChatMsgByUid(uid, targetUid)
+	err := u.db.UpdateChatMsgByUidAndToUidActionRead(uid, targetUid)
 	if err != nil {
 		logger.Error("read chat msg error: %v", err)
 		return
@@ -823,7 +823,7 @@ func (u *UserManager) ReadUserChatMsgToDbSync(uid uint32, targetUid uint32) {
 }
 
 func (u *UserManager) DeleteUserAllChatMsgToDbSync(uid uint32) {
-	err := u.db.DeleteAllUpdateChatMsgByUid(uid)
+	err := u.db.DeleteUpdateChatMsgByUid(uid)
 	if err != nil {
 		logger.Error("delete chat msg error: %v", err)
 		return
