@@ -122,11 +122,9 @@ func (g *Game) ReadPrivateChatReq(player *model.Player, payloadMsg pb.Message) {
 	if !exist {
 		return
 	}
-	for index, chatMsg := range msgList {
+	for _, chatMsg := range msgList {
 		chatMsg.IsRead = true
-		msgList[index] = chatMsg
 	}
-	player.ChatMsgMap[targetUid] = msgList
 
 	// 更新db
 	USER_MANAGER.AsyncWriteDb(func(u *UserManager) {

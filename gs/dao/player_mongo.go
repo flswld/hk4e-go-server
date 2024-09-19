@@ -201,14 +201,6 @@ func (d *Dao) UpdateChatMsgByUidAndToUidActionRead(uid uint32, toUid uint32) err
 	if err != nil {
 		return err
 	}
-	_, err = db.UpdateMany(
-		context.TODO(),
-		bson.D{{"uid", uid}, {"to_uid", toUid}},
-		bson.D{{"$set", bson.D{{"is_read", true}}}},
-	)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -226,8 +218,8 @@ func (d *Dao) QueryChatMsgListByUid(uid uint32) ([]*model.ChatMsg, error) {
 				{{"is_delete", false}},
 			}},
 		},
+		options.Find().SetSort(bson.M{"time": -1}),
 		options.Find().SetLimit(MaxQueryChatMsgLen),
-		options.Find().SetSort(bson.M{"time": 1}),
 	)
 	if err != nil {
 		return nil, err
