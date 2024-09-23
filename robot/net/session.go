@@ -52,6 +52,7 @@ func NewSession(gateAddr string, dispatchKey []byte) (*Session, error) {
 		logger.Error("kcp client conn to server error: %v", err)
 		return nil, err
 	}
+	kcp.SetByteCheckMode(int(config.GetConfig().Hk4e.ByteCheckMode))
 	conn.SetACKNoDelay(true)
 	conn.SetWriteDelay(false)
 	conn.SetWindowSize(256, 256)

@@ -2,6 +2,7 @@ package kcp
 
 import (
 	"encoding/binary"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -37,12 +38,14 @@ var (
 	byteCheckMode       int
 )
 
-func setByteCheckMode(mode int) {
-	byteCheckMode = mode
-	if mode != -1 {
-		byteCheckModeEnable = true
-		IKCP_OVERHEAD += 4
-	}
+func SetByteCheckMode(mode int) {
+	sync.OnceFunc(func() {
+		byteCheckMode = mode
+		if mode != -1 {
+			byteCheckModeEnable = true
+			IKCP_OVERHEAD += 4
+		}
+	})
 }
 
 // monotonic reference time point

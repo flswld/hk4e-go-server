@@ -30,7 +30,7 @@ track_line = true
 track_thread = true
 
 [database]
-url = "mongodb://mongo:27017"
+url = "sqlite://hk4e_go.db"
 
 [mq]
-nats_url = "nats://nats:4222"
+nats_url = "nats://127.0.0.1:4222"

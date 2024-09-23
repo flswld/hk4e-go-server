@@ -690,27 +690,67 @@ type (
 		xconn           batchConn // for x/net
 		xconnWriteError error
 
-		enetNotifyChan   chan *Enet // Enet事件上报管道
-		sessionIdCounter uint32
+		enetNotifyChan           chan *Enet // Enet事件上报管道
+		sessionIdCounter         uint32
+		remoteAddrEnetSynMap     map[string]*EnetSyn
+		remoteAddrEnetSynMapLock sync.RWMutex
 	}
 )
 
-func (l *Listener) EnetHandle() {
-	go func() {
-		for {
-			enetNotify := <-l.enetNotifyChan
+type EnetSyn struct {
+	sessionId  uint32
+	conv       uint32
+	rawConv    uint64
+	createTime uint32
+}
+
+func (l *Listener) enetHandle() {
+	ticker := time.NewTicker(time.Second)
+	defer func() {
+		ticker.Stop()
+	}()
+	for {
+		select {
+		case <-l.die:
+			return
+		case <-ticker.C:
+			now := uint32(time.Now().Unix())
+			l.remoteAddrEnetSynMapLock.Lock()
+			for remoteAddr, enetSyn := range l.remoteAddrEnetSynMap {
+				if now > enetSyn.createTime+60 {
+					delete(l.remoteAddrEnetSynMap, remoteAddr)
+				}
+			}
+			l.remoteAddrEnetSynMapLock.Unlock()
+		case enetNotify := <-l.enetNotifyChan:
 			switch enetNotify.ConnType {
 			case ConnEnetSyn:
 				if enetNotify.EnetType != EnetClientConnectKey {
 					continue
 				}
-				sessionId := atomic.AddUint32(&l.sessionIdCounter, 1)
-				var conv uint32
-				_ = binary.Read(rand.Reader, binary.LittleEndian, &conv)
+				l.remoteAddrEnetSynMapLock.Lock()
+				enetSyn, exist := l.remoteAddrEnetSynMap[enetNotify.Addr]
+				if !exist {
+					sessionId := atomic.AddUint32(&l.sessionIdCounter, 1)
+					var conv uint32
+					_ = binary.Read(rand.Reader, binary.LittleEndian, &conv)
+					rawConvData := make([]byte, 8)
+					binary.LittleEndian.PutUint32(rawConvData[0:4], sessionId)
+					binary.LittleEndian.PutUint32(rawConvData[4:8], conv)
+					rawConv := binary.LittleEndian.Uint64(rawConvData)
+					enetSyn = &EnetSyn{
+						sessionId:  sessionId,
+						conv:       conv,
+						rawConv:    rawConv,
+						createTime: uint32(time.Now().Unix()),
+					}
+					l.remoteAddrEnetSynMap[enetNotify.Addr] = enetSyn
+				}
+				l.remoteAddrEnetSynMapLock.Unlock()
 				l.SendEnetNotifyToPeer(&Enet{
 					Addr:      enetNotify.Addr,
-					SessionId: sessionId,
-					Conv:      conv,
+					SessionId: enetSyn.sessionId,
+					Conv:      enetSyn.conv,
 					ConnType:  ConnEnetEst,
 					EnetType:  enetNotify.EnetType,
 				})
@@ -737,47 +777,59 @@ func (l *Listener) EnetHandle() {
 			default:
 			}
 		}
-	}()
-}
-
-func (l *Listener) SetByteCheckMode(mode int) {
-	setByteCheckMode(mode)
+	}
 }
 
 // packet input stage
-func (l *Listener) packetInput(data []byte, addr net.Addr, rawConv uint64) {
-	if len(data) >= IKCP_OVERHEAD {
+func (l *Listener) packetInput(data []byte, addr net.Addr) {
+	if len(data) == 20 {
+		// 连接控制协议
+		connType, enetType, sessionId, conv, _, err := ParseEnet(data)
+		if err != nil {
+			return
+		}
+		switch connType {
+		case ConnEnetSyn:
+			l.enetNotifyChan <- &Enet{Addr: addr.String(), SessionId: sessionId, Conv: conv, ConnType: ConnEnetSyn, EnetType: enetType}
+		case ConnEnetEst:
+			l.enetNotifyChan <- &Enet{Addr: addr.String(), SessionId: sessionId, Conv: conv, ConnType: ConnEnetEst, EnetType: enetType}
+		case ConnEnetFin:
+			l.enetNotifyChan <- &Enet{Addr: addr.String(), SessionId: sessionId, Conv: conv, ConnType: ConnEnetFin, EnetType: enetType}
+		case ConnEnetPing:
+			l.enetNotifyChan <- &Enet{Addr: addr.String(), SessionId: sessionId, Conv: conv, ConnType: ConnEnetPing, EnetType: enetType}
+		default:
+			return
+		}
+	} else if len(data) >= IKCP_OVERHEAD {
+		// 正常KCP包
+		conv := binary.LittleEndian.Uint64(data)
 		l.sessionLock.RLock()
-		s, ok := l.sessions[rawConv]
+		s, ok := l.sessions[conv]
 		l.sessionLock.RUnlock()
-
-		var conv uint64
-		var sn uint32
-		convRecovered := false
-
-		// packet without FEC
-		conv = binary.LittleEndian.Uint64(data)
-		sn = binary.LittleEndian.Uint32(data[IKCP_SN_OFFSET:])
-		convRecovered = true
-
 		if ok { // existing connection
-			if !convRecovered || conv == s.kcp.conv { // parity data or valid conversation
+			if s.remote.String() != addr.String() {
+				s.remote = addr
+			}
+			if conv == s.kcp.conv { // parity data or valid conversation
 				s.kcpInput(data)
-			} else if sn == 0 { // should replace current connection
-				// 网络切换会话保持改造后 这里的逻辑可能永远也执行不到了
-				_ = s.Close()
-				s = nil
 			}
 		}
-
-		if s == nil && convRecovered { // new session
-			if len(l.chAccepts) < cap(l.chAccepts) { // do not let the new sessions overwhelm accept queue
-				s := newUDPSession(conv, l, l.conn, false, addr)
-				s.kcpInput(data)
-				l.sessionLock.Lock()
-				l.sessions[rawConv] = s
-				l.sessionLock.Unlock()
-				l.chAccepts <- s
+		if s == nil { // new session
+			l.remoteAddrEnetSynMapLock.Lock()
+			enetSyn, exist := l.remoteAddrEnetSynMap[addr.String()]
+			if exist {
+				delete(l.remoteAddrEnetSynMap, addr.String())
+			}
+			l.remoteAddrEnetSynMapLock.Unlock()
+			if exist && enetSyn.rawConv == conv {
+				if len(l.chAccepts) < cap(l.chAccepts) { // do not let the new sessions overwhelm accept queue
+					s := newUDPSession(conv, l, l.conn, false, addr)
+					s.kcpInput(data)
+					l.sessionLock.Lock()
+					l.sessions[conv] = s
+					l.sessionLock.Unlock()
+					l.chAccepts <- s
+				}
 			}
 		}
 	}
@@ -949,7 +1001,8 @@ func serveConn(conn net.PacketConn, ownConn bool) (*Listener, error) {
 	l.chSessionClosed = make(chan net.Addr)
 	l.die = make(chan struct{})
 	l.chSocketReadError = make(chan struct{})
-	l.enetNotifyChan = make(chan *Enet, 1000)
+	l.enetNotifyChan = make(chan *Enet, 100)
+	l.remoteAddrEnetSynMap = make(map[string]*EnetSyn)
 
 	if _, ok := l.conn.(*net.UDPConn); ok {
 		addr, err := net.ResolveUDPAddr("udp", l.conn.LocalAddr().String())
@@ -963,6 +1016,7 @@ func serveConn(conn net.PacketConn, ownConn bool) (*Listener, error) {
 	}
 
 	go l.rx()
+	go l.enetHandle()
 	return l, nil
 }
 

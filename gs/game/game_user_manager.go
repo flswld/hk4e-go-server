@@ -24,14 +24,12 @@ import (
 // 玩家定时保存 写入db和redis
 
 type UserManager struct {
-	db                     *dao.Dao                  // db对象
-	playerMap              map[uint32]*model.Player  // 内存玩家数据
-	saveUserChan           chan *SaveUserData        // 用于主协程发送玩家数据给定时保存协程
-	remotePlayerMap        map[uint32]string         // 远程玩家 key:userId value:玩家所在gs的appid
-	remotePlayerMapLock    sync.RWMutex              // 远程玩家读写锁
-	asyncWriteDbChan       chan func(u *UserManager) // 异步写入db队列
-	mockRedisPlayerMap     map[uint32]*model.Player
-	mockRedisPlayerMapLock sync.Mutex
+	db                  *dao.Dao                  // db对象
+	playerMap           map[uint32]*model.Player  // 内存玩家数据
+	saveUserChan        chan *SaveUserData        // 用于主协程发送玩家数据给定时保存协程
+	remotePlayerMap     map[uint32]string         // 远程玩家 key:userId value:玩家所在gs的appid
+	remotePlayerMapLock sync.RWMutex              // 远程玩家读写锁
+	asyncWriteDbChan    chan func(u *UserManager) // 异步写入db队列
 }
 
 func NewUserManager(db *dao.Dao) (r *UserManager) {
@@ -41,7 +39,6 @@ func NewUserManager(db *dao.Dao) (r *UserManager) {
 	r.saveUserChan = make(chan *SaveUserData, 100)
 	r.remotePlayerMap = make(map[uint32]string)
 	r.asyncWriteDbChan = make(chan func(u *UserManager), 100)
-	r.mockRedisPlayerMap = make(map[uint32]*model.Player)
 	r.saveUserHandle()
 	r.syncRemotePlayerMap()
 	r.autoSyncRemotePlayerMap()
@@ -831,37 +828,25 @@ func (u *UserManager) DeleteUserAllChatMsgToDbSync(uid uint32) {
 }
 
 func (u *UserManager) LoadUserFromRedisSync(userId uint32) *model.Player {
-	if !config.GetConfig().Hk4e.StandaloneModeEnable {
-		player := u.db.GetRedisPlayer(userId)
-		return player
-	} else {
-		u.mockRedisPlayerMapLock.Lock()
-		player := u.mockRedisPlayerMap[userId]
-		u.mockRedisPlayerMapLock.Unlock()
-		return player
+	if config.GetConfig().Hk4e.StandaloneModeEnable {
+		return nil
 	}
+	player := u.db.GetRedisPlayer(userId)
+	return player
 }
 
 func (u *UserManager) SaveUserToRedisSync(player *model.Player) {
-	if !config.GetConfig().Hk4e.StandaloneModeEnable {
-		u.db.SetRedisPlayer(player)
-	} else {
-		u.mockRedisPlayerMapLock.Lock()
-		u.mockRedisPlayerMap[player.PlayerId] = player
-		u.mockRedisPlayerMapLock.Unlock()
+	if config.GetConfig().Hk4e.StandaloneModeEnable {
+		return
 	}
+	u.db.SetRedisPlayer(player)
 }
 
 func (u *UserManager) SaveUserListToRedisSync(setPlayerList []*model.Player) {
-	if !config.GetConfig().Hk4e.StandaloneModeEnable {
-		u.db.SetRedisPlayerList(setPlayerList)
-	} else {
-		u.mockRedisPlayerMapLock.Lock()
-		for _, player := range setPlayerList {
-			u.mockRedisPlayerMap[player.PlayerId] = player
-		}
-		u.mockRedisPlayerMapLock.Unlock()
+	if config.GetConfig().Hk4e.StandaloneModeEnable {
+		return
 	}
+	u.db.SetRedisPlayerList(setPlayerList)
 }
 
 func (u *UserManager) AsyncWriteDb(fn func(u *UserManager)) {

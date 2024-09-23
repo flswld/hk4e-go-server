@@ -4,7 +4,6 @@
 package kcp
 
 import (
-	"encoding/binary"
 	"net"
 	"os"
 	"sync/atomic"
@@ -87,45 +86,7 @@ func (l *Listener) rx() {
 		if count, err := l.xconn.ReadBatch(msgs, 0); err == nil {
 			for i := 0; i < count; i++ {
 				msg := &msgs[i]
-				udpPayload := msg.Buffers[0][:msg.N]
-				var sessionId uint32 = 0
-				var conv uint32 = 0
-				var rawConv uint64 = 0
-				if msg.N == 20 {
-					// 连接控制协议
-					var connType = ""
-					var enetType uint32 = 0
-					connType, enetType, sessionId, conv, rawConv, err = ParseEnet(udpPayload)
-					if err != nil {
-						continue
-					}
-					switch connType {
-					case ConnEnetSyn:
-						l.enetNotifyChan <- &Enet{Addr: msg.Addr.String(), SessionId: sessionId, Conv: conv, ConnType: ConnEnetSyn, EnetType: enetType}
-					case ConnEnetEst:
-						l.enetNotifyChan <- &Enet{Addr: msg.Addr.String(), SessionId: sessionId, Conv: conv, ConnType: ConnEnetEst, EnetType: enetType}
-					case ConnEnetFin:
-						l.enetNotifyChan <- &Enet{Addr: msg.Addr.String(), SessionId: sessionId, Conv: conv, ConnType: ConnEnetFin, EnetType: enetType}
-					case ConnEnetPing:
-						l.enetNotifyChan <- &Enet{Addr: msg.Addr.String(), SessionId: sessionId, Conv: conv, ConnType: ConnEnetPing, EnetType: enetType}
-					default:
-						continue
-					}
-				} else {
-					// 正常KCP包
-					sessionId = binary.LittleEndian.Uint32(udpPayload[0:4])
-					conv = binary.LittleEndian.Uint32(udpPayload[4:8])
-					rawConv = binary.LittleEndian.Uint64(udpPayload[0:8])
-				}
-				l.sessionLock.RLock()
-				conn, exist := l.sessions[rawConv]
-				l.sessionLock.RUnlock()
-				if exist {
-					if conn.remote.String() != msg.Addr.String() {
-						conn.remote = msg.Addr
-					}
-				}
-				l.packetInput(udpPayload, msg.Addr, rawConv)
+				l.packetInput(msg.Buffers[0][:msg.N], msg.Addr)
 			}
 		} else {
 			// compatibility issue:

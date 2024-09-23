@@ -209,35 +209,25 @@ func (m *MessageQueue) sendHandler() {
 				fallbackNatsMqSend()
 				continue
 			}
-			gateTcpMqSend := func(data []byte) bool {
-				err := inst.conn.SetWriteDeadline(time.Now().Add(time.Second))
-				if err != nil {
-					fallbackNatsMqSend()
-					return false
-				}
-				_, err = inst.conn.Write(data)
-				if err != nil {
-					// 发送失败关闭连接fallback回nats
-					logger.Error("gate tcp mq send error: %v", err)
-					_ = inst.conn.Close()
-					m.gateTcpMqEventChan <- &GateTcpMqEvent{
-						event: EventDisconnect,
-						inst:  inst,
-					}
-					fallbackNatsMqSend()
-					return false
-				}
-				return true
-			}
 			// 前4个字节为消息的载荷部分长度
-			headLenData := make([]byte, 4)
-			binary.BigEndian.PutUint32(headLenData, uint32(len(rawData)))
-			ok := gateTcpMqSend(headLenData)
-			if !ok {
+			data := make([]byte, 4+len(rawData))
+			binary.BigEndian.PutUint32(data[0:4], uint32(len(rawData)))
+			copy(data[4:], rawData)
+			err := inst.conn.SetWriteDeadline(time.Now().Add(time.Second))
+			if err != nil {
+				fallbackNatsMqSend()
 				continue
 			}
-			ok = gateTcpMqSend(rawData)
-			if !ok {
+			_, err = inst.conn.Write(data)
+			if err != nil {
+				// 发送失败关闭连接fallback回nats
+				logger.Error("gate tcp mq send error: %v", err)
+				_ = inst.conn.Close()
+				m.gateTcpMqEventChan <- &GateTcpMqEvent{
+					event: EventDisconnect,
+					inst:  inst,
+				}
+				fallbackNatsMqSend()
 				continue
 			}
 		case gateTcpMqEvent := <-m.gateTcpMqEventChan:

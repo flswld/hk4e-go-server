@@ -14,7 +14,7 @@ func byte_check_hash(data []byte) uint32 {
 		return 0
 	case 2:
 		d := C.CBytes(data)
-		h := C.XXH3_64bits(d, C.ulonglong(len(data)))
+		h := C.XXH3_64bits(d, C.size_t(len(data)))
 		C.free(d)
 		return uint32(h)
 	default:
