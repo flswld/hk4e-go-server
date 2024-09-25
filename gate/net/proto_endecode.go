@@ -108,30 +108,32 @@ func ProtoDecode(kcpMsg *KcpMsg,
 			protoMsgList = append(protoMsgList, msg)
 		}
 		for _, msg := range protoMsgList {
-			cmdName := "???"
-			if msg.PayloadMessage != nil {
-				cmdName = string(msg.PayloadMessage.ProtoReflect().Descriptor().FullName())
+			if config.GetConfig().Hk4e.TrackPacket {
+				cmdName := "???"
+				if msg.PayloadMessage != nil {
+					cmdName = string(msg.PayloadMessage.ProtoReflect().Descriptor().FullName())
+				}
+				data, _ := protojson.Marshal(msg.PayloadMessage)
+				var buf bytes.Buffer
+				_ = json.Indent(&buf, data, "", "\t")
+				logger.Debug("[RECV UNION CMD] cmdId: %v, cmdName: %v, sessionId: %v, headMsg: %v, data: %v",
+					msg.CmdId, cmdName, msg.SessionId, msg.HeadMessage, buf.String())
 			}
-			logger.Debug("[RECV UNION CMD] cmdId: %v, cmdName: %v, sessionId: %v, headMsg: %v",
-				msg.CmdId, cmdName, msg.SessionId, msg.HeadMessage)
-			data, _ := protojson.Marshal(msg.PayloadMessage)
-			var buf bytes.Buffer
-			_ = json.Indent(&buf, data, "", "\t")
-			logger.Debug("%v", buf.String())
 		}
 	} else {
 		protoMsg.PayloadMessage = protoMessageList[0].message
 		protoMsgList = append(protoMsgList, protoMsg)
-		cmdName := ""
-		if protoMsg.PayloadMessage != nil {
-			cmdName = string(protoMsg.PayloadMessage.ProtoReflect().Descriptor().FullName())
+		if config.GetConfig().Hk4e.TrackPacket {
+			cmdName := "???"
+			if protoMsg.PayloadMessage != nil {
+				cmdName = string(protoMsg.PayloadMessage.ProtoReflect().Descriptor().FullName())
+			}
+			data, _ := protojson.Marshal(protoMsg.PayloadMessage)
+			var buf bytes.Buffer
+			_ = json.Indent(&buf, data, "", "\t")
+			logger.Info("[RECV] cmdId: %v, cmdName: %v, sessionId: %v, headMsg: %v, data: %v",
+				protoMsg.CmdId, cmdName, protoMsg.SessionId, protoMsg.HeadMessage, buf.String())
 		}
-		logger.Debug("[RECV] cmdId: %v, cmdName: %v, sessionId: %v, headMsg: %v",
-			protoMsg.CmdId, cmdName, protoMsg.SessionId, protoMsg.HeadMessage)
-		data, _ := protojson.Marshal(protoMsg.PayloadMessage)
-		var buf bytes.Buffer
-		_ = json.Indent(&buf, data, "", "\t")
-		logger.Debug("%v", buf.String())
 	}
 	return protoMsgList
 }
@@ -205,16 +207,17 @@ func ProtoDecodePayloadLoop(cmdId uint16, protoData []byte, protoMessageList *[]
 
 func ProtoEncode(protoMsg *ProtoMsg,
 	serverCmdProtoMap *cmd.CmdProtoMap, clientCmdProtoMap *client_proto.ClientCmdProtoMap) (kcpMsg *KcpMsg) {
-	cmdName := ""
-	if protoMsg.PayloadMessage != nil {
-		cmdName = string(protoMsg.PayloadMessage.ProtoReflect().Descriptor().FullName())
+	if config.GetConfig().Hk4e.TrackPacket {
+		cmdName := "???"
+		if protoMsg.PayloadMessage != nil {
+			cmdName = string(protoMsg.PayloadMessage.ProtoReflect().Descriptor().FullName())
+		}
+		data, _ := protojson.Marshal(protoMsg.PayloadMessage)
+		var buf bytes.Buffer
+		_ = json.Indent(&buf, data, "", "\t")
+		logger.Info("[SEND] cmdId: %v, cmdName: %v, sessionId: %v, headMsg: %v, data: %v",
+			protoMsg.CmdId, cmdName, protoMsg.SessionId, protoMsg.HeadMessage, buf.String())
 	}
-	logger.Debug("[SEND] cmdId: %v, cmdName: %v, sessionId: %v, headMsg: %v",
-		protoMsg.CmdId, cmdName, protoMsg.SessionId, protoMsg.HeadMessage)
-	data, _ := protojson.Marshal(protoMsg.PayloadMessage)
-	var buf bytes.Buffer
-	_ = json.Indent(&buf, data, "", "\t")
-	logger.Debug("%v", buf.String())
 	kcpMsg = new(KcpMsg)
 	kcpMsg.SessionId = protoMsg.SessionId
 	kcpMsg.CmdId = protoMsg.CmdId
@@ -250,7 +253,7 @@ func ProtoEncode(protoMsg *ProtoMsg,
 				continue
 			}
 			ConvServerPbDataToClient(serverProtoObj, clientCmdProtoMap)
-			cmdName = serverCmdProtoMap.GetCmdNameByCmdId(serverCmdId)
+			cmdName := serverCmdProtoMap.GetCmdNameByCmdId(serverCmdId)
 			if cmdName == "" {
 				logger.Error("get cmdName is nil, serverCmdId: %v", serverCmdId)
 				continue

@@ -36,10 +36,11 @@ var IKCP_OVERHEAD = 28
 var (
 	byteCheckModeEnable bool
 	byteCheckMode       int
+	byteCheckModeOnce   sync.Once
 )
 
 func SetByteCheckMode(mode int) {
-	sync.OnceFunc(func() {
+	byteCheckModeOnce.Do(func() {
 		byteCheckMode = mode
 		if mode != -1 {
 			byteCheckModeEnable = true
@@ -155,7 +156,11 @@ func (seg *segment) encode(ptr []byte) []byte {
 	ptr = ikcp_encode32u(ptr, seg.una)
 	ptr = ikcp_encode32u(ptr, uint32(len(seg.data)))
 	if byteCheckModeEnable {
-		ptr = ikcp_encode32u(ptr, byte_check_hash(seg.data))
+		if seg.cmd == IKCP_CMD_PUSH {
+			ptr = ikcp_encode32u(ptr, byte_check_hash(seg.data))
+		} else {
+			ptr = ikcp_encode32u(ptr, 0)
+		}
 	}
 	atomic.AddUint64(&DefaultSnmp.OutSegs, 1)
 	return ptr
@@ -593,10 +598,12 @@ func (kcp *KCP) Input(data []byte, regular, ackNoDelay bool) int {
 		data = ikcp_decode32u(data, &una)
 		data = ikcp_decode32u(data, &length)
 		if byteCheckModeEnable {
-			var hash uint32
-			data = ikcp_decode32u(data, &hash)
-			if hash != byte_check_hash(data[:length]) {
-				return -4
+			if cmd == IKCP_CMD_PUSH {
+				var hash uint32
+				data = ikcp_decode32u(data, &hash)
+				if hash != byte_check_hash(data[:length]) {
+					return -4
+				}
 			}
 		}
 		if len(data) < int(length) {

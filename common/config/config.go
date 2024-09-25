@@ -41,6 +41,7 @@ type Hk4e struct {
 	RegisterAllProtoMessage bool   `toml:"register_all_proto_message"` // 注册全部pb消息
 	ByteCheckMode           int32  `toml:"byte_check_mode"`            // 网络包数据校验模式
 	StandaloneModeEnable    bool   `toml:"standalone_mode_enable"`     // 是否开启单进程模式
+	TrackPacket             bool   `toml:"track_packet"`               // 追踪收发包
 }
 
 // Hk4eRobot 原神机器人
