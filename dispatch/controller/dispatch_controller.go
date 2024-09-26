@@ -389,20 +389,6 @@ func (c *Controller) queryRegionListForwardMode() (string, error) {
 	queryRegionListHttpRsp.ClientSecretKey = c.ec2b.Bytes()
 	endec.Xor(queryRegionListHttpRsp.ClientCustomConfigEncrypted, ec2b.XorKey())
 	logger.Info("ClientCustomConfigEncrypted: %v", string(queryRegionListHttpRsp.ClientCustomConfigEncrypted))
-	clientCustomConfig, _ := json.Marshal(&ClientCustomConfig{
-		SdkEnv:         "2",
-		CheckDevice:    false,
-		LoadPatch:      false,
-		ShowException:  false,
-		RegionConfig:   "pm|fk|add",
-		DownloadMode:   0,
-		DebugMenu:      true,
-		DebugLogSwitch: []int32{0},
-		DebugLog:       true,
-		CodeSwitch:     []int32{3628},
-		CoverSwitch:    []int32{40},
-	})
-	queryRegionListHttpRsp.ClientCustomConfigEncrypted = clientCustomConfig
 	endec.Xor(queryRegionListHttpRsp.ClientCustomConfigEncrypted, c.ec2b.XorKey())
 	regionListData, err := pb.Marshal(queryRegionListHttpRsp)
 	if err != nil {
@@ -508,31 +494,9 @@ func (c *Controller) queryCurRegionForwardMode(version int, gateServerAddr *api.
 	regionCurr.RegionInfo.GateserverPort = gateServerAddr.KcpPort
 	endec.Xor(regionCurr.RegionCustomConfigEncrypted, ec2b.XorKey())
 	logger.Info("RegionCustomConfigEncrypted: %v", string(regionCurr.RegionCustomConfigEncrypted))
-	regionCustomConfig, _ := json.Marshal(&RegionCustomConfig{
-		CloseAntiDebug:   true,
-		ForceKill:        false,
-		AntiDebugPc:      false,
-		AntiDebugIos:     false,
-		AntiDebugAndroid: false,
-	})
-	regionCurr.RegionCustomConfigEncrypted = regionCustomConfig
 	endec.Xor(regionCurr.RegionCustomConfigEncrypted, c.ec2b.XorKey())
 	endec.Xor(regionCurr.ClientRegionCustomConfigEncrypted, ec2b.XorKey())
 	logger.Info("ClientRegionCustomConfigEncrypted: %v", string(regionCurr.ClientRegionCustomConfigEncrypted))
-	clientCustomConfig, _ := json.Marshal(&ClientCustomConfig{
-		SdkEnv:         "2",
-		CheckDevice:    false,
-		LoadPatch:      false,
-		ShowException:  false,
-		RegionConfig:   "pm|fk|add",
-		DownloadMode:   0,
-		DebugMenu:      true,
-		DebugLogSwitch: []int32{0},
-		DebugLog:       true,
-		CodeSwitch:     []int32{3628},
-		CoverSwitch:    []int32{40},
-	})
-	regionCurr.ClientRegionCustomConfigEncrypted = clientCustomConfig
 	endec.Xor(regionCurr.ClientRegionCustomConfigEncrypted, c.ec2b.XorKey())
 	return regionCurr, nil
 }

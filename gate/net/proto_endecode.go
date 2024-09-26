@@ -2,6 +2,7 @@ package net
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"reflect"
 	"strings"
@@ -24,6 +25,9 @@ type ProtoMsg struct {
 	CmdId          uint16
 	HeadMessage    *proto.PacketHead
 	PayloadMessage pb.Message
+	NotParse       bool
+	HeadRaw        string
+	PayloadRaw     string
 }
 
 type ProtoMessage struct {
@@ -34,43 +38,61 @@ type ProtoMessage struct {
 func ProtoDecode(kcpMsg *KcpMsg,
 	serverCmdProtoMap *cmd.CmdProtoMap, clientCmdProtoMap *client_proto.ClientCmdProtoMap) (protoMsgList []*ProtoMsg) {
 	protoMsgList = make([]*ProtoMsg, 0)
+	notParseDumpRaw := func() {
+		protoMsgList = append(protoMsgList, &ProtoMsg{
+			SessionId:      kcpMsg.SessionId,
+			CmdId:          kcpMsg.CmdId,
+			HeadMessage:    nil,
+			PayloadMessage: nil,
+			NotParse:       true,
+			HeadRaw:        base64.StdEncoding.EncodeToString(kcpMsg.HeadData),
+			PayloadRaw:     base64.StdEncoding.EncodeToString(kcpMsg.ProtoData),
+		})
+	}
 	if config.GetConfig().Hk4e.ClientProtoProxyEnable {
 		clientCmdId := kcpMsg.CmdId
 		clientProtoData := kcpMsg.ProtoData
 		cmdName := clientCmdProtoMap.GetClientCmdNameByCmdId(clientCmdId)
 		if cmdName == "" {
 			logger.Error("get cmdName is nil, clientCmdId: %v", clientCmdId)
+			notParseDumpRaw()
 			return protoMsgList
 		}
 		clientProtoObj := GetClientProtoObjByName(cmdName, clientCmdProtoMap)
 		if clientProtoObj == nil {
 			logger.Error("get client proto obj is nil, cmdName: %v", cmdName)
+			notParseDumpRaw()
 			return protoMsgList
 		}
 		err := pb.Unmarshal(clientProtoData, clientProtoObj)
 		if err != nil {
 			logger.Error("unmarshal client proto error: %v", err)
+			notParseDumpRaw()
 			return protoMsgList
 		}
 		serverCmdId := serverCmdProtoMap.GetCmdIdByCmdName(cmdName)
 		if serverCmdId == 0 {
 			logger.Error("get server cmdId is nil, cmdName: %v", cmdName)
+			notParseDumpRaw()
 			return protoMsgList
 		}
 		serverProtoObj := serverCmdProtoMap.GetProtoObjByCmdId(serverCmdId)
 		if serverProtoObj == nil {
 			logger.Error("get server proto obj is nil, serverCmdId: %v", serverCmdId)
+			notParseDumpRaw()
 			return protoMsgList
 		}
 		err = object.CopyProtoBufSameField(serverProtoObj, clientProtoObj)
 		if err != nil {
 			logger.Error("copy proto obj error: %v", err)
+			notParseDumpRaw()
 			return protoMsgList
 		}
 		ConvClientPbDataToServer(serverProtoObj, clientCmdProtoMap)
 		serverProtoData, err := pb.Marshal(serverProtoObj)
 		if err != nil {
 			logger.Error("marshal server proto error: %v", err)
+			notParseDumpRaw()
 			return protoMsgList
 		}
 		kcpMsg.CmdId = serverCmdId
@@ -85,6 +107,7 @@ func ProtoDecode(kcpMsg *KcpMsg,
 		err := pb.Unmarshal(kcpMsg.HeadData, headMsg)
 		if err != nil {
 			logger.Error("unmarshal head data err: %v", err)
+			notParseDumpRaw()
 			return protoMsgList
 		}
 		protoMsg.HeadMessage = headMsg
@@ -96,6 +119,7 @@ func ProtoDecode(kcpMsg *KcpMsg,
 	ProtoDecodePayloadLoop(kcpMsg.CmdId, kcpMsg.ProtoData, &protoMessageList, serverCmdProtoMap, clientCmdProtoMap)
 	if len(protoMessageList) == 0 {
 		logger.Error("decode proto object is nil")
+		notParseDumpRaw()
 		return protoMsgList
 	}
 	if kcpMsg.CmdId == cmd.UnionCmdNotify && !config.GetConfig().Hk4e.ForwardModeEnable {
