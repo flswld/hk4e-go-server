@@ -1,6 +1,7 @@
 package net
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"sync"
 	"sync/atomic"
@@ -27,7 +28,6 @@ type Packet struct {
 	HeadMsg    string `json:"head_msg"`
 	PayloadMsg string `json:"payload_msg"`
 	NotParse   bool   `json:"not_parse"`
-	HeadRaw    string `json:"head_raw"`
 	PayloadRaw string `json:"payload_raw"`
 }
 
@@ -110,6 +110,21 @@ func (s *Session) SendMsgFwd(cmdId uint16, clientSeq uint32, msg pb.Message) {
 	}
 }
 
+func (s *Session) SendMsgRaw(cmdId uint16, clientSeq uint32, raw []byte) {
+	s.SendChan <- &hk4egatenet.ProtoMsg{
+		SessionId: 0,
+		CmdId:     cmdId,
+		HeadMessage: &proto.PacketHead{
+			ClientSequenceId: clientSeq,
+			SentMs:           uint64(time.Now().UnixMilli()),
+			EnetIsReliable:   1,
+		},
+		PayloadMessage: nil,
+		NotParse:       true,
+		PayloadRaw:     raw,
+	}
+}
+
 func (s *Session) Close() {
 	if s.IsClose {
 		return
@@ -138,41 +153,24 @@ func (s *Session) recvHandle() {
 		for _, v := range kcpMsgList {
 			protoMsgList := hk4egatenet.ProtoDecode(v, s.ServerCmdProtoMap, s.ClientCmdProtoMap)
 			for _, vv := range protoMsgList {
-				if vv.NotParse {
-					packet := &Packet{
-						Time:       uint64(time.Now().UnixMilli()),
-						Dir:        "RECV",
-						CmdId:      uint32(vv.CmdId),
-						CmdName:    "",
-						HeadMsg:    "",
-						PayloadMsg: "",
-						NotParse:   true,
-						HeadRaw:    vv.HeadRaw,
-						PayloadRaw: vv.PayloadRaw,
-					}
-					packetData, _ := json.Marshal(packet)
-					s.PktLock.Lock()
-					s.PktList = append(s.PktList, packet)
-					if s.PktCapWsConn != nil {
-						err := s.PktCapWsConn.WriteMessage(websocket.TextMessage, packetData)
-						if err != nil {
-							s.PktCapWsConn = nil
-						}
-					}
-					s.PktLock.Unlock()
-					continue
-				}
 				s.RecvChan <- vv
-				cmdName := string(vv.PayloadMessage.ProtoReflect().Descriptor().FullName())
-				headMsg, _ := json.Marshal(vv.HeadMessage)
-				payloadMsg, _ := json.Marshal(vv.PayloadMessage)
 				packet := &Packet{
 					Time:       uint64(time.Now().UnixMilli()),
 					Dir:        "RECV",
 					CmdId:      uint32(vv.CmdId),
-					CmdName:    cmdName,
-					HeadMsg:    string(headMsg),
-					PayloadMsg: string(payloadMsg),
+					CmdName:    "",
+					HeadMsg:    "",
+					PayloadMsg: "",
+					NotParse:   vv.NotParse,
+					PayloadRaw: base64.StdEncoding.EncodeToString(vv.PayloadRaw),
+				}
+				headMsg, _ := json.Marshal(vv.HeadMessage)
+				packet.HeadMsg = string(headMsg)
+				if !vv.NotParse {
+					cmdName := string(vv.PayloadMessage.ProtoReflect().Descriptor().FullName())
+					payloadMsg, _ := json.Marshal(vv.PayloadMessage)
+					packet.CmdName = cmdName
+					packet.PayloadMsg = string(payloadMsg)
 				}
 				packetData, _ := json.Marshal(packet)
 				s.PktLock.Lock()
@@ -213,16 +211,23 @@ func (s *Session) sendHandle() {
 			s.Close()
 			break
 		}
-		cmdName := string(protoMsg.PayloadMessage.ProtoReflect().Descriptor().FullName())
-		headMsg, _ := json.Marshal(protoMsg.HeadMessage)
-		payloadMsg, _ := json.Marshal(protoMsg.PayloadMessage)
 		packet := &Packet{
 			Time:       uint64(time.Now().UnixMilli()),
 			Dir:        "SEND",
 			CmdId:      uint32(protoMsg.CmdId),
-			CmdName:    cmdName,
-			HeadMsg:    string(headMsg),
-			PayloadMsg: string(payloadMsg),
+			CmdName:    "",
+			HeadMsg:    "",
+			PayloadMsg: "",
+			NotParse:   protoMsg.NotParse,
+			PayloadRaw: base64.StdEncoding.EncodeToString(protoMsg.PayloadRaw),
+		}
+		headMsg, _ := json.Marshal(protoMsg.HeadMessage)
+		packet.HeadMsg = string(headMsg)
+		if !protoMsg.NotParse {
+			cmdName := string(protoMsg.PayloadMessage.ProtoReflect().Descriptor().FullName())
+			payloadMsg, _ := json.Marshal(protoMsg.PayloadMessage)
+			packet.CmdName = cmdName
+			packet.PayloadMsg = string(payloadMsg)
 		}
 		packetData, _ := json.Marshal(packet)
 		s.PktLock.Lock()

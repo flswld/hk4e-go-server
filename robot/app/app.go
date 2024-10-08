@@ -272,7 +272,11 @@ func forwardLoop(session *net.Session, messageQueue *mq.MessageQueue, gateAppId 
 						req.ChecksumClientVersion = config.GetConfig().Hk4eRobot.ForwardChecksumClientVersion
 					}
 				}
-				session.SendMsgFwd(gameMsg.CmdId, gameMsg.ClientSeq, gameMsg.PayloadMessage)
+				if !gameMsg.NotParse {
+					session.SendMsgFwd(gameMsg.CmdId, gameMsg.ClientSeq, gameMsg.PayloadMessage)
+				} else {
+					session.SendMsgRaw(gameMsg.CmdId, gameMsg.ClientSeq, gameMsg.PayloadMessageData)
+				}
 			case mq.MsgTypeServer:
 				switch netMsg.EventId {
 				case mq.ServerForwardModeClientCloseNotify:
@@ -287,13 +291,18 @@ func forwardLoop(session *net.Session, messageQueue *mq.MessageQueue, gateAppId 
 			if protoMsg.HeadMessage != nil {
 				gameMsg.ClientSeq = protoMsg.HeadMessage.ClientSequenceId
 			}
-			// 在这里直接序列化成二进制数据 防止发送的消息内包含各种游戏数据指针 而造成并发读写的问题
-			payloadMessageData, err := pb.Marshal(protoMsg.PayloadMessage)
-			if err != nil {
-				logger.Error("parse payload msg to bin error: %v", err)
-				continue
+			if !protoMsg.NotParse {
+				// 在这里直接序列化成二进制数据 防止发送的消息内包含各种游戏数据指针 而造成并发读写的问题
+				payloadMessageData, err := pb.Marshal(protoMsg.PayloadMessage)
+				if err != nil {
+					logger.Error("parse payload msg to bin error: %v", err)
+					continue
+				}
+				gameMsg.PayloadMessageData = payloadMessageData
+			} else {
+				gameMsg.PayloadMessageData = protoMsg.PayloadRaw
+				gameMsg.NotParse = true
 			}
-			gameMsg.PayloadMessageData = payloadMessageData
 			messageQueue.SendToGate(gateAppId, &mq.NetMsg{
 				MsgType: mq.MsgTypeGame,
 				EventId: mq.NormalMsg,

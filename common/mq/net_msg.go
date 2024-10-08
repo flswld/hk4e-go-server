@@ -31,6 +31,7 @@ type GameMsg struct {
 	ClientSeq          uint32
 	PayloadMessage     pb.Message `msgpack:"-"`
 	PayloadMessageData []byte
+	NotParse           bool
 }
 
 const (

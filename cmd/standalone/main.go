@@ -3,11 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
-
 	"hk4e/cmd/nats"
 	cfg "hk4e/common/config"
 	dispatchapp "hk4e/dispatch/app"
@@ -16,6 +11,11 @@ import (
 	gsapp "hk4e/gs/app"
 	nodeapp "hk4e/node/app"
 	"hk4e/pkg/logger"
+	robotapp "hk4e/robot/app"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 var (
@@ -41,6 +41,7 @@ func main() {
 	ctxGate, cancelGate := context.WithCancel(context.Background())
 	ctxGs, cancelGs := context.WithCancel(context.Background())
 	ctxGm, cancelGm := context.WithCancel(context.Background())
+	ctxRobot, cancelRobot := context.WithCancel(context.Background())
 
 	go func() {
 		err := nats.RunNatsServer(ctxNats)
@@ -100,6 +101,14 @@ func main() {
 		cancelGs()
 	}()
 
+	go func() {
+		err := robotapp.Run(ctxRobot)
+		if err != nil {
+			panic(err)
+		}
+		cancelGm()
+	}()
+
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
 	for {
@@ -108,7 +117,7 @@ func main() {
 			logger.Warn("get a signal %s", s.String())
 			switch s {
 			case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT:
-				cancelGm()
+				cancelRobot()
 				<-stopChan
 				return
 			case syscall.SIGHUP:

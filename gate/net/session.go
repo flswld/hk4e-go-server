@@ -349,15 +349,20 @@ func (k *KcpConnManager) forwardClientMsgToRobotHandle(protoMsg *ProtoMsg, sessi
 		CmdId:              protoMsg.CmdId,
 		ClientSeq:          protoMsg.HeadMessage.ClientSequenceId,
 		PayloadMessageData: nil,
+		NotParse:           protoMsg.NotParse,
 	}
-	// 在这里直接序列化成二进制数据 终结PayloadMessage的生命周期并回收进缓存池
-	payloadMessageData, err := pb.Marshal(protoMsg.PayloadMessage)
-	if err != nil {
-		logger.Error("parse payload msg to bin error: %v, stack: %v", err, logger.Stack())
-		return
+	if !protoMsg.NotParse {
+		// 在这里直接序列化成二进制数据 终结PayloadMessage的生命周期并回收进缓存池
+		payloadMessageData, err := pb.Marshal(protoMsg.PayloadMessage)
+		if err != nil {
+			logger.Error("parse payload msg to bin error: %v, stack: %v", err, logger.Stack())
+			return
+		}
+		k.serverCmdProtoMap.PutProtoObjCache(protoMsg.CmdId, protoMsg.PayloadMessage)
+		gameMsg.PayloadMessageData = payloadMessageData
+	} else {
+		gameMsg.PayloadMessageData = protoMsg.PayloadRaw
 	}
-	k.serverCmdProtoMap.PutProtoObjCache(protoMsg.CmdId, protoMsg.PayloadMessage)
-	gameMsg.PayloadMessageData = payloadMessageData
 	// 转发到Robot
 	k.messageQueue.SendToRobot(session.robotServerAppId, &mq.NetMsg{
 		MsgType: mq.MsgTypeGame,
@@ -409,6 +414,8 @@ func (k *KcpConnManager) forwardRobotMsgToClientHandle(session *Session) {
 						CmdId:          gameMsg.CmdId,
 						HeadMessage:    k.getHeadMsg(gameMsg.ClientSeq),
 						PayloadMessage: gameMsg.PayloadMessage,
+						NotParse:       gameMsg.NotParse,
+						PayloadRaw:     gameMsg.PayloadMessageData,
 					}
 					if len(session.sendChan) == SessionSendChanLen {
 						logger.Error("session send chan is full, sessionId: %v", protoMsg.SessionId)

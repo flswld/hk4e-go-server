@@ -2,7 +2,6 @@ package net
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"reflect"
 	"strings"
@@ -26,8 +25,7 @@ type ProtoMsg struct {
 	HeadMessage    *proto.PacketHead
 	PayloadMessage pb.Message
 	NotParse       bool
-	HeadRaw        string
-	PayloadRaw     string
+	PayloadRaw     []byte
 }
 
 type ProtoMessage struct {
@@ -39,14 +37,20 @@ func ProtoDecode(kcpMsg *KcpMsg,
 	serverCmdProtoMap *cmd.CmdProtoMap, clientCmdProtoMap *client_proto.ClientCmdProtoMap) (protoMsgList []*ProtoMsg) {
 	protoMsgList = make([]*ProtoMsg, 0)
 	notParseDumpRaw := func() {
+		headMsg := new(proto.PacketHead)
+		err := pb.Unmarshal(kcpMsg.HeadData, headMsg)
+		if err != nil {
+			logger.Error("unmarshal head data err: %v", err)
+		}
+		payloadRaw := make([]byte, len(kcpMsg.ProtoData))
+		copy(payloadRaw, kcpMsg.ProtoData)
 		protoMsgList = append(protoMsgList, &ProtoMsg{
 			SessionId:      kcpMsg.SessionId,
 			CmdId:          kcpMsg.CmdId,
-			HeadMessage:    nil,
+			HeadMessage:    headMsg,
 			PayloadMessage: nil,
 			NotParse:       true,
-			HeadRaw:        base64.StdEncoding.EncodeToString(kcpMsg.HeadData),
-			PayloadRaw:     base64.StdEncoding.EncodeToString(kcpMsg.ProtoData),
+			PayloadRaw:     payloadRaw,
 		})
 	}
 	if config.GetConfig().Hk4e.ClientProtoProxyEnable {
@@ -255,6 +259,10 @@ func ProtoEncode(protoMsg *ProtoMsg,
 		kcpMsg.HeadData = headData
 	} else {
 		kcpMsg.HeadData = nil
+	}
+	if protoMsg.NotParse {
+		kcpMsg.ProtoData = protoMsg.PayloadRaw
+		return kcpMsg
 	}
 	if protoMsg.CmdId == cmd.UnionCmdNotify && config.GetConfig().Hk4e.ForwardModeEnable && config.GetConfig().Hk4e.ClientProtoProxyEnable {
 		// 处理聚合消息

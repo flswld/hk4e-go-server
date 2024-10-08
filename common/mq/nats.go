@@ -150,18 +150,24 @@ func (m *MessageQueue) parseNetMsg(rawData []byte) *NetMsg {
 			return nil
 		}
 		if netMsg.EventId == NormalMsg {
-			// protobuf PayloadMessage
-			payloadMessage := m.cmdProtoMap.GetProtoObjFastNewByCmdId(gameMsg.CmdId)
-			if payloadMessage == nil {
-				logger.Error("get protobuf obj by cmd id error: %v", err)
-				return nil
+			if !gameMsg.NotParse {
+				// protobuf PayloadMessage
+				payloadMessage := m.cmdProtoMap.GetProtoObjFastNewByCmdId(gameMsg.CmdId)
+				if payloadMessage == nil {
+					logger.Error("get protobuf obj by cmd id error: %v", err)
+					return nil
+				}
+				err = pb.Unmarshal(gameMsg.PayloadMessageData, payloadMessage)
+				if err != nil {
+					logger.Error("parse bin to payload msg error: %v", err)
+					return nil
+				}
+				gameMsg.PayloadMessage = payloadMessage
+			} else {
+				payloadMessageData := make([]byte, len(gameMsg.PayloadMessageData))
+				copy(payloadMessageData, gameMsg.PayloadMessageData)
+				gameMsg.PayloadMessageData = payloadMessageData
 			}
-			err = pb.Unmarshal(gameMsg.PayloadMessageData, payloadMessage)
-			if err != nil {
-				logger.Error("parse bin to payload msg error: %v", err)
-				return nil
-			}
-			gameMsg.PayloadMessage = payloadMessage
 		}
 	}
 	return netMsg
