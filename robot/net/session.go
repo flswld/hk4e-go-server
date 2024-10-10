@@ -16,7 +16,6 @@ import (
 	"hk4e/protocol/cmd"
 	"hk4e/protocol/proto"
 
-	"github.com/gorilla/websocket"
 	pb "google.golang.org/protobuf/proto"
 )
 
@@ -44,10 +43,13 @@ type Session struct {
 	SecurityCmdBuffer      []byte
 	Uid                    uint32
 	IsClose                bool
-	PktList                []*Packet
-	PktCapWsConn           *websocket.Conn
-	PktLock                sync.Mutex
 }
+
+var (
+	PktList = make([]*Packet, 0)
+	PktLock sync.Mutex
+	PktChan = make(chan *Packet, 1000)
+)
 
 func NewSession(gateAddr string, dispatchKey []byte) (*Session, error) {
 	conn, err := kcp.DialWithOptions(gateAddr)
@@ -73,8 +75,6 @@ func NewSession(gateAddr string, dispatchKey []byte) (*Session, error) {
 		SecurityCmdBuffer:      nil,
 		Uid:                    0,
 		IsClose:                false,
-		PktList:                make([]*Packet, 0),
-		PktCapWsConn:           nil,
 	}
 	if config.GetConfig().Hk4e.ClientProtoProxyEnable {
 		r.ClientCmdProtoMap = client_proto.NewClientCmdProtoMap()
@@ -157,12 +157,12 @@ func (s *Session) recvHandle() {
 				packet := &Packet{
 					Time:       uint64(time.Now().UnixMilli()),
 					Dir:        "RECV",
-					CmdId:      uint32(vv.CmdId),
+					CmdId:      uint32(v.CmdId),
 					CmdName:    "",
 					HeadMsg:    "",
 					PayloadMsg: "",
 					NotParse:   vv.NotParse,
-					PayloadRaw: base64.StdEncoding.EncodeToString(vv.PayloadRaw),
+					PayloadRaw: base64.StdEncoding.EncodeToString(v.ProtoData),
 				}
 				headMsg, _ := json.Marshal(vv.HeadMessage)
 				packet.HeadMsg = string(headMsg)
@@ -172,16 +172,10 @@ func (s *Session) recvHandle() {
 					packet.CmdName = cmdName
 					packet.PayloadMsg = string(payloadMsg)
 				}
-				packetData, _ := json.Marshal(packet)
-				s.PktLock.Lock()
-				s.PktList = append(s.PktList, packet)
-				if s.PktCapWsConn != nil {
-					err := s.PktCapWsConn.WriteMessage(websocket.TextMessage, packetData)
-					if err != nil {
-						s.PktCapWsConn = nil
-					}
-				}
-				s.PktLock.Unlock()
+				PktLock.Lock()
+				PktList = append(PktList, packet)
+				PktChan <- packet
+				PktLock.Unlock()
 			}
 		}
 	}
@@ -214,12 +208,12 @@ func (s *Session) sendHandle() {
 		packet := &Packet{
 			Time:       uint64(time.Now().UnixMilli()),
 			Dir:        "SEND",
-			CmdId:      uint32(protoMsg.CmdId),
+			CmdId:      uint32(kcpMsg.CmdId),
 			CmdName:    "",
 			HeadMsg:    "",
 			PayloadMsg: "",
 			NotParse:   protoMsg.NotParse,
-			PayloadRaw: base64.StdEncoding.EncodeToString(protoMsg.PayloadRaw),
+			PayloadRaw: base64.StdEncoding.EncodeToString(kcpMsg.ProtoData),
 		}
 		headMsg, _ := json.Marshal(protoMsg.HeadMessage)
 		packet.HeadMsg = string(headMsg)
@@ -229,15 +223,9 @@ func (s *Session) sendHandle() {
 			packet.CmdName = cmdName
 			packet.PayloadMsg = string(payloadMsg)
 		}
-		packetData, _ := json.Marshal(packet)
-		s.PktLock.Lock()
-		s.PktList = append(s.PktList, packet)
-		if s.PktCapWsConn != nil {
-			err := s.PktCapWsConn.WriteMessage(websocket.TextMessage, packetData)
-			if err != nil {
-				s.PktCapWsConn = nil
-			}
-		}
-		s.PktLock.Unlock()
+		PktLock.Lock()
+		PktList = append(PktList, packet)
+		PktChan <- packet
+		PktLock.Unlock()
 	}
 }

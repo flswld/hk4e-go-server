@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -26,6 +27,7 @@ import (
 	"hk4e/robot/login"
 	"hk4e/robot/net"
 
+	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	pb "google.golang.org/protobuf/proto"
@@ -115,6 +117,19 @@ func Run(ctx context.Context) error {
 	}
 }
 
+type IridiumPacket struct {
+	Time       int64  `json:"time"`
+	FromServer bool   `json:"fromServer"`
+	PacketId   uint16 `json:"packetId"`
+	PacketName string `json:"packetName"`
+	Object     any    `json:"object"`
+	Raw        []byte `json:"raw"`
+}
+
+var (
+	IridiumStart = false
+)
+
 func runPacketCaptureApi() {
 	if config.GetConfig().Logger.Level == "DEBUG" {
 		gin.SetMode(gin.DebugMode)
@@ -122,9 +137,13 @@ func runPacketCaptureApi() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	e := gin.Default()
+	e.Use(static.Serve("/", static.LocalFile("./iridium/public", false)))
 	e.GET("/packet/capture/ws", packetCaptureWs)
 	e.GET("/packet/capture/list", packetCaptureList)
 	e.GET("/packet/capture/clear", packetCaptureClear)
+	e.GET("/api/start", iridiumApiStart)
+	e.GET("/api/stop", iridiumApiStop)
+	e.GET("/api/stream", iridiumApiStream)
 	port := config.GetConfig().Hk4eRobot.RobotHttpPort
 	addr := ":" + strconv.Itoa(int(port))
 	err := e.Run(addr)
@@ -133,8 +152,6 @@ func runPacketCaptureApi() {
 		return
 	}
 }
-
-var PacketCaptureSession *net.Session = nil
 
 func packetCaptureWs(ctx *gin.Context) {
 	upgrader := websocket.Upgrader{
@@ -151,34 +168,60 @@ func packetCaptureWs(ctx *gin.Context) {
 		_, _ = ctx.Writer.WriteString("500")
 		return
 	}
-	if PacketCaptureSession == nil {
-		_ = wsConn.Close()
-		_, _ = ctx.Writer.WriteString("500")
-		return
-	}
-	PacketCaptureSession.PktCapWsConn = wsConn
+	go func() {
+		for {
+			pkt := <-net.PktChan
+			msg, _ := json.Marshal(pkt)
+			err := wsConn.WriteMessage(websocket.TextMessage, msg)
+			if err != nil {
+				return
+			}
+		}
+	}()
 }
 
 func packetCaptureList(ctx *gin.Context) {
-	if PacketCaptureSession == nil {
-		_, _ = ctx.Writer.WriteString("500")
-		return
-	}
-	PacketCaptureSession.PktLock.Lock()
-	data, _ := json.Marshal(PacketCaptureSession.PktList)
-	PacketCaptureSession.PktLock.Unlock()
+	net.PktLock.Lock()
+	data, _ := json.Marshal(net.PktList)
+	net.PktLock.Unlock()
 	_, _ = ctx.Writer.WriteString(string(data))
 }
 
 func packetCaptureClear(ctx *gin.Context) {
-	if PacketCaptureSession == nil {
-		_, _ = ctx.Writer.WriteString("500")
-		return
-	}
-	PacketCaptureSession.PktLock.Lock()
-	PacketCaptureSession.PktList = make([]*net.Packet, 0)
-	PacketCaptureSession.PktLock.Unlock()
+	net.PktLock.Lock()
+	net.PktList = make([]*net.Packet, 0)
+	net.PktLock.Unlock()
 	_, _ = ctx.Writer.WriteString("ok")
+}
+
+func iridiumApiStart(ctx *gin.Context) {
+	IridiumStart = true
+}
+
+func iridiumApiStop(ctx *gin.Context) {
+	IridiumStart = false
+}
+
+func iridiumApiStream(ctx *gin.Context) {
+	ctx.Stream(func(w io.Writer) bool {
+		pkt := <-net.PktChan
+		if !IridiumStart {
+			return true
+		}
+		var object any = nil
+		_ = json.Unmarshal([]byte(pkt.PayloadMsg), &object)
+		iridiumPacket := &IridiumPacket{
+			Time:       int64(pkt.Time),
+			FromServer: pkt.Dir == "RECV",
+			PacketId:   uint16(pkt.CmdId),
+			PacketName: pkt.CmdName,
+			Object:     object,
+			Raw:        make([]byte, 0),
+		}
+		msg, _ := json.Marshal(iridiumPacket)
+		ctx.SSEvent("packetNotify", string(msg))
+		return true
+	})
 }
 
 func runForward(messageQueue *mq.MessageQueue) {
@@ -230,7 +273,6 @@ func waitClientConn(messageQueue *mq.MessageQueue, dispatchInfo *login.DispatchI
 				logger.Error("remote gate login error: %v", err)
 				continue
 			}
-			PacketCaptureSession = session
 			logger.Info("remote gate login ok, uid: %v", session.Uid)
 			messageQueue.SendToGate(gateAppId, &mq.NetMsg{
 				MsgType: mq.MsgTypeGame,
@@ -379,9 +421,6 @@ func gateLogin(account string, dispatchInfo *login.DispatchInfo, accountInfo *lo
 	if err != nil {
 		logger.Error("gate login error: %v", err)
 		return
-	}
-	if !config.GetConfig().Hk4eRobot.DosEnable {
-		PacketCaptureSession = session
 	}
 	logger.Info("robot gate login ok, account: %v", account)
 	clientVersionHashData, err := hex.DecodeString(

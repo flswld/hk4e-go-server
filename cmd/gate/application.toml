@@ -10,6 +10,7 @@ gate_tcp_mq_port = 33333 # tcp消息队列端口号
 login_sdk_url = "http://127.0.0.1:8080/gate/token/verify" # 网关登录验证token的sdk服务器地址 目前填dispatch的内网地址
 login_sdk_account_key = "" # sdk服务器账号验证的签名密钥
 byte_check_mode = -1 # 网络包数据校验模式
+track_packet = false # 追踪收发包
 
 [logger]
 level = "debug"

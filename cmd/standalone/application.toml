@@ -15,6 +15,9 @@ gate_tcp_mq_addr = "127.0.0.1" # 访问网关tcp直连消息队列的地址 填�
 gate_tcp_mq_port = 33333 # tcp消息队列端口号
 login_sdk_url = "http://127.0.0.1:8080/gate/token/verify" # 网关登录验证token的sdk服务器地址 目前填dispatch的内网地址
 byte_check_mode = -1 # 网络包数据校验模式
+track_packet = false # 追踪收发包
+
+register_all_proto_message = true # 注册全部pb消息
 
 game_data_config_path = "./game_data_config" # 配置表路径
 load_scene_lua_config = true # 是否加载场景详情LUA配置数据
@@ -23,6 +26,28 @@ gm_http_port = 9001 # gm的http端口
 gm_auth_key = "flswld" # gm认证密钥
 
 standalone_mode_enable = true # 是否开启单进程模式
+
+[hk4e_robot]
+robot_http_port = 9999 # robot的http端口
+region_list_url = "https://hk4e.flswld.com/query_region_list" # 一级dispatch地址
+region_list_param = "" # 一级dispatch的url参数
+select_region_index = 0 # 选择的二级dispatch索引
+cur_region_url = "https://hk4e.flswld.com/query_cur_region" # 二级dispatch地址 可强制指定 为空则使用一级dispatch获取的地址
+cur_region_param = "?version=OSRELWin3.2.0&key_id=5" # 二级dispatch的url参数
+key_id = "5" # 客户端密钥编号
+login_sdk_url = "https://hk4e.flswld.com" # sdk登录服务器地址
+account = "flswld" # 帐号
+password = "" # base64编码的rsa公钥加密后的密码
+client_version = "CNRELWin3.2.0_R11611027_S11212885_D11793813" # 客户端版本号
+dos_enable = false # 是否开启压力测试
+dos_total_num = 1 # 压力测试总并发数量 帐号自动添加后缀编号
+dos_batch_num = 1 # 压力测试每批登录并发数量
+dos_loop_login = false # 压力测试是否循环登录退出
+client_move_enable = false # 是否开启客户端模拟移动
+client_move_speed = 10 # 客户端模拟移动速度
+client_move_range_ext = 100 # 客户端模拟移动区域半径
+forward_checksum = "" # 转发模式强制指定校验和
+forward_checksum_client_version = "" # 转发模式强制指定校验和客户端版本
 
 [logger]
 level = "debug"
