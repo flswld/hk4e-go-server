@@ -238,8 +238,8 @@ func (l *Logger) doLog() {
 }
 
 func (l *Logger) writeLog(logData []byte, logTag string) {
-	if logTag != "" {
-		l.writeLogFile(l.WriteBuf, logTag)
+	if CONF.EnableFile && logTag != "" {
+		l.writeLogFile(logData, logTag)
 	}
 	l.WriteBuf = append(l.WriteBuf, logData...)
 	l.WriteCacheNum++
