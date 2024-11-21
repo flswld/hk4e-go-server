@@ -368,7 +368,7 @@ func parseLogFlag(msg string) (string, LogFlag) {
 	}
 	end := 0
 	for i := 0; i < len(msg); i++ {
-		if msg[i] != '|' {
+		if msg[i] == '|' {
 			end = i
 			break
 		}
