@@ -6,13 +6,12 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-
-	"hk4e/common/config"
 )
 
 const (
@@ -27,6 +26,21 @@ var LevelMap = map[int][]byte{
 	INFO:  []byte("INFO"),
 	WARN:  []byte("WARN"),
 	ERROR: []byte("ERROR"),
+}
+
+func ParseLogLevel(level string) int {
+	switch strings.ToUpper(level) {
+	case "DEBUG":
+		return DEBUG
+	case "INFO":
+		return INFO
+	case "WARN":
+		return WARN
+	case "ERROR":
+		return ERROR
+	default:
+		panic(fmt.Sprintf("unknown log level: %v", level))
+	}
 }
 
 var (
@@ -49,7 +63,10 @@ var (
 	RESET   = []byte{27, 91, 48, 109}
 )
 
-var LOG *Logger = nil
+var (
+	LOG  *Logger = nil
+	CONF *Config = nil
+)
 
 const (
 	DefaultFileMaxSize = 10485760
@@ -57,16 +74,19 @@ const (
 	MaxWriteCacheNum   = 1000
 )
 
+type Config struct {
+	AppName      string
+	Level        int
+	TrackLine    bool
+	TrackThread  bool
+	EnableFile   bool
+	FileMaxSize  int32
+	DisableColor bool
+	EnableJson   bool
+}
+
 type Logger struct {
-	AppName       string
-	Level         int
-	TrackLine     bool
-	TrackThread   bool
-	EnableFile    bool
-	FileMaxSize   int32
-	DisableColor  bool
-	EnableJson    bool
-	File          *os.File
+	FileTagMap    map[string]*os.File
 	LogInfoChan   chan *LogInfo
 	WriteBuf      []byte
 	WriteCacheNum int32
@@ -82,24 +102,32 @@ type LogInfo struct {
 	Line        int
 	GoroutineId string
 	ThreadId    string
+	TrackLine   bool
+	TrackThread bool
+	Tag         string
 }
 
-func InitLogger(appName string) {
+func InitLogger(config *Config) {
 	LOG = new(Logger)
-	LOG.AppName = appName
 
-	LOG.Level = LOG.getLogLevel(config.GetConfig().Logger.Level)
-	LOG.TrackLine = config.GetConfig().Logger.TrackLine
-	LOG.TrackThread = config.GetConfig().Logger.TrackThread
-	LOG.EnableFile = config.GetConfig().Logger.EnableFile
-	LOG.FileMaxSize = config.GetConfig().Logger.FileMaxSize
-	LOG.DisableColor = config.GetConfig().Logger.DisableColor
-	LOG.EnableJson = config.GetConfig().Logger.EnableJson
-
-	if LOG.FileMaxSize == 0 {
-		LOG.FileMaxSize = DefaultFileMaxSize
+	if config == nil {
+		config = &Config{
+			AppName:      "application",
+			Level:        DEBUG,
+			TrackLine:    true,
+			TrackThread:  false,
+			EnableFile:   false,
+			FileMaxSize:  0,
+			DisableColor: false,
+			EnableJson:   false,
+		}
 	}
-	LOG.File = nil
+	CONF = config
+	if CONF.FileMaxSize == 0 {
+		CONF.FileMaxSize = DefaultFileMaxSize
+	}
+
+	LOG.FileTagMap = make(map[string]*os.File)
 	LOG.LogInfoChan = make(chan *LogInfo, LogInfoChanSize)
 	LOG.WriteBuf = make([]byte, 0)
 	LOG.WriteCacheNum = 0
@@ -123,18 +151,18 @@ func (l *Logger) doLog() {
 			exit = true
 			exitCountDown = len(l.LogInfoChan)
 		case logInfo := <-l.LogInfoChan:
-			if !l.DisableColor {
+			if !CONF.DisableColor {
 				logBuf.Write(CYAN)
 			}
 			logBuf.Write(LeftBracket)
 			logBuf.Write(logInfo.Time.AppendFormat(timeBuf, "2006-01-02 15:04:05.000"))
 			logBuf.Write(RightBracket)
-			if !l.DisableColor {
+			if !CONF.DisableColor {
 				logBuf.Write(RESET)
 			}
 			logBuf.Write(Space)
 
-			if !l.DisableColor {
+			if !CONF.DisableColor {
 				switch logInfo.Level {
 				case DEBUG:
 					logBuf.Write(BLUE)
@@ -149,12 +177,12 @@ func (l *Logger) doLog() {
 			logBuf.Write(LeftBracket)
 			logBuf.Write(LevelMap[logInfo.Level])
 			logBuf.Write(RightBracket)
-			if !l.DisableColor {
+			if !CONF.DisableColor {
 				logBuf.Write(RESET)
 			}
 			logBuf.Write(Space)
 
-			if !l.DisableColor && logInfo.Level == ERROR {
+			if !CONF.DisableColor && logInfo.Level == ERROR {
 				logBuf.Write(RED)
 				logBuf.Write(*logInfo.Msg)
 				logBuf.Write(RESET)
@@ -162,9 +190,9 @@ func (l *Logger) doLog() {
 				logBuf.Write(*logInfo.Msg)
 			}
 
-			if l.TrackLine {
+			if logInfo.TrackLine {
 				logBuf.Write(Space)
-				if !l.DisableColor {
+				if !CONF.DisableColor {
 					logBuf.Write(MAGENTA)
 				}
 				logBuf.Write(LeftBracket)
@@ -174,7 +202,7 @@ func (l *Logger) doLog() {
 				logBuf.Write(Space)
 				logBuf.Write([]byte(logInfo.FuncName))
 				logBuf.Write(FuncBracket)
-				if l.TrackThread {
+				if logInfo.TrackThread {
 					logBuf.Write(Space)
 					logBuf.Write([]byte("goroutine"))
 					logBuf.Write(Colon)
@@ -185,7 +213,7 @@ func (l *Logger) doLog() {
 					logBuf.Write([]byte(logInfo.ThreadId))
 				}
 				logBuf.Write(RightBracket)
-				if !l.DisableColor {
+				if !CONF.DisableColor {
 					logBuf.Write(RESET)
 				}
 			}
@@ -193,7 +221,7 @@ func (l *Logger) doLog() {
 			logBuf.Write(LineFeed)
 
 			logData := logBuf.Bytes()
-			l.writeLog(logData)
+			l.writeLog(logData, logInfo.Tag)
 			putBuf(logInfo.Msg)
 			logInfoPool.Put(logInfo)
 			logBuf.Reset()
@@ -209,15 +237,18 @@ func (l *Logger) doLog() {
 	}
 }
 
-func (l *Logger) writeLog(logData []byte) {
+func (l *Logger) writeLog(logData []byte, logTag string) {
+	if logTag != "" {
+		l.writeLogFile(l.WriteBuf, logTag)
+	}
 	l.WriteBuf = append(l.WriteBuf, logData...)
 	l.WriteCacheNum++
 	if len(l.LogInfoChan) != 0 && l.WriteCacheNum < MaxWriteCacheNum {
 		return
 	}
 	l.writeLogConsole(l.WriteBuf)
-	if l.EnableFile {
-		l.writeLogFile(l.WriteBuf)
+	if CONF.EnableFile {
+		l.writeLogFile(l.WriteBuf, "")
 	}
 	l.WriteBuf = l.WriteBuf[0:0]
 	l.WriteCacheNum = 0
@@ -227,40 +258,49 @@ func (l *Logger) writeLogConsole(logData []byte) {
 	_, _ = os.Stderr.Write(logData)
 }
 
-func (l *Logger) writeLogFile(logData []byte) {
-	if l.File == nil {
-		file, err := os.OpenFile("./log/"+l.AppName+".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+func (l *Logger) writeLogFile(logData []byte, logTag string) {
+	fileName := ""
+	if logTag == "" {
+		fileName = "./log/" + CONF.AppName + ".log"
+	} else {
+		fileName = "./log/" + CONF.AppName + "." + logTag + ".log"
+	}
+	logFile := l.FileTagMap[logTag]
+	if logFile == nil {
+		file, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
 			_, _ = os.Stderr.WriteString(fmt.Sprintf(string(RED)+"open new log file error: %v\n"+string(RESET), err))
 			return
 		}
-		LOG.File = file
+		logFile = file
+		l.FileTagMap[logTag] = logFile
 	}
-	fileStat, err := l.File.Stat()
+	fileStat, err := logFile.Stat()
 	if err != nil {
 		_, _ = os.Stderr.WriteString(fmt.Sprintf(string(RED)+"get log file stat error: %v\n"+string(RESET), err))
 		return
 	}
-	if fileStat.Size() >= int64(l.FileMaxSize) {
-		err = l.File.Close()
+	if fileStat.Size() >= int64(CONF.FileMaxSize) {
+		err = logFile.Close()
 		if err != nil {
 			_, _ = os.Stderr.WriteString(fmt.Sprintf(string(RED)+"close old log file error: %v\n"+string(RESET), err))
 			return
 		}
 		timeStr := time.Now().Format("20060102150405")
-		err = os.Rename(l.File.Name(), l.File.Name()+"."+timeStr+".log")
+		err = os.Rename(logFile.Name(), logFile.Name()+"."+timeStr+".log")
 		if err != nil {
 			_, _ = os.Stderr.WriteString(fmt.Sprintf(string(RED)+"rename old log file error: %v\n"+string(RESET), err))
 			return
 		}
-		file, err := os.OpenFile("./log/"+l.AppName+".log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		file, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
 			_, _ = os.Stderr.WriteString(fmt.Sprintf(string(RED)+"open new log file error: %v\n"+string(RESET), err))
 			return
 		}
-		LOG.File = file
+		logFile = file
+		l.FileTagMap[logTag] = logFile
 	}
-	_, err = l.File.Write(logData)
+	_, err = logFile.Write(logData)
 	if err != nil {
 		_, _ = os.Stderr.WriteString(fmt.Sprintf(string(RED)+"write log file error: %v\n"+string(RESET), err))
 		return
@@ -284,15 +324,13 @@ func putBuf(p *[]byte) {
 
 var logInfoPool = sync.Pool{New: func() any { return new(LogInfo) }}
 
-func Debug(msg string, param ...any) {
-	if LOG.Level > DEBUG {
-		return
-	}
+func formatLog(level int, msg string, param []any) {
+	newMsg, logFlag := parseLogFlag(msg)
 	logInfo := logInfoPool.Get().(*LogInfo)
 	logInfo.Time = time.Now()
-	logInfo.Level = DEBUG
+	logInfo.Level = level
 	buf := getBuf()
-	if LOG.EnableJson {
+	if CONF.EnableJson || logFlag.LogJson == "true" {
 		jsonList := make([]any, 0)
 		for _, obj := range param {
 			data, _ := json.Marshal(obj)
@@ -300,115 +338,105 @@ func Debug(msg string, param ...any) {
 		}
 		param = jsonList
 	}
-	*buf = fmt.Appendf(*buf, msg, param...)
+	*buf = fmt.Appendf(*buf, newMsg, param...)
 	logInfo.Msg = buf
-	if LOG.TrackLine {
+	if CONF.TrackLine || logFlag.LogLine == "true" {
 		logInfo.FileName, logInfo.Line, logInfo.FuncName = LOG.getLineFunc()
+		logInfo.TrackLine = true
 	}
-	if LOG.TrackThread {
+	if CONF.TrackThread || logFlag.LogThread == "true" {
 		logInfo.GoroutineId = LOG.getGoroutineId()
 		logInfo.ThreadId = LOG.getThreadId()
+		logInfo.TrackThread = true
 	}
+	logInfo.Tag = logFlag.LogTag
 	LOG.LogInfoChan <- logInfo
+}
+
+type LogFlag struct {
+	LogTag    string
+	LogJson   string
+	LogLine   string
+	LogThread string
+}
+
+func parseLogFlag(msg string) (string, LogFlag) {
+	logFlag := new(LogFlag)
+	logFlagRef := reflect.ValueOf(logFlag).Elem()
+	if len(msg) == 0 || msg[0] != '@' {
+		return msg, LogFlag{}
+	}
+	end := 0
+	for i := 0; i < len(msg); i++ {
+		if msg[i] != '|' {
+			end = i
+			break
+		}
+		if msg[i] == '@' {
+			cus := 0
+			ok := false
+			for j := i + 1; j < len(msg); j++ {
+				if msg[j] == '(' {
+					for k := j + 1; k < len(msg); k++ {
+						if msg[k] == ')' {
+							name := msg[i+1 : j]
+							value := msg[j+1 : k]
+							field := logFlagRef.FieldByName(name)
+							if !field.IsValid() {
+								break
+							}
+							field.SetString(value)
+							ok = true
+							cus = k
+							break
+						}
+					}
+					if ok {
+						break
+					} else {
+						return msg, LogFlag{}
+					}
+				}
+			}
+			if ok {
+				i = cus
+			} else {
+				return msg, LogFlag{}
+			}
+		}
+	}
+	if end == 0 {
+		return msg, LogFlag{}
+	}
+	return msg[end+1:], *logFlag
+}
+
+func Debug(msg string, param ...any) {
+	if CONF.Level > DEBUG {
+		return
+	}
+	formatLog(DEBUG, msg, param)
 }
 
 func Info(msg string, param ...any) {
-	if LOG.Level > INFO {
+	if CONF.Level > INFO {
 		return
 	}
-	logInfo := logInfoPool.Get().(*LogInfo)
-	logInfo.Time = time.Now()
-	logInfo.Level = INFO
-	buf := getBuf()
-	if LOG.EnableJson {
-		jsonList := make([]any, 0)
-		for _, obj := range param {
-			data, _ := json.Marshal(obj)
-			jsonList = append(jsonList, string(data))
-		}
-		param = jsonList
-	}
-	*buf = fmt.Appendf(*buf, msg, param...)
-	logInfo.Msg = buf
-	if LOG.TrackLine {
-		logInfo.FileName, logInfo.Line, logInfo.FuncName = LOG.getLineFunc()
-	}
-	if LOG.TrackThread {
-		logInfo.GoroutineId = LOG.getGoroutineId()
-		logInfo.ThreadId = LOG.getThreadId()
-	}
-	LOG.LogInfoChan <- logInfo
+	formatLog(INFO, msg, param)
 }
 
 func Warn(msg string, param ...any) {
-	if LOG.Level > WARN {
+	if CONF.Level > WARN {
 		return
 	}
-	logInfo := logInfoPool.Get().(*LogInfo)
-	logInfo.Time = time.Now()
-	logInfo.Level = WARN
-	buf := getBuf()
-	if LOG.EnableJson {
-		jsonList := make([]any, 0)
-		for _, obj := range param {
-			data, _ := json.Marshal(obj)
-			jsonList = append(jsonList, string(data))
-		}
-		param = jsonList
-	}
-	*buf = fmt.Appendf(*buf, msg, param...)
-	logInfo.Msg = buf
-	if LOG.TrackLine {
-		logInfo.FileName, logInfo.Line, logInfo.FuncName = LOG.getLineFunc()
-	}
-	if LOG.TrackThread {
-		logInfo.GoroutineId = LOG.getGoroutineId()
-		logInfo.ThreadId = LOG.getThreadId()
-	}
-	LOG.LogInfoChan <- logInfo
+	formatLog(WARN, msg, param)
 }
 
 func Error(msg string, param ...any) {
-	if LOG.Level > ERROR {
+	if CONF.Level > ERROR {
 		return
 	}
-	logInfo := logInfoPool.Get().(*LogInfo)
-	logInfo.Time = time.Now()
-	logInfo.Level = ERROR
-	buf := getBuf()
-	if LOG.EnableJson {
-		jsonList := make([]any, 0)
-		for _, obj := range param {
-			data, _ := json.Marshal(obj)
-			jsonList = append(jsonList, string(data))
-		}
-		param = jsonList
-	}
-	*buf = fmt.Appendf(*buf, msg, param...)
-	logInfo.Msg = buf
-	if LOG.TrackLine {
-		logInfo.FileName, logInfo.Line, logInfo.FuncName = LOG.getLineFunc()
-	}
-	if LOG.TrackThread {
-		logInfo.GoroutineId = LOG.getGoroutineId()
-		logInfo.ThreadId = LOG.getThreadId()
-	}
-	LOG.LogInfoChan <- logInfo
-}
-
-func (l *Logger) getLogLevel(level string) int {
-	switch strings.ToUpper(level) {
-	case "DEBUG":
-		return DEBUG
-	case "INFO":
-		return INFO
-	case "WARN":
-		return WARN
-	case "ERROR":
-		return ERROR
-	default:
-		panic(fmt.Sprintf("unknown log level: %v", level))
-	}
+	formatLog(ERROR, msg, param)
 }
 
 func (l *Logger) getGoroutineId() (goroutineId string) {

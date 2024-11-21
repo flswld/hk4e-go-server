@@ -18,7 +18,7 @@ import (
 // 测试初始化加载配置表
 func TestInitGameDataConfig(t *testing.T) {
 	config.InitConfig("./bin/application.toml")
-	logger.InitLogger("InitGameDataConfig")
+	logger.InitLogger(nil)
 	defer func() {
 		logger.CloseLogger()
 	}()
@@ -62,7 +62,7 @@ func CheckJsonLoop(path string, errorJsonFileList *[]string, totalJsonFileCount 
 // 测试加载json配置
 func TestCheckJsonValid(t *testing.T) {
 	config.InitConfig("./bin/application.toml")
-	logger.InitLogger("CheckJsonValid")
+	logger.InitLogger(nil)
 	defer func() {
 		logger.CloseLogger()
 	}()
@@ -79,7 +79,7 @@ func TestCheckJsonValid(t *testing.T) {
 // 场景lua区块配置坐标范围可视化
 func TestSceneBlock(t *testing.T) {
 	config.InitConfig("./bin/application.toml")
-	logger.InitLogger("SceneBlock")
+	logger.InitLogger(nil)
 	defer func() {
 		logger.CloseLogger()
 	}()

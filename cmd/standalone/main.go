@@ -26,7 +26,16 @@ func main() {
 	flag.Parse()
 	cfg.InitConfig(*config)
 
-	logger.InitLogger("standalone")
+	logger.InitLogger(&logger.Config{
+		AppName:      "standalone",
+		Level:        logger.ParseLogLevel(cfg.GetConfig().Logger.Level),
+		TrackLine:    cfg.GetConfig().Logger.TrackLine,
+		TrackThread:  cfg.GetConfig().Logger.TrackThread,
+		EnableFile:   cfg.GetConfig().Logger.EnableFile,
+		FileMaxSize:  cfg.GetConfig().Logger.FileMaxSize,
+		DisableColor: cfg.GetConfig().Logger.DisableColor,
+		EnableJson:   cfg.GetConfig().Logger.EnableJson,
+	})
 	logger.Warn("standalone start")
 	defer func() {
 		logger.Warn("standalone exit")

@@ -66,7 +66,16 @@ func Run(ctx context.Context) error {
 	}()
 
 	if !config.GetConfig().Hk4e.StandaloneModeEnable {
-		logger.InitLogger("gs_" + strconv.Itoa(int(GSID)) + "_" + APPID)
+		logger.InitLogger(&logger.Config{
+			AppName:      "gs_" + strconv.Itoa(int(GSID)) + "_" + APPID,
+			Level:        logger.ParseLogLevel(config.GetConfig().Logger.Level),
+			TrackLine:    config.GetConfig().Logger.TrackLine,
+			TrackThread:  config.GetConfig().Logger.TrackThread,
+			EnableFile:   config.GetConfig().Logger.EnableFile,
+			FileMaxSize:  config.GetConfig().Logger.FileMaxSize,
+			DisableColor: config.GetConfig().Logger.DisableColor,
+			EnableJson:   config.GetConfig().Logger.EnableJson,
+		})
 		defer func() {
 			logger.CloseLogger()
 		}()
