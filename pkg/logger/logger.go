@@ -21,14 +21,7 @@ const (
 	ERROR
 )
 
-var LevelMap = map[int][]byte{
-	DEBUG: []byte("DEBUG"),
-	INFO:  []byte("INFO"),
-	WARN:  []byte("WARN"),
-	ERROR: []byte("ERROR"),
-}
-
-func ParseLogLevel(level string) int {
+func ParseLevel(level string) int {
 	switch strings.ToUpper(level) {
 	case "DEBUG":
 		return DEBUG
@@ -39,40 +32,51 @@ func ParseLogLevel(level string) int {
 	case "ERROR":
 		return ERROR
 	default:
-		panic(fmt.Sprintf("unknown log level: %v", level))
+		return DEBUG
 	}
 }
 
+var levelMap = map[int][]byte{
+	DEBUG: []byte("DEBUG"),
+	INFO:  []byte("INFO"),
+	WARN:  []byte("WARN"),
+	ERROR: []byte("ERROR"),
+}
+
 var (
-	LeftBracket  = []byte("[")
-	RightBracket = []byte("]")
-	Space        = []byte(" ")
-	Colon        = []byte(":")
-	FuncBracket  = []byte("()")
-	LineFeed     = []byte("\n")
+	leftBracket  = []byte("[")
+	rightBracket = []byte("]")
+	space        = []byte(" ")
+	colon        = []byte(":")
+	funcBracket  = []byte("()")
+	lineFeed     = []byte("\n")
 )
 
 var (
-	RED     = []byte{27, 91, 51, 49, 109}
-	GREEN   = []byte{27, 91, 51, 50, 109}
-	YELLOW  = []byte{27, 91, 51, 51, 109}
-	BLUE    = []byte{27, 91, 51, 52, 109}
-	MAGENTA = []byte{27, 91, 51, 53, 109}
-	CYAN    = []byte{27, 91, 51, 54, 109}
-	WHITE   = []byte{27, 91, 51, 55, 109}
-	RESET   = []byte{27, 91, 48, 109}
-)
-
-var (
-	LOG  *Logger = nil
-	CONF *Config = nil
+	red     = []byte{27, 91, 51, 49, 109}
+	green   = []byte{27, 91, 51, 50, 109}
+	yellow  = []byte{27, 91, 51, 51, 109}
+	blue    = []byte{27, 91, 51, 52, 109}
+	magenta = []byte{27, 91, 51, 53, 109}
+	cyan    = []byte{27, 91, 51, 54, 109}
+	white   = []byte{27, 91, 51, 55, 109}
+	reset   = []byte{27, 91, 48, 109}
 )
 
 const (
-	DefaultFileMaxSize = 10485760
-	LogInfoChanSize    = 1000
-	MaxWriteCacheNum   = 1000
+	defaultFileMaxSize = 10485760
+	logInfoChanSize    = 1000
+	maxWriteCacheNum   = 1000
 )
+
+var (
+	logger *Logger = nil
+	config *Config = nil
+)
+
+func GetConfig() *Config {
+	return config
+}
 
 type Config struct {
 	AppName      string
@@ -107,11 +111,9 @@ type LogInfo struct {
 	Tag         string
 }
 
-func InitLogger(config *Config) {
-	LOG = new(Logger)
-
-	if config == nil {
-		config = &Config{
+func InitLogger(cfg *Config) {
+	if cfg == nil {
+		cfg = &Config{
 			AppName:      "application",
 			Level:        DEBUG,
 			TrackLine:    true,
@@ -122,22 +124,23 @@ func InitLogger(config *Config) {
 			EnableJson:   false,
 		}
 	}
-	CONF = config
-	if CONF.FileMaxSize == 0 {
-		CONF.FileMaxSize = DefaultFileMaxSize
+	config = cfg
+	if config.FileMaxSize == 0 {
+		config.FileMaxSize = defaultFileMaxSize
 	}
 
-	LOG.FileTagMap = make(map[string]*os.File)
-	LOG.LogInfoChan = make(chan *LogInfo, LogInfoChanSize)
-	LOG.WriteBuf = make([]byte, 0)
-	LOG.WriteCacheNum = 0
-	LOG.CloseChan = make(chan struct{})
-	go LOG.doLog()
+	logger = new(Logger)
+	logger.FileTagMap = make(map[string]*os.File)
+	logger.LogInfoChan = make(chan *LogInfo, logInfoChanSize)
+	logger.WriteBuf = make([]byte, 0)
+	logger.WriteCacheNum = 0
+	logger.CloseChan = make(chan struct{})
+	go logger.doLog()
 }
 
 func CloseLogger() {
-	LOG.CloseChan <- struct{}{}
-	<-LOG.CloseChan
+	logger.CloseChan <- struct{}{}
+	<-logger.CloseChan
 }
 
 func (l *Logger) doLog() {
@@ -151,74 +154,74 @@ func (l *Logger) doLog() {
 			exit = true
 			exitCountDown = len(l.LogInfoChan)
 		case logInfo := <-l.LogInfoChan:
-			if !CONF.DisableColor {
-				logBuf.Write(CYAN)
+			if !config.DisableColor {
+				logBuf.Write(cyan)
 			}
-			logBuf.Write(LeftBracket)
+			logBuf.Write(leftBracket)
 			logBuf.Write(logInfo.Time.AppendFormat(timeBuf, "2006-01-02 15:04:05.000"))
-			logBuf.Write(RightBracket)
-			if !CONF.DisableColor {
-				logBuf.Write(RESET)
+			logBuf.Write(rightBracket)
+			if !config.DisableColor {
+				logBuf.Write(reset)
 			}
-			logBuf.Write(Space)
+			logBuf.Write(space)
 
-			if !CONF.DisableColor {
+			if !config.DisableColor {
 				switch logInfo.Level {
 				case DEBUG:
-					logBuf.Write(BLUE)
+					logBuf.Write(blue)
 				case INFO:
-					logBuf.Write(GREEN)
+					logBuf.Write(green)
 				case WARN:
-					logBuf.Write(YELLOW)
+					logBuf.Write(yellow)
 				case ERROR:
-					logBuf.Write(RED)
+					logBuf.Write(red)
 				}
 			}
-			logBuf.Write(LeftBracket)
-			logBuf.Write(LevelMap[logInfo.Level])
-			logBuf.Write(RightBracket)
-			if !CONF.DisableColor {
-				logBuf.Write(RESET)
+			logBuf.Write(leftBracket)
+			logBuf.Write(levelMap[logInfo.Level])
+			logBuf.Write(rightBracket)
+			if !config.DisableColor {
+				logBuf.Write(reset)
 			}
-			logBuf.Write(Space)
+			logBuf.Write(space)
 
-			if !CONF.DisableColor && logInfo.Level == ERROR {
-				logBuf.Write(RED)
+			if !config.DisableColor && logInfo.Level == ERROR {
+				logBuf.Write(red)
 				logBuf.Write(*logInfo.Msg)
-				logBuf.Write(RESET)
+				logBuf.Write(reset)
 			} else {
 				logBuf.Write(*logInfo.Msg)
 			}
 
 			if logInfo.TrackLine {
-				logBuf.Write(Space)
-				if !CONF.DisableColor {
-					logBuf.Write(MAGENTA)
+				logBuf.Write(space)
+				if !config.DisableColor {
+					logBuf.Write(magenta)
 				}
-				logBuf.Write(LeftBracket)
+				logBuf.Write(leftBracket)
 				logBuf.Write([]byte(logInfo.FileName))
-				logBuf.Write(Colon)
+				logBuf.Write(colon)
 				logBuf.Write([]byte(strconv.Itoa(logInfo.Line)))
-				logBuf.Write(Space)
+				logBuf.Write(space)
 				logBuf.Write([]byte(logInfo.FuncName))
-				logBuf.Write(FuncBracket)
+				logBuf.Write(funcBracket)
 				if logInfo.TrackThread {
-					logBuf.Write(Space)
+					logBuf.Write(space)
 					logBuf.Write([]byte("goroutine"))
-					logBuf.Write(Colon)
+					logBuf.Write(colon)
 					logBuf.Write([]byte(logInfo.GoroutineId))
-					logBuf.Write(Space)
+					logBuf.Write(space)
 					logBuf.Write([]byte("thread"))
-					logBuf.Write(Colon)
+					logBuf.Write(colon)
 					logBuf.Write([]byte(logInfo.ThreadId))
 				}
-				logBuf.Write(RightBracket)
-				if !CONF.DisableColor {
-					logBuf.Write(RESET)
+				logBuf.Write(rightBracket)
+				if !config.DisableColor {
+					logBuf.Write(reset)
 				}
 			}
 
-			logBuf.Write(LineFeed)
+			logBuf.Write(lineFeed)
 
 			logData := logBuf.Bytes()
 			l.writeLog(logData, logInfo.Tag)
@@ -231,23 +234,23 @@ func (l *Logger) doLog() {
 			}
 		}
 		if exit && exitCountDown == 0 {
-			LOG.CloseChan <- struct{}{}
+			logger.CloseChan <- struct{}{}
 			return
 		}
 	}
 }
 
 func (l *Logger) writeLog(logData []byte, logTag string) {
-	if CONF.EnableFile && logTag != "" {
+	if config.EnableFile && logTag != "" {
 		l.writeLogFile(logData, logTag)
 	}
 	l.WriteBuf = append(l.WriteBuf, logData...)
 	l.WriteCacheNum++
-	if len(l.LogInfoChan) != 0 && l.WriteCacheNum < MaxWriteCacheNum {
+	if len(l.LogInfoChan) != 0 && l.WriteCacheNum < maxWriteCacheNum {
 		return
 	}
 	l.writeLogConsole(l.WriteBuf)
-	if CONF.EnableFile {
+	if config.EnableFile {
 		l.writeLogFile(l.WriteBuf, "")
 	}
 	l.WriteBuf = l.WriteBuf[0:0]
@@ -259,17 +262,15 @@ func (l *Logger) writeLogConsole(logData []byte) {
 }
 
 func (l *Logger) writeLogFile(logData []byte, logTag string) {
-	fileName := ""
-	if logTag == "" {
-		fileName = "./log/" + CONF.AppName + ".log"
-	} else {
-		fileName = "./log/" + CONF.AppName + "." + logTag + ".log"
-	}
 	logFile := l.FileTagMap[logTag]
 	if logFile == nil {
+		fileName := "./log/" + config.AppName + ".log"
+		if logTag != "" {
+			fileName += "." + logTag
+		}
 		file, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
-			_, _ = os.Stderr.WriteString(fmt.Sprintf(string(RED)+"open new log file error: %v\n"+string(RESET), err))
+			_, _ = os.Stderr.WriteString(fmt.Sprintf(string(red)+"open new log file error: %v\n"+string(reset), err))
 			return
 		}
 		logFile = file
@@ -277,24 +278,28 @@ func (l *Logger) writeLogFile(logData []byte, logTag string) {
 	}
 	fileStat, err := logFile.Stat()
 	if err != nil {
-		_, _ = os.Stderr.WriteString(fmt.Sprintf(string(RED)+"get log file stat error: %v\n"+string(RESET), err))
+		_, _ = os.Stderr.WriteString(fmt.Sprintf(string(red)+"get log file stat error: %v\n"+string(reset), err))
 		return
 	}
-	if fileStat.Size() >= int64(CONF.FileMaxSize) {
-		err = logFile.Close()
+	if fileStat.Size() >= int64(config.FileMaxSize) {
+		err := logFile.Close()
 		if err != nil {
-			_, _ = os.Stderr.WriteString(fmt.Sprintf(string(RED)+"close old log file error: %v\n"+string(RESET), err))
+			_, _ = os.Stderr.WriteString(fmt.Sprintf(string(red)+"close old log file error: %v\n"+string(reset), err))
 			return
 		}
 		timeStr := time.Now().Format("20060102150405")
-		err = os.Rename(logFile.Name(), logFile.Name()+"."+timeStr+".log")
+		err = os.Rename(logFile.Name(), logFile.Name()+"."+timeStr)
 		if err != nil {
-			_, _ = os.Stderr.WriteString(fmt.Sprintf(string(RED)+"rename old log file error: %v\n"+string(RESET), err))
+			_, _ = os.Stderr.WriteString(fmt.Sprintf(string(red)+"rename old log file error: %v\n"+string(reset), err))
 			return
+		}
+		fileName := "./log/" + config.AppName + ".log"
+		if logTag != "" {
+			fileName += "." + logTag
 		}
 		file, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
-			_, _ = os.Stderr.WriteString(fmt.Sprintf(string(RED)+"open new log file error: %v\n"+string(RESET), err))
+			_, _ = os.Stderr.WriteString(fmt.Sprintf(string(red)+"open new log file error: %v\n"+string(reset), err))
 			return
 		}
 		logFile = file
@@ -302,7 +307,7 @@ func (l *Logger) writeLogFile(logData []byte, logTag string) {
 	}
 	_, err = logFile.Write(logData)
 	if err != nil {
-		_, _ = os.Stderr.WriteString(fmt.Sprintf(string(RED)+"write log file error: %v\n"+string(RESET), err))
+		_, _ = os.Stderr.WriteString(fmt.Sprintf(string(red)+"write log file error: %v\n"+string(reset), err))
 		return
 	}
 }
@@ -330,7 +335,7 @@ func formatLog(level int, msg string, param []any) {
 	logInfo.Time = time.Now()
 	logInfo.Level = level
 	buf := getBuf()
-	if CONF.EnableJson || logFlag.LogJson == "true" {
+	if config.EnableJson || logFlag.LogJson == "true" {
 		jsonList := make([]any, 0)
 		for _, obj := range param {
 			data, _ := json.Marshal(obj)
@@ -340,17 +345,17 @@ func formatLog(level int, msg string, param []any) {
 	}
 	*buf = fmt.Appendf(*buf, newMsg, param...)
 	logInfo.Msg = buf
-	if CONF.TrackLine || logFlag.LogLine == "true" {
-		logInfo.FileName, logInfo.Line, logInfo.FuncName = LOG.getLineFunc()
+	if config.TrackLine || logFlag.LogLine == "true" {
+		logInfo.FileName, logInfo.Line, logInfo.FuncName = logger.getLineFunc()
 		logInfo.TrackLine = true
 	}
-	if CONF.TrackThread || logFlag.LogThread == "true" {
-		logInfo.GoroutineId = LOG.getGoroutineId()
-		logInfo.ThreadId = LOG.getThreadId()
+	if config.TrackThread || logFlag.LogThread == "true" {
+		logInfo.GoroutineId = logger.getGoroutineId()
+		logInfo.ThreadId = logger.getThreadId()
 		logInfo.TrackThread = true
 	}
 	logInfo.Tag = logFlag.LogTag
-	LOG.LogInfoChan <- logInfo
+	logger.LogInfoChan <- logInfo
 }
 
 type LogFlag struct {
@@ -412,28 +417,28 @@ func parseLogFlag(msg string) (string, LogFlag) {
 }
 
 func Debug(msg string, param ...any) {
-	if CONF.Level > DEBUG {
+	if config.Level > DEBUG {
 		return
 	}
 	formatLog(DEBUG, msg, param)
 }
 
 func Info(msg string, param ...any) {
-	if CONF.Level > INFO {
+	if config.Level > INFO {
 		return
 	}
 	formatLog(INFO, msg, param)
 }
 
 func Warn(msg string, param ...any) {
-	if CONF.Level > WARN {
+	if config.Level > WARN {
 		return
 	}
 	formatLog(WARN, msg, param)
 }
 
 func Error(msg string, param ...any) {
-	if CONF.Level > ERROR {
+	if config.Level > ERROR {
 		return
 	}
 	formatLog(ERROR, msg, param)

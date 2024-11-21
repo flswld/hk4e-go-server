@@ -59,7 +59,7 @@ func Run(ctx context.Context) error {
 	if !config.GetConfig().Hk4e.StandaloneModeEnable {
 		logger.InitLogger(&logger.Config{
 			AppName:      "dispatch_" + APPID,
-			Level:        logger.ParseLogLevel(config.GetConfig().Logger.Level),
+			Level:        logger.ParseLevel(config.GetConfig().Logger.Level),
 			TrackLine:    config.GetConfig().Logger.TrackLine,
 			TrackThread:  config.GetConfig().Logger.TrackThread,
 			EnableFile:   config.GetConfig().Logger.EnableFile,

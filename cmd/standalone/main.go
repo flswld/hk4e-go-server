@@ -28,7 +28,7 @@ func main() {
 
 	logger.InitLogger(&logger.Config{
 		AppName:      "standalone",
-		Level:        logger.ParseLogLevel(cfg.GetConfig().Logger.Level),
+		Level:        logger.ParseLevel(cfg.GetConfig().Logger.Level),
 		TrackLine:    cfg.GetConfig().Logger.TrackLine,
 		TrackThread:  cfg.GetConfig().Logger.TrackThread,
 		EnableFile:   cfg.GetConfig().Logger.EnableFile,
