@@ -29,7 +29,7 @@ func NewBFS() (r *BFS) {
 	return r
 }
 
-func (b *BFS) InitMap(terrain map[MeshVector]bool, start MeshVector, end MeshVector, extR int16) {
+func (b *BFS) InitMap(terrain map[MeshVector]struct{}, start MeshVector, end MeshVector, extR int16) {
 	xLen := end.X - start.X
 	yLen := end.Y - start.Y
 	zLen := end.Z - start.Z

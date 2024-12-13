@@ -227,9 +227,5 @@ func GetEntityType(entityId uint32) int {
 }
 
 func GetDistance(v1 *proto.Vector, v2 *proto.Vector) float32 {
-	return float32(math.Sqrt(
-		float64((v1.X-v2.X)*(v1.X-v2.X)) +
-			float64((v1.Y-v2.Y)*(v1.Y-v2.Y)) +
-			float64((v1.Z-v2.Z)*(v1.Z-v2.Z)),
-	))
+	return float32(math.Sqrt(float64((v1.X-v2.X)*(v1.X-v2.X)) + float64((v1.Y-v2.Y)*(v1.Y-v2.Y)) + float64((v1.Z-v2.Z)*(v1.Z-v2.Z))))
 }
