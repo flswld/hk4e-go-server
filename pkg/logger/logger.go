@@ -457,7 +457,7 @@ func (l *Logger) getLineFunc() (fileName string, line int, funcName string) {
 	var pc uintptr
 	var file string
 	var ok bool
-	pc, file, line, ok = runtime.Caller(2)
+	pc, file, line, ok = runtime.Caller(3)
 	if !ok {
 		return "???", -1, "???"
 	}

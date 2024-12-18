@@ -1403,8 +1403,8 @@ func DynamicMeshToTile(dataSize *uint32, mesh *DynamicMesh, clipped []*ClippedDe
 	detailVertsSize := Align4(uintptr(detailVertCount) * unsafe.Sizeof(Vector3f{}))
 	detailTrisSize := Align4(uintptr(detailTriCount) * 4 * unsafe.Sizeof(NavMeshPolyDetailIndex(0)))
 	bvTreeSize := uint32(0)
-	newSize := headSize + vertSize + polySize +
-		detailTrisSize + detailVertsSize + detailMeshesSize + bvTreeSize
+	polyRegionsSize := Align4(uintptr(totPolyCount) * unsafe.Sizeof(NavMeshPolyRegion(0)))
+	newSize := headSize + vertSize + polySize + detailTrisSize + detailVertsSize + detailMeshesSize + bvTreeSize + polyRegionsSize
 	newTile := make([]byte, newSize+1)
 	if newTile == nil {
 		*dataSize = 0
@@ -1458,6 +1458,7 @@ func DynamicMeshToTile(dataSize *uint32, mesh *DynamicMesh, clipped []*ClippedDe
 		sliceHeader.Data = uintptr(unsafe.Pointer(&(newTile[d])))
 	*/
 	d += bvTreeSize
+	d += polyRegionsSize
 	Assert(d == newSize)
 	for iv := 0; iv < vertCount; iv++ {
 		// TODO: apply tile offset earlier, after carving. Now needs to be handled all over the place.

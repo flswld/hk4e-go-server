@@ -39,12 +39,46 @@ func (h *Handle) QueryPath(userId uint32, gateAppId string, payloadMsg pb.Messag
 }
 
 func (h *Handle) ObstacleModifyNotify(userId uint32, gateAppId string, payloadMsg pb.Message) {
-	req := payloadMsg.(*proto.ObstacleModifyNotify)
-	logger.Debug("obstacle modify req: %v, uid: %v, gateAppId: %v", req, userId, gateAppId)
+	ntf := payloadMsg.(*proto.ObstacleModifyNotify)
+	logger.Debug("obstacle modify ntf: %v, uid: %v, gateAppId: %v", ntf, userId, gateAppId)
+	navMeshManager, exist := h.worldStatic.navMeshManagerMap[ntf.SceneId]
+	if !exist {
+		return
+	}
+	navMeshObstacle, exist := h.worldStatic.navMeshObstacleMap[ntf.SceneId]
+	if !exist {
+		navMeshObstacle = new(NavMeshObstacle)
+		navMeshObstacle.obstacleHandleMap = make(map[int32]int32)
+		h.worldStatic.navMeshObstacleMap[ntf.SceneId] = navMeshObstacle
+	}
+	for _, obstacleId := range ntf.RemoveObstacleIds {
+		handle, exist := navMeshObstacle.obstacleHandleMap[obstacleId]
+		if !exist {
+			continue
+		}
+		navMeshManager.RemoveObstacle(handle)
+	}
+	for _, pbObstacle := range ntf.AddObstacles {
+		obstacle := navmesh.NewNavMeshObstacle(
+			navmesh.NavMeshObstacleShape(pbObstacle.Shape),
+			ConvPbVecToNavMeshVec(pbObstacle.Center),
+			navmesh.Vector3_One,
+			navmesh.NewQuaternionf(pbObstacle.Rotation.X, pbObstacle.Rotation.Y, pbObstacle.Rotation.Z, pbObstacle.Rotation.W),
+		)
+		obstacle.SetExtents(navmesh.NewVector3f(float32(pbObstacle.Extents.X), float32(pbObstacle.Extents.Y), float32(pbObstacle.Extents.Z)).Mulf(0.01))
+		handle := navMeshManager.AddObstacle(obstacle)
+		navMeshObstacle.obstacleHandleMap[pbObstacle.ObstacleId] = handle
+	}
+	navMeshManager.UpdateCarvingImmediately()
+}
+
+type NavMeshObstacle struct {
+	obstacleHandleMap map[int32]int32
 }
 
 type WorldStatic struct {
-	navMeshManagerMap map[uint32]*navmesh.NavMeshManager
+	navMeshManagerMap  map[uint32]*navmesh.NavMeshManager
+	navMeshObstacleMap map[uint32]*NavMeshObstacle
 	// x y z -> if terrain exist
 	terrain map[alg.MeshVector]struct{}
 }
@@ -52,6 +86,7 @@ type WorldStatic struct {
 func NewWorldStatic() (r *WorldStatic) {
 	r = new(WorldStatic)
 	r.navMeshManagerMap = make(map[uint32]*navmesh.NavMeshManager)
+	r.navMeshObstacleMap = make(map[uint32]*NavMeshObstacle)
 	r.terrain = make(map[alg.MeshVector]struct{})
 	return r
 }
@@ -61,6 +96,7 @@ func (w *WorldStatic) InitTerrain() bool {
 	if err != nil {
 		logger.Error("open navmesh dir error: %v", err)
 	} else {
+		navMeshDataMap := make(map[uint32]*format.NavMeshData)
 		for _, file := range fileList {
 			if file.IsDir() {
 				continue
@@ -68,22 +104,29 @@ func (w *WorldStatic) InitTerrain() bool {
 			fileName := file.Name()
 			navMeshDataFormat, err := format.LoadFromMhyFile("./NavMesh/" + fileName)
 			if err != nil {
-				logger.Error("parse navmesh file error: %v", err)
+				logger.Error("parse navmesh file error: %v, fileName: %v", err, fileName)
 				continue
 			}
-			navMeshManager, exist := w.navMeshManagerMap[navMeshDataFormat.M_NavMeshDataID]
+			sceneId := navMeshDataFormat.M_NavMeshDataID
+			navMeshManager, exist := w.navMeshManagerMap[sceneId]
 			if !exist {
 				navMeshManager = navmesh.NewNavMeshManager()
-				w.navMeshManagerMap[navMeshDataFormat.M_NavMeshDataID] = navMeshManager
+				w.navMeshManagerMap[sceneId] = navMeshManager
 			}
-			navMeshData := navmesh.NewDataFromFormat(navMeshDataFormat)
-			err = navMeshManager.LoadData(navMeshData)
+			if navMeshDataMap[sceneId] == nil {
+				navMeshDataMap[sceneId] = navMeshDataFormat
+			} else {
+				navMeshDataMap[sceneId].M_NavMeshTiles = append(navMeshDataMap[sceneId].M_NavMeshTiles, navMeshDataFormat.M_NavMeshTiles...)
+			}
+			logger.Info("parse navmesh file ok, fileName: %v", fileName)
+		}
+		for sceneId, navMeshManager := range w.navMeshManagerMap {
+			err = navMeshManager.LoadData(navmesh.NewDataFromFormat(navMeshDataMap[sceneId]))
 			if err != nil {
-				logger.Error("load navmesh file error: %v", err)
+				logger.Error("load navmesh data error: %v, sceneId: %v", err, sceneId)
 				continue
 			}
-			logger.Info("load navmesh file ok, fileName: %v", fileName)
-			runtime.GC()
+			logger.Info("load navmesh data ok, sceneId: %v", sceneId)
 		}
 	}
 	data, err := os.ReadFile("./world_terrain.bin")
@@ -94,9 +137,9 @@ func (w *WorldStatic) InitTerrain() bool {
 		err = decoder.Decode(&w.terrain)
 		if err != nil {
 			logger.Error("unmarshal world terrain data error: %v", err)
-			return false
 		}
 	}
+	runtime.GC()
 	return true
 }
 
@@ -199,23 +242,28 @@ func ConvNavMeshVecListToPbVecList(navMeshVecList []navmesh.Vector3f) []*proto.V
 }
 
 func (w *WorldStatic) NavMeshPathfinding(sceneId uint32, startPos *proto.Vector, endPos *proto.Vector) ([]*proto.Vector, bool) {
-	path := navmesh.NewNavMeshPath()
 	navMeshManager, exist := w.navMeshManagerMap[sceneId]
 	if !exist {
 		logger.Error("navmesh scene not exist, sceneId: %v", sceneId)
 		return nil, false
 	}
-	count := navMeshManager.CalculatePolygonPath(path, ConvPbVecToNavMeshVec(startPos), ConvPbVecToNavMeshVec(endPos), 30)
-	if count == 0 {
+	var hit navmesh.NavMeshHit
+	ok := navMeshManager.SamplePosition(&hit, ConvPbVecToNavMeshVec(startPos), 1)
+	if !ok {
 		logger.Error("navmesh could not find path, sceneId: %v, startPos: %v, endPos: %v", sceneId, startPos, endPos)
 		return nil, false
 	}
-	corners := make([]navmesh.Vector3f, count)
-	count = navMeshManager.CalculatePathCorners(corners, count, path)
-	if count == 0 {
+	source := hit.GetPosition()
+	ok = navMeshManager.SamplePosition(&hit, ConvPbVecToNavMeshVec(endPos), 1)
+	if !ok {
 		logger.Error("navmesh could not find path, sceneId: %v, startPos: %v, endPos: %v", sceneId, startPos, endPos)
 		return nil, false
 	}
-	corners = corners[:count]
+	target := hit.GetPosition()
+	corners, fail := navMeshManager.CalculatePath(source, target, 100)
+	if fail {
+		logger.Error("navmesh could not find path, sceneId: %v, startPos: %v, endPos: %v", sceneId, startPos, endPos)
+		return nil, false
+	}
 	return ConvNavMeshVecListToPbVecList(corners), true
 }
