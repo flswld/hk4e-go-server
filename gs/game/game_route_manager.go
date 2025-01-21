@@ -218,6 +218,7 @@ func (r *RouteManager) RouteHandle(netMsg *mq.NetMsg) {
 			GAME.OnOffline(connCtrlMsg.UserId, &ChangeGsInfo{
 				IsChangeGs: false,
 			})
+		default:
 		}
 	case mq.MsgTypeServer:
 		serverMsg := netMsg.ServerMsg
@@ -247,6 +248,7 @@ func (r *RouteManager) RouteHandle(netMsg *mq.NetMsg) {
 				ParamList:  serverMsg.GmCmdParamList,
 				ResultChan: nil,
 			}
+		default:
 		}
 	}
 }

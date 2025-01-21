@@ -73,7 +73,6 @@ func Run(ctx context.Context) error {
 			TrackLine:    config.GetConfig().Logger.TrackLine,
 			TrackThread:  config.GetConfig().Logger.TrackThread,
 			EnableFile:   config.GetConfig().Logger.EnableFile,
-			FileMaxSize:  config.GetConfig().Logger.FileMaxSize,
 			DisableColor: config.GetConfig().Logger.DisableColor,
 			EnableJson:   config.GetConfig().Logger.EnableJson,
 		})
@@ -95,11 +94,11 @@ func Run(ctx context.Context) error {
 	}
 	defer db.CloseDao()
 
-	kcpConnManager, err := net.NewKcpConnManager(db, messageQueue, discoveryClient)
+	connManager, err := net.NewConnManager(db, messageQueue, discoveryClient)
 	if err != nil {
 		return err
 	}
-	defer kcpConnManager.Close()
+	defer connManager.Close()
 
 	c := make(chan os.Signal, 1)
 	if !config.GetConfig().Hk4e.StandaloneModeEnable {

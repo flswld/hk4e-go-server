@@ -3,19 +3,21 @@ package main
 import (
 	"context"
 	"flag"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"hk4e/cmd/nats"
 	cfg "hk4e/common/config"
 	dispatchapp "hk4e/dispatch/app"
 	gateapp "hk4e/gate/app"
 	gmapp "hk4e/gm/app"
 	gsapp "hk4e/gs/app"
+	multiapp "hk4e/multi/app"
 	nodeapp "hk4e/node/app"
 	"hk4e/pkg/logger"
-	robotapp "hk4e/robot/app"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
+	"hk4e/pkg/statsviz_serve"
 )
 
 var (
@@ -24,6 +26,9 @@ var (
 
 func main() {
 	flag.Parse()
+	go func() {
+		_ = statsviz_serve.Serve("0.0.0.0:4567")
+	}()
 	cfg.InitConfig(*config)
 
 	logger.InitLogger(&logger.Config{
@@ -32,7 +37,6 @@ func main() {
 		TrackLine:    cfg.GetConfig().Logger.TrackLine,
 		TrackThread:  cfg.GetConfig().Logger.TrackThread,
 		EnableFile:   cfg.GetConfig().Logger.EnableFile,
-		FileMaxSize:  cfg.GetConfig().Logger.FileMaxSize,
 		DisableColor: cfg.GetConfig().Logger.DisableColor,
 		EnableJson:   cfg.GetConfig().Logger.EnableJson,
 	})
@@ -50,7 +54,7 @@ func main() {
 	ctxGate, cancelGate := context.WithCancel(context.Background())
 	ctxGs, cancelGs := context.WithCancel(context.Background())
 	ctxGm, cancelGm := context.WithCancel(context.Background())
-	ctxRobot, cancelRobot := context.WithCancel(context.Background())
+	ctxMulti, cancelMulti := context.WithCancel(context.Background())
 
 	go func() {
 		err := nats.RunNatsServer(ctxNats)
@@ -111,7 +115,7 @@ func main() {
 	}()
 
 	go func() {
-		err := robotapp.Run(ctxRobot)
+		err := multiapp.Run(ctxMulti)
 		if err != nil {
 			panic(err)
 		}
@@ -126,7 +130,7 @@ func main() {
 			logger.Warn("get a signal %s", s.String())
 			switch s {
 			case syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT:
-				cancelRobot()
+				cancelMulti()
 				<-stopChan
 				return
 			case syscall.SIGHUP:

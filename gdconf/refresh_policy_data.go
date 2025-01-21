@@ -2,9 +2,10 @@ package gdconf
 
 import (
 	"fmt"
-	"hk4e/common/constant"
 	"strconv"
 	"strings"
+
+	"hk4e/common/constant"
 
 	"hk4e/pkg/logger"
 )

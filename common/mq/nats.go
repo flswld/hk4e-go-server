@@ -124,6 +124,7 @@ func (m *MessageQueue) buildNetMsg(netMsg *NetMsg) []byte {
 			}
 			gameMsg.PayloadMessageData = payloadMessageData
 		}
+	default:
 	}
 	// msgpack NetMsg
 	rawData, err := msgpack.Marshal(netMsg)
@@ -169,6 +170,7 @@ func (m *MessageQueue) parseNetMsg(rawData []byte) *NetMsg {
 				gameMsg.PayloadMessageData = payloadMessageData
 			}
 		}
+	default:
 	}
 	return netMsg
 }

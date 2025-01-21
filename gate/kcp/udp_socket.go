@@ -30,7 +30,7 @@ func (s *UDPSession) defaultRx() {
 					continue
 				}
 				if connType == ConnEnetFin {
-					_ = s.CloseConn(enetType)
+					_ = s.Close(enetType)
 					continue
 				}
 			}

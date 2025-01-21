@@ -33,24 +33,22 @@ const (
 	ConnSendTimeout       = 10         // 发包超时时间 秒
 	MaxClientConnNumLimit = 1000       // 最大客户端连接数限制
 	TcpNoDelay            = true       // 是否禁用tcp的nagle
-	SessionSendChanLen    = 1000       // 会话发送管道缓存包容量
 )
 
 var CLIENT_CONN_NUM int32 = 0 // 当前客户端连接数
 
 const (
-	KcpConnEstNotify   = "KcpConnEstNotify"
-	KcpConnCloseNotify = "KcpConnCloseNotify"
+	ConnEventEst   = "ConnEventEst"
+	ConnEventClose = "ConnEventClose"
 )
 
-type KcpEvent struct {
+type ConnEvent struct {
 	SessionId    uint32
 	EventId      string
 	EventMessage any
 }
 
-type KcpConnManager struct {
-	kcpListener             *kcp.Listener
+type ConnManager struct {
 	db                      *dao.Dao
 	discoveryClient         *rpc.DiscoveryClient // 节点服务器rpc客户端
 	messageQueue            *mq.MessageQueue     // 消息队列
@@ -68,7 +66,7 @@ type KcpConnManager struct {
 	// 事件
 	createSessionChan        chan *Session
 	destroySessionChan       chan *Session
-	kcpEventChan             chan *KcpEvent
+	connEventChan            chan *ConnEvent
 	reLoginRemoteKickRegChan chan *RemoteKick
 	// 协议
 	serverCmdProtoMap *cmd.CmdProtoMap
@@ -79,9 +77,8 @@ type KcpConnManager struct {
 	dispatchKey  []byte
 }
 
-func NewKcpConnManager(db *dao.Dao, messageQueue *mq.MessageQueue, discovery *rpc.DiscoveryClient) (*KcpConnManager, error) {
-	r := new(KcpConnManager)
-	r.kcpListener = nil
+func NewConnManager(db *dao.Dao, messageQueue *mq.MessageQueue, discovery *rpc.DiscoveryClient) (*ConnManager, error) {
+	r := new(ConnManager)
 	r.db = db
 	r.discoveryClient = discovery
 	r.messageQueue = messageQueue
@@ -95,7 +92,7 @@ func NewKcpConnManager(db *dao.Dao, messageQueue *mq.MessageQueue, discovery *rp
 	r.sessionUserIdMap = make(map[uint32]*Session)
 	r.createSessionChan = make(chan *Session, 1000)
 	r.destroySessionChan = make(chan *Session, 1000)
-	r.kcpEventChan = make(chan *KcpEvent, 1000)
+	r.connEventChan = make(chan *ConnEvent, 1000)
 	r.reLoginRemoteKickRegChan = make(chan *RemoteKick, 1000)
 	r.serverCmdProtoMap = cmd.NewCmdProtoMap()
 	if config.GetConfig().Hk4e.ClientProtoProxyEnable {
@@ -108,11 +105,11 @@ func NewKcpConnManager(db *dao.Dao, messageQueue *mq.MessageQueue, discovery *rp
 	return r, nil
 }
 
-func (k *KcpConnManager) run() error {
+func (c *ConnManager) run() error {
 	// 读取密钥相关文件
-	k.signRsaKey, k.encRsaKeyMap, _ = region.LoadRegionRsaKey()
+	c.signRsaKey, c.encRsaKeyMap, _ = region.LoadRegionRsaKey()
 	// key
-	rsp, err := k.discoveryClient.GetRegionEc2B(context.TODO(), &api.NullMsg{})
+	rsp, err := c.discoveryClient.GetRegionEc2B(context.TODO(), &api.NullMsg{})
 	if err != nil {
 		logger.Error("get region ec2b error: %v", err)
 		return err
@@ -124,19 +121,18 @@ func (k *KcpConnManager) run() error {
 	}
 	regionEc2b := random.NewEc2b()
 	regionEc2b.SetSeed(ec2b.Seed())
-	k.dispatchKey = regionEc2b.XorKey()
+	c.dispatchKey = regionEc2b.XorKey()
 	// kcp
 	addr := "0.0.0.0:" + strconv.Itoa(int(config.GetConfig().Hk4e.KcpPort))
-	kcpListener, err := kcp.ListenWithOptions(addr)
+	kcpListener, err := kcp.ListenKCP(addr)
 	if err != nil {
 		logger.Error("listen kcp err: %v", err)
 		return err
 	}
 	kcp.SetByteCheckMode(int(config.GetConfig().Hk4e.ByteCheckMode))
-	k.kcpListener = kcpListener
 	logger.Info("listen kcp at addr: %v", addr)
-	go k.kcpNetInfo()
-	go k.acceptHandle(false, kcpListener, nil)
+	go c.kcpNetInfo()
+	go c.acceptHandle(false, kcpListener, nil)
 	if config.GetConfig().Hk4e.TcpModeEnable {
 		// tcp
 		addr := "0.0.0.0:" + strconv.Itoa(int(config.GetConfig().Hk4e.KcpPort))
@@ -151,33 +147,31 @@ func (k *KcpConnManager) run() error {
 			return err
 		}
 		logger.Info("listen tcp at addr: %v", addr)
-		go k.acceptHandle(true, nil, tcpListener)
+		go c.acceptHandle(true, nil, tcpListener)
 	}
-	if !config.GetConfig().Hk4e.ForwardModeEnable {
-		go k.forwardServerMsgToClientHandle()
-	}
-	k.syncGlobalGsOnlineMap()
-	go k.autoSyncGlobalGsOnlineMap()
-	k.syncMinLoadServerAppid()
-	go k.autoSyncMinLoadServerAppid()
-	k.syncWhiteList()
-	go k.autoSyncWhiteList()
-	k.syncStopServerInfo()
-	go k.autoSyncStopServerInfo()
+	go c.forwardServerMsgToClientHandle()
+	c.syncGlobalGsOnlineMap()
+	go c.autoSyncGlobalGsOnlineMap()
+	c.syncMinLoadServerAppid()
+	go c.autoSyncMinLoadServerAppid()
+	c.syncWhiteList()
+	go c.autoSyncWhiteList()
+	c.syncStopServerInfo()
+	go c.autoSyncStopServerInfo()
 	go func() {
 		for {
-			kcpEvent := <-k.kcpEventChan
-			logger.Info("[Kcp Event] kcpEvent: %+v", *kcpEvent)
+			connEvent := <-c.connEventChan
+			logger.Info("[Conn Event] connEvent: %+v", *connEvent)
 		}
 	}()
 	return nil
 }
 
-func (k *KcpConnManager) Close() {
-	k.closeAllKcpConn()
+func (c *ConnManager) Close() {
+	c.closeAllConn()
 }
 
-func (k *KcpConnManager) kcpNetInfo() {
+func (c *ConnManager) kcpNetInfo() {
 	ticker := time.NewTicker(time.Second * 60)
 	kcpErrorCount := uint64(0)
 	for {
@@ -194,12 +188,12 @@ func (k *KcpConnManager) kcpNetInfo() {
 }
 
 // 接收新连接协程
-func (k *KcpConnManager) acceptHandle(tcpMode bool, kcpListener *kcp.Listener, tcpListener *net.TCPListener) {
+func (c *ConnManager) acceptHandle(tcpMode bool, kcpListener *kcp.Listener, tcpListener *net.TCPListener) {
 	logger.Info("accept handle start, tcpMode: %v", tcpMode)
 	connEstFreqLimitCounter := 0
 	connEstFreqLimitTimer := time.Now().UnixNano()
 	for {
-		var conn *Conn = nil
+		var conn Conn = nil
 		if !tcpMode {
 			kcpConn, err := kcpListener.AcceptKCP()
 			if err != nil {
@@ -210,7 +204,7 @@ func (k *KcpConnManager) acceptHandle(tcpMode bool, kcpListener *kcp.Listener, t
 			kcpConn.SetWriteDelay(false)
 			kcpConn.SetWindowSize(256, 256)
 			kcpConn.SetMtu(1200)
-			conn = NewKcpConn(kcpConn)
+			conn = kcpConn
 		} else {
 			tcpConn, err := tcpListener.AcceptTCP()
 			if err != nil {
@@ -231,15 +225,7 @@ func (k *KcpConnManager) acceptHandle(tcpMode bool, kcpListener *kcp.Listener, t
 				connEstFreqLimitTimer = now
 			} else {
 				logger.Error("conn est freq limit, now: %v conn/s", connEstFreqLimitCounter)
-				conn.Close()
-				continue
-			}
-		}
-		if config.GetConfig().Hk4e.ForwardModeEnable {
-			clientConnNum := atomic.LoadInt32(&CLIENT_CONN_NUM)
-			if clientConnNum != 0 {
-				logger.Error("forward mode only support one client conn now")
-				conn.Close()
+				_ = conn.Close(kcp.EnetServerKick)
 				continue
 			}
 		}
@@ -247,57 +233,30 @@ func (k *KcpConnManager) acceptHandle(tcpMode bool, kcpListener *kcp.Listener, t
 		if !tcpMode {
 			sessionId = conn.GetSessionId()
 		} else {
-			sessionId = atomic.AddUint32(&k.sessionIdCounter, 1)
-		}
-		if !k.AddSession(sessionId) {
-			logger.Error("session already exist, sessionId: %v", sessionId)
-			conn.Close()
-			continue
+			sessionId = atomic.AddUint32(&c.sessionIdCounter, 1)
 		}
 		logger.Info("[ACCEPT] client connect, tcpMode: %v, sessionId: %v, conv: %v, addr: %v",
 			tcpMode, sessionId, conn.GetConv(), conn.RemoteAddr())
 		session := &Session{
-			sessionId:          sessionId,
-			conn:               conn,
-			connState:          ConnEst,
-			userId:             0,
-			sendChan:           make(chan *ProtoMsg, SessionSendChanLen),
-			seed:               0,
-			xorKey:             k.dispatchKey,
-			changeXorKeyFin:    false,
-			gsServerAppId:      "",
-			multiServerAppId:   "",
-			robotServerAppId:   "",
-			useMagicSeed:       false,
-			keyId:              0,
-			clientRandKey:      "",
-			tcpRtt:             0,
-			tcpRttLastSendTime: 0,
+			sessionId:        sessionId,
+			conn:             conn,
+			connState:        ConnEst,
+			userId:           0,
+			sendChan:         make(chan *ProtoMsg, 1000),
+			seed:             0,
+			xorKey:           c.dispatchKey,
+			changeXorKeyFin:  false,
+			gsServerAppId:    "",
+			multiServerAppId: "",
+			robotServerAppId: "",
+			useMagicSeed:     false,
 		}
-		if config.GetConfig().Hk4e.ForwardModeEnable {
-			robotServerAppId, err := k.discoveryClient.GetServerAppId(context.TODO(), &api.GetServerAppIdReq{
-				ServerType: api.ROBOT,
-			})
-			if err != nil {
-				logger.Error("get robot server appid error: %v", err)
-				session.conn.Close()
-				continue
-			}
-			session.robotServerAppId = robotServerAppId.AppId
-			k.messageQueue.SendToRobot(session.robotServerAppId, &mq.NetMsg{
-				MsgType: mq.MsgTypeServer,
-				EventId: mq.ServerForwardModeClientConnNotify,
-			})
-		}
-		go k.recvHandle(session)
-		go k.sendHandle(session)
-		if config.GetConfig().Hk4e.ForwardModeEnable {
-			go k.forwardRobotMsgToClientHandle(session)
-		}
+		go c.recvHandle(session)
+		go c.sendHandle(session)
 		// 连接建立成功通知
-		k.kcpEventChan <- &KcpEvent{
+		c.connEventChan <- &ConnEvent{
 			SessionId:    session.sessionId,
-			EventId:      KcpConnEstNotify,
+			EventId:      ConnEventEst,
 			EventMessage: session.conn.RemoteAddr(),
 		}
 		atomic.AddInt32(&CLIENT_CONN_NUM, 1)
@@ -306,40 +265,38 @@ func (k *KcpConnManager) acceptHandle(tcpMode bool, kcpListener *kcp.Listener, t
 
 // Session 连接会话结构 只允许定义并发安全或者简单的基础数据结构
 type Session struct {
-	sessionId          uint32
-	conn               *Conn
-	connState          uint8
-	userId             uint32
-	sendChan           chan *ProtoMsg
-	seed               uint64
-	xorKey             []byte
-	changeXorKeyFin    bool
-	gsServerAppId      string
-	multiServerAppId   string
-	robotServerAppId   string
-	useMagicSeed       bool
-	keyId              uint32
-	clientRandKey      string
-	tcpRtt             uint32
-	tcpRttLastSendTime int64
+	sessionId        uint32
+	conn             Conn
+	connState        uint32
+	userId           uint32
+	sendChan         chan *ProtoMsg
+	seed             uint64
+	xorKey           []byte
+	changeXorKeyFin  bool
+	gsServerAppId    string
+	multiServerAppId string
+	robotServerAppId string
+	useMagicSeed     bool
 }
 
 // 接收协程
-func (k *KcpConnManager) recvHandle(session *Session) {
+func (c *ConnManager) recvHandle(session *Session) {
 	logger.Info("recv handle start, sessionId: %v", session.sessionId)
 	conn := session.conn
 	header := make([]byte, 4)
 	payload := make([]byte, PacketMaxLen)
 	pktFreqLimitCounter := 0
 	pktFreqLimitTimer := time.Now().UnixNano()
+	_, isKcpConn := conn.(*kcp.UDPSession)
+	tcpConn, _ := conn.(*TCPConn)
 	for {
 		var bin []byte = nil
-		if !conn.IsTcpMode() {
-			conn.SetReadDeadline(time.Now().Add(time.Second * ConnRecvTimeout))
+		if isKcpConn {
+			_ = conn.SetReadDeadline(time.Now().Add(time.Second * ConnRecvTimeout))
 			recvLen, err := conn.Read(payload)
 			if err != nil {
 				logger.Debug("exit recv loop, conn read err: %v, sessionId: %v", err, session.sessionId)
-				k.closeKcpConn(session, kcp.EnetServerKick)
+				c.closeConn(session, kcp.EnetServerKick)
 				return
 			}
 			bin = payload[:recvLen]
@@ -347,11 +304,11 @@ func (k *KcpConnManager) recvHandle(session *Session) {
 			// tcp流分割解析
 			recvLen := 0
 			for recvLen < 4 {
-				conn.SetReadDeadline(time.Now().Add(time.Second * ConnRecvTimeout))
+				_ = conn.SetReadDeadline(time.Now().Add(time.Second * ConnRecvTimeout))
 				n, err := conn.Read(header[recvLen:])
 				if err != nil {
 					logger.Debug("exit recv loop, conn read err: %v, sessionId: %v", err, session.sessionId)
-					k.closeKcpConn(session, kcp.EnetServerKick)
+					c.closeConn(session, kcp.EnetServerKick)
 					return
 				}
 				recvLen += n
@@ -359,33 +316,33 @@ func (k *KcpConnManager) recvHandle(session *Session) {
 			msgLen := binary.BigEndian.Uint32(header)
 			// tcp rtt探测
 			if msgLen == 0 {
-				conn.SetWriteDeadline(time.Now().Add(time.Second * ConnSendTimeout))
+				_ = conn.SetWriteDeadline(time.Now().Add(time.Second * ConnSendTimeout))
 				_, err := conn.Write([]byte{0x00, 0x00, 0x00, 0x00})
 				if err != nil {
 					logger.Debug("exit recv loop, conn write err: %v, sessionId: %v", err, session.sessionId)
-					k.closeKcpConn(session, kcp.EnetServerKick)
+					c.closeConn(session, kcp.EnetServerKick)
 					return
 				}
 				continue
 			}
 			if msgLen == 0xffffffff {
 				now := time.Now().UnixMilli()
-				session.tcpRtt = uint32(now - session.tcpRttLastSendTime)
-				logger.Debug("[TCP RTT] sessionId: %v, rtt: %v ms", session.sessionId, session.tcpRtt)
+				tcpConn.TCPRtt = uint32(now - tcpConn.TCPRttLastSendTime)
+				logger.Debug("[TCP RTT] sessionId: %v, rtt: %v ms", session.sessionId, tcpConn.TCPRtt)
 				continue
 			}
 			if msgLen > PacketMaxLen {
 				logger.Error("exit recv loop, msg len too long, sessionId: %v", session.sessionId)
-				k.closeKcpConn(session, kcp.EnetServerKick)
+				c.closeConn(session, kcp.EnetServerKick)
 				return
 			}
 			recvLen = 0
 			for recvLen < int(msgLen) {
-				conn.SetReadDeadline(time.Now().Add(time.Second * ConnRecvTimeout))
+				_ = conn.SetReadDeadline(time.Now().Add(time.Second * ConnRecvTimeout))
 				n, err := conn.Read(payload[recvLen:msgLen])
 				if err != nil {
 					logger.Debug("exit recv loop, conn read err: %v, sessionId: %v", err, session.sessionId)
-					k.closeKcpConn(session, kcp.EnetServerKick)
+					c.closeConn(session, kcp.EnetServerKick)
 					return
 				}
 				recvLen += n
@@ -402,61 +359,58 @@ func (k *KcpConnManager) recvHandle(session *Session) {
 			} else {
 				logger.Error("exit recv loop, client packet send freq too high, sessionId: %v, pps: %v",
 					session.sessionId, pktFreqLimitCounter)
-				k.closeKcpConn(session, kcp.EnetPacketFreqTooHigh)
+				c.closeConn(session, kcp.EnetPacketFreqTooHigh)
 				return
 			}
 		}
 		kcpMsgList := make([]*KcpMsg, 0)
 		DecodeBinToPayload(bin, session.sessionId, &kcpMsgList, session.xorKey)
 		for _, v := range kcpMsgList {
-			protoMsgList := ProtoDecode(v, k.serverCmdProtoMap, k.clientCmdProtoMap)
+			protoMsgList := ProtoDecode(v, c.serverCmdProtoMap, c.clientCmdProtoMap)
 			for _, vv := range protoMsgList {
-				if config.GetConfig().Hk4e.ForwardModeEnable {
-					k.forwardClientMsgToRobotHandle(vv, session)
-				} else {
-					k.forwardClientMsgToServerHandle(vv, session)
-				}
+				c.forwardClientMsgToServerHandle(vv, session)
 			}
 		}
 	}
 }
 
 // 发送协程
-func (k *KcpConnManager) sendHandle(session *Session) {
+func (c *ConnManager) sendHandle(session *Session) {
 	logger.Info("send handle start, sessionId: %v", session.sessionId)
 	conn := session.conn
 	pktFreqLimitCounter := 0
 	pktFreqLimitTimer := time.Now().UnixNano()
+	tcpConn, isTcpConn := conn.(*TCPConn)
 	for {
 		protoMsg, ok := <-session.sendChan
 		if !ok {
 			logger.Debug("exit send loop, send chan close, sessionId: %v", session.sessionId)
-			k.closeKcpConn(session, kcp.EnetServerKick)
+			c.closeConn(session, kcp.EnetServerKick)
 			return
 		}
-		kcpMsg := ProtoEncode(protoMsg, k.serverCmdProtoMap, k.clientCmdProtoMap)
+		kcpMsg := ProtoEncode(protoMsg, c.serverCmdProtoMap, c.clientCmdProtoMap)
 		if kcpMsg == nil {
 			logger.Error("encode kcp msg is nil, sessionId: %v", session.sessionId)
 			continue
 		}
 		bin := EncodePayloadToBin(kcpMsg, session.xorKey)
-		if conn.IsTcpMode() {
+		if isTcpConn {
 			// tcp流分割的4个字节payload长度头部
 			headLenData := make([]byte, 4)
 			binary.BigEndian.PutUint32(headLenData, uint32(len(bin)))
-			conn.SetWriteDeadline(time.Now().Add(time.Second * ConnSendTimeout))
+			_ = conn.SetWriteDeadline(time.Now().Add(time.Second * ConnSendTimeout))
 			_, err := conn.Write(headLenData)
 			if err != nil {
 				logger.Debug("exit send loop, conn write err: %v, sessionId: %v", err, session.sessionId)
-				k.closeKcpConn(session, kcp.EnetServerKick)
+				c.closeConn(session, kcp.EnetServerKick)
 				return
 			}
 		}
-		conn.SetWriteDeadline(time.Now().Add(time.Second * ConnSendTimeout))
+		_ = conn.SetWriteDeadline(time.Now().Add(time.Second * ConnSendTimeout))
 		_, err := conn.Write(bin)
 		if err != nil {
 			logger.Debug("exit send loop, conn write err: %v, sessionId: %v", err, session.sessionId)
-			k.closeKcpConn(session, kcp.EnetServerKick)
+			c.closeConn(session, kcp.EnetServerKick)
 			return
 		}
 		// 发包频率限制
@@ -469,7 +423,7 @@ func (k *KcpConnManager) sendHandle(session *Session) {
 			} else {
 				logger.Error("exit send loop, server packet send freq too high, sessionId: %v, pps: %v",
 					session.sessionId, pktFreqLimitCounter)
-				k.closeKcpConn(session, kcp.EnetPacketFreqTooHigh)
+				c.closeConn(session, kcp.EnetPacketFreqTooHigh)
 				return
 			}
 		}
@@ -483,139 +437,120 @@ func (k *KcpConnManager) sendHandle(session *Session) {
 			copy(key, xorKey[:])
 			session.xorKey = key
 		}
-		if conn.IsTcpMode() {
+		if isTcpConn {
 			// tcp rtt探测
 			now := time.Now().UnixMilli()
-			if now-session.tcpRttLastSendTime > 1000 {
-				conn.SetWriteDeadline(time.Now().Add(time.Second * ConnSendTimeout))
+			if now-tcpConn.TCPRttLastSendTime > 1000 {
+				_ = conn.SetWriteDeadline(time.Now().Add(time.Second * ConnSendTimeout))
 				_, err := conn.Write([]byte{0xff, 0xff, 0xff, 0xff})
 				if err != nil {
 					logger.Debug("exit send loop, conn write err: %v, sessionId: %v", err, session.sessionId)
-					k.closeKcpConn(session, kcp.EnetServerKick)
+					c.closeConn(session, kcp.EnetServerKick)
 					return
 				}
-				session.tcpRttLastSendTime = now
+				tcpConn.TCPRttLastSendTime = now
 			}
 		}
 	}
 }
 
 // 关闭所有连接
-func (k *KcpConnManager) closeAllKcpConn() {
+func (c *ConnManager) closeAllConn() {
 	sessionList := make([]*Session, 0)
-	k.sessionMapLock.RLock()
-	for _, session := range k.sessionMap {
+	c.sessionMapLock.RLock()
+	for _, session := range c.sessionMap {
 		sessionList = append(sessionList, session)
 	}
-	k.sessionMapLock.RUnlock()
+	c.sessionMapLock.RUnlock()
 	for _, session := range sessionList {
 		if session == nil {
 			continue
 		}
-		k.closeKcpConn(session, kcp.EnetServerShutdown)
+		c.closeConn(session, kcp.EnetServerShutdown)
 	}
 	logger.Info("all conn has been force close")
 }
 
 // 关闭指定连接
-func (k *KcpConnManager) closeKcpConnBySessionId(sessionId uint32, reason uint32) {
-	session := k.GetSession(sessionId)
+func (c *ConnManager) closeConnBySessionId(sessionId uint32, reason uint32) {
+	session := c.GetSession(sessionId)
 	if session == nil {
 		logger.Error("session not exist, sessionId: %v", sessionId)
 		return
 	}
-	k.closeKcpConn(session, reason)
+	c.closeConn(session, reason)
 	logger.Info("conn has been close, sessionId: %v", sessionId)
 }
 
 // 关闭连接
-func (k *KcpConnManager) closeKcpConn(session *Session, enetType uint32) {
-	if session.connState == ConnClose {
+func (c *ConnManager) closeConn(session *Session, enetType uint32) {
+	ok := atomic.CompareAndSwapUint32(&(session.connState), atomic.LoadUint32(&(session.connState)), ConnClose)
+	if !ok {
 		return
 	}
-	logger.Info("[CLOSE] client disconnect, tcpMode: %v, sessionId: %v, conv: %v, addr: %v",
-		session.conn.IsTcpMode(), session.sessionId, session.conn.GetConv(), session.conn.RemoteAddr())
-	session.connState = ConnClose
+	logger.Info("[CLOSE] client disconnect, sessionId: %v, conv: %v, addr: %v",
+		session.sessionId, session.conn.GetConv(), session.conn.RemoteAddr())
 	// 清理数据
-	k.DeleteSession(session.sessionId, session.userId)
+	c.DeleteSession(session.sessionId, session.userId)
 	// 关闭连接
-	session.conn.Close(enetType)
+	_ = session.conn.Close(enetType)
 	// 连接关闭通知
-	k.kcpEventChan <- &KcpEvent{
+	c.connEventChan <- &ConnEvent{
 		SessionId:    session.sessionId,
-		EventId:      KcpConnCloseNotify,
+		EventId:      ConnEventClose,
 		EventMessage: session.conn.RemoteAddr(),
 	}
-	if !config.GetConfig().Hk4e.ForwardModeEnable {
-		// 通知GS玩家下线
-		connCtrlMsg := new(mq.ConnCtrlMsg)
-		connCtrlMsg.UserId = session.userId
-		k.messageQueue.SendToGs(session.gsServerAppId, &mq.NetMsg{
-			MsgType:     mq.MsgTypeConnCtrl,
-			EventId:     mq.UserOfflineNotify,
-			ConnCtrlMsg: connCtrlMsg,
-		})
-		logger.Info("send to gs user offline, sessionId: %v, uid: %v", session.sessionId, connCtrlMsg.UserId)
-		k.destroySessionChan <- session
-	} else {
-		k.messageQueue.SendToRobot(session.robotServerAppId, &mq.NetMsg{
-			MsgType: mq.MsgTypeServer,
-			EventId: mq.ServerForwardModeClientCloseNotify,
-		})
-	}
+	// 通知GS玩家下线
+	connCtrlMsg := new(mq.ConnCtrlMsg)
+	connCtrlMsg.UserId = session.userId
+	c.messageQueue.SendToGs(session.gsServerAppId, &mq.NetMsg{
+		MsgType:     mq.MsgTypeConnCtrl,
+		EventId:     mq.UserOfflineNotify,
+		ConnCtrlMsg: connCtrlMsg,
+	})
+	logger.Info("send to gs user offline, sessionId: %v, uid: %v", session.sessionId, connCtrlMsg.UserId)
+	c.destroySessionChan <- session
 	atomic.AddInt32(&CLIENT_CONN_NUM, -1)
 }
 
-func (k *KcpConnManager) AddSession(sessionId uint32) bool {
-	ok := false
-	k.sessionMapLock.Lock()
-	_, exist := k.sessionMap[sessionId]
-	if !exist {
-		k.sessionMap[sessionId] = nil
-		ok = true
-	}
-	k.sessionMapLock.Unlock()
-	return ok
-}
-
-func (k *KcpConnManager) GetSession(sessionId uint32) *Session {
-	k.sessionMapLock.RLock()
-	session, _ := k.sessionMap[sessionId]
-	k.sessionMapLock.RUnlock()
+func (c *ConnManager) GetSession(sessionId uint32) *Session {
+	c.sessionMapLock.RLock()
+	session, _ := c.sessionMap[sessionId]
+	c.sessionMapLock.RUnlock()
 	return session
 }
 
-func (k *KcpConnManager) GetSessionByUserId(userId uint32) *Session {
-	k.sessionMapLock.RLock()
-	session, _ := k.sessionUserIdMap[userId]
-	k.sessionMapLock.RUnlock()
+func (c *ConnManager) GetSessionByUserId(userId uint32) *Session {
+	c.sessionMapLock.RLock()
+	session, _ := c.sessionUserIdMap[userId]
+	c.sessionMapLock.RUnlock()
 	return session
 }
 
-func (k *KcpConnManager) SetSession(session *Session, sessionId uint32, userId uint32) {
-	k.sessionMapLock.Lock()
-	k.sessionMap[sessionId] = session
-	k.sessionUserIdMap[userId] = session
-	k.sessionMapLock.Unlock()
+func (c *ConnManager) SetSession(session *Session, sessionId uint32, userId uint32) {
+	c.sessionMapLock.Lock()
+	c.sessionMap[sessionId] = session
+	c.sessionUserIdMap[userId] = session
+	c.sessionMapLock.Unlock()
 }
 
-func (k *KcpConnManager) DeleteSession(sessionId uint32, userId uint32) {
-	k.sessionMapLock.Lock()
-	delete(k.sessionMap, sessionId)
-	delete(k.sessionUserIdMap, userId)
-	k.sessionMapLock.Unlock()
+func (c *ConnManager) DeleteSession(sessionId uint32, userId uint32) {
+	c.sessionMapLock.Lock()
+	delete(c.sessionMap, sessionId)
+	delete(c.sessionUserIdMap, userId)
+	c.sessionMapLock.Unlock()
 }
 
-func (k *KcpConnManager) autoSyncGlobalGsOnlineMap() {
+func (c *ConnManager) autoSyncGlobalGsOnlineMap() {
 	ticker := time.NewTicker(time.Second * 60)
 	for {
 		<-ticker.C
-		k.syncGlobalGsOnlineMap()
+		c.syncGlobalGsOnlineMap()
 	}
 }
 
-func (k *KcpConnManager) syncGlobalGsOnlineMap() {
-	rsp, err := k.discoveryClient.GetGlobalGsOnlineMap(context.TODO(), nil)
+func (c *ConnManager) syncGlobalGsOnlineMap() {
+	rsp, err := c.discoveryClient.GetGlobalGsOnlineMap(context.TODO(), nil)
 	if err != nil {
 		logger.Error("get global gs online map error: %v", err)
 		return
@@ -625,70 +560,144 @@ func (k *KcpConnManager) syncGlobalGsOnlineMap() {
 		copyMap[k] = v
 	}
 	copyMapLen := len(copyMap)
-	k.globalGsOnlineMapLock.Lock()
-	k.globalGsOnlineMap = copyMap
-	k.globalGsOnlineMapLock.Unlock()
+	c.globalGsOnlineMapLock.Lock()
+	c.globalGsOnlineMap = copyMap
+	c.globalGsOnlineMapLock.Unlock()
 	logger.Info("sync global gs online map finish, len: %v", copyMapLen)
 }
 
-func (k *KcpConnManager) autoSyncMinLoadServerAppid() {
+func (c *ConnManager) autoSyncMinLoadServerAppid() {
 	ticker := time.NewTicker(time.Second * 15)
 	for {
 		<-ticker.C
-		k.syncMinLoadServerAppid()
+		c.syncMinLoadServerAppid()
 	}
 }
 
-func (k *KcpConnManager) syncMinLoadServerAppid() {
-	gsServerAppId, err := k.discoveryClient.GetServerAppId(context.TODO(), &api.GetServerAppIdReq{
+func (c *ConnManager) syncMinLoadServerAppid() {
+	gsServerAppId, err := c.discoveryClient.GetServerAppId(context.TODO(), &api.GetServerAppIdReq{
 		ServerType: api.GS,
 	})
 	if err != nil {
 		logger.Error("get gs server appid error: %v", err)
 	} else {
-		k.minLoadGsServerAppId = gsServerAppId.AppId
+		c.minLoadGsServerAppId = gsServerAppId.AppId
 	}
 
-	multiServerAppId, err := k.discoveryClient.GetServerAppId(context.TODO(), &api.GetServerAppIdReq{
+	multiServerAppId, err := c.discoveryClient.GetServerAppId(context.TODO(), &api.GetServerAppIdReq{
 		ServerType: api.MULTI,
 	})
 	if err != nil {
-		k.minLoadMultiServerAppId = ""
+		c.minLoadMultiServerAppId = ""
 	} else {
-		k.minLoadMultiServerAppId = multiServerAppId.AppId
+		c.minLoadMultiServerAppId = multiServerAppId.AppId
 	}
 }
 
-func (k *KcpConnManager) autoSyncStopServerInfo() {
+func (c *ConnManager) autoSyncStopServerInfo() {
 	ticker := time.NewTicker(time.Minute * 1)
 	for {
 		<-ticker.C
-		k.syncStopServerInfo()
+		c.syncStopServerInfo()
 	}
 }
 
-func (k *KcpConnManager) syncStopServerInfo() {
-	stopServerInfo, err := k.discoveryClient.GetStopServerInfo(context.TODO(), &api.NullMsg{})
+func (c *ConnManager) syncStopServerInfo() {
+	stopServerInfo, err := c.discoveryClient.GetStopServerInfo(context.TODO(), &api.NullMsg{})
 	if err != nil {
 		logger.Error("get stop server info error: %v", err)
 		return
 	}
-	k.stopServerInfo = stopServerInfo
+	c.stopServerInfo = stopServerInfo
 }
 
-func (k *KcpConnManager) autoSyncWhiteList() {
+func (c *ConnManager) autoSyncWhiteList() {
 	ticker := time.NewTicker(time.Minute * 1)
 	for {
 		<-ticker.C
-		k.syncWhiteList()
+		c.syncWhiteList()
 	}
 }
 
-func (k *KcpConnManager) syncWhiteList() {
-	whiteList, err := k.discoveryClient.GetWhiteList(context.TODO(), &api.NullMsg{})
+func (c *ConnManager) syncWhiteList() {
+	whiteList, err := c.discoveryClient.GetWhiteList(context.TODO(), &api.NullMsg{})
 	if err != nil {
 		logger.Error("get white list error: %v", err)
 		return
 	}
-	k.whiteList = whiteList
+	c.whiteList = whiteList
+}
+
+// tcp模式连接对象兼容层
+
+type Conn interface {
+	GetSessionId() uint32
+	GetConv() uint32
+	Close(e uint32) error
+	RemoteAddr() net.Addr
+	SetReadDeadline(t time.Time) error
+	Read(b []byte) (int, error)
+	SetWriteDeadline(t time.Time) error
+	Write(b []byte) (int, error)
+	GetRTO() uint32
+	GetSRTT() int32
+	GetSRTTVar() int32
+}
+
+type TCPConn struct {
+	TCPConn            *net.TCPConn
+	TCPRtt             uint32
+	TCPRttLastSendTime int64
+}
+
+func NewTcpConn(tcpConn *net.TCPConn) Conn {
+	return &TCPConn{
+		TCPConn:            tcpConn,
+		TCPRtt:             0,
+		TCPRttLastSendTime: 0,
+	}
+}
+
+func (c *TCPConn) GetSessionId() uint32 {
+	return 0
+}
+
+func (c *TCPConn) GetConv() uint32 {
+	return 0
+}
+
+func (c *TCPConn) Close(e uint32) error {
+	return c.TCPConn.Close()
+}
+
+func (c *TCPConn) RemoteAddr() net.Addr {
+	return c.TCPConn.RemoteAddr()
+}
+
+func (c *TCPConn) SetReadDeadline(t time.Time) error {
+	return c.TCPConn.SetReadDeadline(t)
+}
+
+func (c *TCPConn) Read(b []byte) (int, error) {
+	return c.TCPConn.Read(b)
+}
+
+func (c *TCPConn) SetWriteDeadline(t time.Time) error {
+	return c.TCPConn.SetWriteDeadline(t)
+}
+
+func (c *TCPConn) Write(b []byte) (int, error) {
+	return c.TCPConn.Write(b)
+}
+
+func (c *TCPConn) GetRTO() uint32 {
+	return 0
+}
+
+func (c *TCPConn) GetSRTT() int32 {
+	return int32(c.TCPRtt)
+}
+
+func (c *TCPConn) GetSRTTVar() int32 {
+	return 0
 }

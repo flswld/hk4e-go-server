@@ -48,35 +48,30 @@ type ConnCtrlMsg struct {
 }
 
 const (
-	ServerAppidBindNotify              = iota // 玩家连接绑定的各个服务器appid通知
-	ServerUserOnlineStateChangeNotify         // 广播玩家上线和离线状态以及所在GS的appid
-	ServerUserGsChangeNotify                  // 跨服玩家迁移通知
-	ServerPlayerMpReq                         // 跨服多人世界相关请求
-	ServerPlayerMpRsp                         // 跨服多人世界相关响应
-	ServerChatMsgNotify                       // 跨服玩家聊天消息通知
-	ServerAddFriendNotify                     // 跨服添加好友通知
-	ServerForwardModeClientConnNotify         // 转发模式客户端连接通知
-	ServerForwardModeClientCloseNotify        // 转发模式客户端断开连接通知
-	ServerForwardModeServerCloseNotify        // 转发模式服务器断开连接通知
-	ServerForwardDispatchInfoNotify           // 转发模式区服信息通知
-	ServerStopNotify                          // 停服通知
-	ServerDispatchCancelNotify                // 服务器取消调度通知
-	ServerGmCmdNotify                         // 服务器GM指令执行通知
+	ServerAppidBindNotify             = iota // 玩家连接绑定的各个服务器appid通知
+	ServerUserOnlineStateChangeNotify        // 广播玩家上线和离线状态以及所在GS的appid
+	ServerUserGsChangeNotify                 // 跨服玩家迁移通知
+	ServerPlayerMpReq                        // 跨服多人世界相关请求
+	ServerPlayerMpRsp                        // 跨服多人世界相关响应
+	ServerChatMsgNotify                      // 跨服玩家聊天消息通知
+	ServerAddFriendNotify                    // 跨服添加好友通知
+	ServerStopNotify                         // 停服通知
+	ServerDispatchCancelNotify               // 服务器取消调度通知
+	ServerGmCmdNotify                        // 服务器GM指令执行通知
 )
 
 type ServerMsg struct {
-	MultiServerAppId    string
-	UserId              uint32
-	IsOnline            bool
-	GameServerAppId     string
-	JoinHostUserId      uint32
-	PlayerMpInfo        *PlayerMpInfo
-	ChatMsgInfo         *ChatMsgInfo
-	AddFriendInfo       *AddFriendInfo
-	ForwardDispatchInfo *ForwardDispatchInfo
-	AppVersion          string
-	GmCmdFuncName       string
-	GmCmdParamList      []string
+	MultiServerAppId string
+	UserId           uint32
+	IsOnline         bool
+	GameServerAppId  string
+	JoinHostUserId   uint32
+	PlayerMpInfo     *PlayerMpInfo
+	ChatMsgInfo      *ChatMsgInfo
+	AddFriendInfo    *AddFriendInfo
+	AppVersion       string
+	GmCmdFuncName    string
+	GmCmdParamList   []string
 }
 
 type OriginInfo struct {
@@ -122,10 +117,4 @@ type AddFriendInfo struct {
 	OriginInfo            *OriginInfo
 	TargetUserId          uint32
 	ApplyPlayerOnlineInfo *PlayerBaseInfo
-}
-
-type ForwardDispatchInfo struct {
-	GateIp      string
-	GatePort    uint32
-	DispatchKey []byte
 }

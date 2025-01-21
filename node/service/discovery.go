@@ -3,12 +3,13 @@ package service
 import (
 	"context"
 	"errors"
-	"hk4e/common/config"
 	"math"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"hk4e/common/config"
 
 	"hk4e/common/mq"
 	"hk4e/node/api"

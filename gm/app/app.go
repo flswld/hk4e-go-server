@@ -22,7 +22,6 @@ func Run(ctx context.Context) error {
 			TrackLine:    config.GetConfig().Logger.TrackLine,
 			TrackThread:  config.GetConfig().Logger.TrackThread,
 			EnableFile:   config.GetConfig().Logger.EnableFile,
-			FileMaxSize:  config.GetConfig().Logger.FileMaxSize,
 			DisableColor: config.GetConfig().Logger.DisableColor,
 			EnableJson:   config.GetConfig().Logger.EnableJson,
 		})

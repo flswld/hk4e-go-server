@@ -4,9 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
-	"io"
-	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
@@ -16,94 +13,35 @@ import (
 	"time"
 
 	"hk4e/common/config"
-	"hk4e/common/mq"
-	"hk4e/common/rpc"
-	"hk4e/node/api"
 	"hk4e/pkg/endec"
 	"hk4e/pkg/logger"
 	"hk4e/protocol/cmd"
 	"hk4e/protocol/proto"
 	"hk4e/robot/client"
 	"hk4e/robot/login"
-	"hk4e/robot/net"
-
-	"github.com/gin-contrib/static"
-	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
-	pb "google.golang.org/protobuf/proto"
 )
 
-var APPID string
 var APPVERSION string
 
 func Run(ctx context.Context) error {
-	if !config.GetConfig().Hk4e.StandaloneModeEnable {
-		logger.InitLogger(&logger.Config{
-			AppName:      "robot",
-			Level:        logger.ParseLevel(config.GetConfig().Logger.Level),
-			TrackLine:    config.GetConfig().Logger.TrackLine,
-			TrackThread:  config.GetConfig().Logger.TrackThread,
-			EnableFile:   config.GetConfig().Logger.EnableFile,
-			FileMaxSize:  config.GetConfig().Logger.FileMaxSize,
-			DisableColor: config.GetConfig().Logger.DisableColor,
-			EnableJson:   config.GetConfig().Logger.EnableJson,
-		})
-		defer func() {
-			logger.CloseLogger()
-		}()
-	}
+	logger.InitLogger(&logger.Config{
+		AppName:      "robot",
+		Level:        logger.ParseLevel(config.GetConfig().Logger.Level),
+		TrackLine:    config.GetConfig().Logger.TrackLine,
+		TrackThread:  config.GetConfig().Logger.TrackThread,
+		EnableFile:   config.GetConfig().Logger.EnableFile,
+		DisableColor: config.GetConfig().Logger.DisableColor,
+		EnableJson:   config.GetConfig().Logger.EnableJson,
+	})
+	defer func() {
+		logger.CloseLogger()
+	}()
 	logger.Warn("robot start")
 	defer func() {
 		logger.Warn("robot exit")
 	}()
 
-	if config.GetConfig().Hk4e.ForwardModeEnable {
-		// natsrpc client
-		discoveryClient, err := rpc.NewDiscoveryClient()
-		if err != nil {
-			logger.Error("find discovery service error: %v", err)
-			return err
-		}
-
-		// 注册到节点服务器
-		rsp, err := discoveryClient.RegisterServer(context.TODO(), &api.RegisterServerReq{
-			ServerType: api.ROBOT,
-			AppVersion: APPVERSION,
-		})
-		if err != nil {
-			logger.Error("register to node server error: %v", err)
-			return err
-		}
-		APPID = rsp.GetAppId()
-		go func() {
-			ticker := time.NewTicker(time.Second * 15)
-			for {
-				<-ticker.C
-				_, err := discoveryClient.KeepaliveServer(context.TODO(), &api.KeepaliveServerReq{
-					ServerType: api.ROBOT,
-					AppId:      APPID,
-				})
-				if err != nil {
-					logger.Error("keepalive error: %v", err)
-				}
-			}
-		}()
-		defer func() {
-			_, _ = discoveryClient.CancelServer(context.TODO(), &api.CancelServerReq{
-				ServerType: api.ROBOT,
-				AppId:      APPID,
-			})
-		}()
-
-		messageQueue := mq.NewMessageQueue(api.ROBOT, APPID, discoveryClient)
-		defer messageQueue.Close()
-
-		go runForward(messageQueue)
-	} else {
-		go runRobot()
-	}
-
-	go runPacketCaptureApi()
+	go runRobot()
 
 	c := make(chan os.Signal, 1)
 	if !config.GetConfig().Hk4e.StandaloneModeEnable {
@@ -122,255 +60,6 @@ func Run(ctx context.Context) error {
 			default:
 				return nil
 			}
-		}
-	}
-}
-
-type IridiumPacket struct {
-	Time       int64  `json:"time"`
-	FromServer bool   `json:"fromServer"`
-	PacketId   uint16 `json:"packetId"`
-	PacketName string `json:"packetName"`
-	Object     any    `json:"object"`
-	Raw        []byte `json:"raw"`
-}
-
-var (
-	IridiumStart = false
-)
-
-func runPacketCaptureApi() {
-	if config.GetConfig().Logger.Level == "DEBUG" {
-		gin.SetMode(gin.DebugMode)
-	} else {
-		gin.SetMode(gin.ReleaseMode)
-	}
-	e := gin.Default()
-	e.Use(static.Serve("/", static.LocalFile("./iridium/public", false)))
-	e.GET("/packet/capture/ws", packetCaptureWs)
-	e.GET("/packet/capture/list", packetCaptureList)
-	e.GET("/packet/capture/clear", packetCaptureClear)
-	e.GET("/api/start", iridiumApiStart)
-	e.GET("/api/stop", iridiumApiStop)
-	e.GET("/api/stream", iridiumApiStream)
-	port := config.GetConfig().Hk4eRobot.RobotHttpPort
-	addr := ":" + strconv.Itoa(int(port))
-	err := e.Run(addr)
-	if err != nil {
-		logger.Error("gin run error: %v", err)
-		return
-	}
-}
-
-func packetCaptureWs(ctx *gin.Context) {
-	upgrader := websocket.Upgrader{
-		HandshakeTimeout: 10 * time.Second,
-		ReadBufferSize:   1024,
-		WriteBufferSize:  1024,
-		CheckOrigin: func(r *http.Request) bool {
-			return true
-		},
-	}
-	wsConn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
-	if err != nil {
-		logger.Error("websocket upgrade error: %v", err)
-		_, _ = ctx.Writer.WriteString("500")
-		return
-	}
-	go func() {
-		for {
-			pkt := <-net.PktChan
-			msg, _ := json.Marshal(pkt)
-			err := wsConn.WriteMessage(websocket.TextMessage, msg)
-			if err != nil {
-				return
-			}
-		}
-	}()
-}
-
-func packetCaptureList(ctx *gin.Context) {
-	net.PktLock.Lock()
-	data, _ := json.Marshal(net.PktList)
-	net.PktLock.Unlock()
-	_, _ = ctx.Writer.WriteString(string(data))
-}
-
-func packetCaptureClear(ctx *gin.Context) {
-	net.PktLock.Lock()
-	net.PktList = make([]*net.Packet, 0)
-	net.PktLock.Unlock()
-	_, _ = ctx.Writer.WriteString("ok")
-}
-
-func iridiumApiStart(ctx *gin.Context) {
-	IridiumStart = true
-}
-
-func iridiumApiStop(ctx *gin.Context) {
-	IridiumStart = false
-}
-
-func iridiumApiStream(ctx *gin.Context) {
-	ctx.Stream(func(w io.Writer) bool {
-		pkt := <-net.PktChan
-		if !IridiumStart {
-			return true
-		}
-		var object any = nil
-		_ = json.Unmarshal([]byte(pkt.PayloadMsg), &object)
-		iridiumPacket := &IridiumPacket{
-			Time:       int64(pkt.Time),
-			FromServer: pkt.Dir == "RECV",
-			PacketId:   uint16(pkt.CmdId),
-			PacketName: pkt.CmdName,
-			Object:     object,
-			Raw:        make([]byte, 0),
-		}
-		msg, _ := json.Marshal(iridiumPacket)
-		ctx.SSEvent("packetNotify", string(msg))
-		return true
-	})
-}
-
-func runForward(messageQueue *mq.MessageQueue) {
-	for {
-		netMsg := <-messageQueue.GetNetMsg()
-		if netMsg.OriginServerType != api.DISPATCH {
-			continue
-		}
-		if netMsg.MsgType != mq.MsgTypeServer || netMsg.EventId != mq.ServerForwardDispatchInfoNotify {
-			continue
-		}
-		serverMsg := netMsg.ServerMsg
-		dispatchInfo := &login.DispatchInfo{
-			GateIp:      serverMsg.ForwardDispatchInfo.GateIp,
-			GatePort:    serverMsg.ForwardDispatchInfo.GatePort,
-			DispatchKey: serverMsg.ForwardDispatchInfo.DispatchKey,
-		}
-		logger.Info("get forward dispatch info ok, gate addr: %v:%v", dispatchInfo.GateIp, dispatchInfo.GatePort)
-		waitClientConn(messageQueue, dispatchInfo)
-	}
-}
-
-func waitClientConn(messageQueue *mq.MessageQueue, dispatchInfo *login.DispatchInfo) {
-	for {
-		netMsg := <-messageQueue.GetNetMsg()
-		if netMsg.OriginServerType != api.GATE {
-			continue
-		}
-		if netMsg.MsgType != mq.MsgTypeServer || netMsg.EventId != mq.ServerForwardModeClientConnNotify {
-			continue
-		}
-		gateAppId := netMsg.OriginServerAppId
-		logger.Info("client connect, gateAppId: %v", gateAppId)
-		for {
-			netMsg = <-messageQueue.GetNetMsg()
-			if netMsg.OriginServerType != api.GATE || netMsg.OriginServerAppId != gateAppId {
-				continue
-			}
-			if netMsg.MsgType != mq.MsgTypeGame || netMsg.EventId != mq.NormalMsg {
-				continue
-			}
-			gameMsg := netMsg.GameMsg
-			if gameMsg.CmdId != cmd.GetPlayerTokenReq {
-				continue
-			}
-			req := gameMsg.PayloadMessage.(*proto.GetPlayerTokenReq)
-			session, err, rsp := login.GateLogin(dispatchInfo, nil, config.GetConfig().Hk4eRobot.KeyId, req, gameMsg.ClientSeq)
-			if err != nil {
-				logger.Error("remote gate login error: %v", err)
-				continue
-			}
-			logger.Info("remote gate login ok, uid: %v", session.Uid)
-			messageQueue.SendToGate(gateAppId, &mq.NetMsg{
-				MsgType: mq.MsgTypeGame,
-				EventId: mq.NormalMsg,
-				GameMsg: &mq.GameMsg{
-					UserId:         rsp.Uid,
-					CmdId:          cmd.GetPlayerTokenRsp,
-					ClientSeq:      gameMsg.ClientSeq,
-					PayloadMessage: rsp,
-				},
-			})
-			forwardLoop(session, messageQueue, gateAppId)
-			return
-		}
-	}
-}
-
-func forwardLoop(session *net.Session, messageQueue *mq.MessageQueue, gateAppId string) {
-	for {
-		select {
-		case netMsg := <-messageQueue.GetNetMsg():
-			if netMsg.OriginServerType != api.GATE || netMsg.OriginServerAppId != gateAppId {
-				continue
-			}
-			switch netMsg.MsgType {
-			case mq.MsgTypeGame:
-				if netMsg.EventId != mq.NormalMsg {
-					continue
-				}
-				gameMsg := netMsg.GameMsg
-				if gameMsg.CmdId == cmd.PlayerLoginReq {
-					req := gameMsg.PayloadMessage.(*proto.PlayerLoginReq)
-					data, _ := json.Marshal(req)
-					logger.Debug("PlayerLoginReq: %v", string(data))
-					if config.GetConfig().Hk4eRobot.ForwardChecksum != "" {
-						req.Checksum = config.GetConfig().Hk4eRobot.ForwardChecksum
-					}
-					if config.GetConfig().Hk4eRobot.ForwardChecksumClientVersion != "" {
-						req.ChecksumClientVersion = config.GetConfig().Hk4eRobot.ForwardChecksumClientVersion
-					}
-				}
-				if !gameMsg.NotParse {
-					session.SendMsgFwd(gameMsg.CmdId, gameMsg.ClientSeq, gameMsg.PayloadMessage)
-				} else {
-					session.SendMsgRaw(gameMsg.CmdId, gameMsg.ClientSeq, gameMsg.PayloadMessageData)
-				}
-			case mq.MsgTypeServer:
-				switch netMsg.EventId {
-				case mq.ServerForwardModeClientCloseNotify:
-					logger.Info("client conn close, uid: %v", session.Uid)
-					session.Close()
-				}
-			}
-		case protoMsg := <-session.RecvChan:
-			gameMsg := new(mq.GameMsg)
-			gameMsg.UserId = session.Uid
-			gameMsg.CmdId = protoMsg.CmdId
-			if protoMsg.HeadMessage != nil {
-				gameMsg.ClientSeq = protoMsg.HeadMessage.ClientSequenceId
-			}
-			if !protoMsg.NotParse {
-				// 在这里直接序列化成二进制数据 防止发送的消息内包含各种游戏数据指针 而造成并发读写的问题
-				payloadMessageData, err := pb.Marshal(protoMsg.PayloadMessage)
-				if err != nil {
-					logger.Error("parse payload msg to bin error: %v", err)
-					continue
-				}
-				gameMsg.PayloadMessageData = payloadMessageData
-			} else {
-				gameMsg.PayloadMessageData = protoMsg.PayloadRaw
-				gameMsg.NotParse = true
-			}
-			messageQueue.SendToGate(gateAppId, &mq.NetMsg{
-				MsgType: mq.MsgTypeGame,
-				EventId: mq.NormalMsg,
-				GameMsg: gameMsg,
-			})
-			if gameMsg.CmdId == cmd.PlayerLoginRsp {
-				data, _ := json.Marshal(protoMsg.PayloadMessage)
-				logger.Debug("PlayerLoginRsp: %v", string(data))
-			}
-		case <-session.DeadEvent:
-			logger.Info("remote gate conn close, uid: %v", session.Uid)
-			close(session.SendChan)
-			messageQueue.SendToGate(gateAppId, &mq.NetMsg{
-				MsgType: mq.MsgTypeServer,
-				EventId: mq.ServerForwardModeServerCloseNotify,
-			})
-			return
 		}
 	}
 }
@@ -426,7 +115,7 @@ func httpLogin(account string, wg *sync.WaitGroup) {
 }
 
 func gateLogin(account string, dispatchInfo *login.DispatchInfo, accountInfo *login.AccountInfo) {
-	session, err, _ := login.GateLogin(dispatchInfo, accountInfo, config.GetConfig().Hk4eRobot.KeyId, nil, 1)
+	session, err := login.GateLogin(dispatchInfo, accountInfo, config.GetConfig().Hk4eRobot.KeyId)
 	if err != nil {
 		logger.Error("gate login error: %v", err)
 		return

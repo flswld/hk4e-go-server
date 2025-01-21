@@ -3,12 +3,13 @@ package controller
 import (
 	"encoding/base64"
 	"encoding/json"
-	"hk4e/common/config"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"hk4e/common/config"
 
 	"hk4e/dispatch/api"
 	"hk4e/dispatch/model"

@@ -326,7 +326,7 @@ func (s *UDPSession) uncork() {
 }
 
 // Close closes the connection.
-func (s *UDPSession) Close() error {
+func (s *UDPSession) Close(e uint32) error {
 	var once bool
 	s.dieOnce.Do(func() {
 		close(s.die)
@@ -334,6 +334,13 @@ func (s *UDPSession) Close() error {
 	})
 
 	if once {
+		s.SendEnetNotifyToPeer(&Enet{
+			Addr:      s.RemoteAddr().String(),
+			SessionId: s.GetSessionId(),
+			Conv:      s.GetConv(),
+			ConnType:  ConnEnetFin,
+			EnetType:  e,
+		})
 		// try best to send all queued messages
 		s.mu.Lock()
 		s.kcp.flush(false)
@@ -353,17 +360,6 @@ func (s *UDPSession) Close() error {
 	} else {
 		return io.ErrClosedPipe
 	}
-}
-
-func (s *UDPSession) CloseConn(enetType uint32) error {
-	s.SendEnetNotifyToPeer(&Enet{
-		Addr:      s.RemoteAddr().String(),
-		SessionId: s.GetSessionId(),
-		Conv:      s.GetConv(),
-		ConnType:  ConnEnetFin,
-		EnetType:  enetType,
-	})
-	return s.Close()
 }
 
 // LocalAddr returns the local network address. The Addr returned is shared by all invocations of LocalAddr, so do not modify it.
@@ -765,7 +761,7 @@ func (l *Listener) enetHandle() {
 				if !exist {
 					continue
 				}
-				_ = conn.CloseConn(enetNotify.EnetType)
+				_ = conn.Close(enetNotify.EnetType)
 			case ConnEnetPing:
 				l.SendEnetNotifyToPeer(&Enet{
 					Addr:      enetNotify.Addr,
@@ -891,11 +887,6 @@ func (l *Listener) SetDSCP(dscp int) error {
 	return errInvalidOperation
 }
 
-// Accept implements the Accept method in the Listener interface; it waits for the next call and returns a generic Conn.
-func (l *Listener) Accept() (net.Conn, error) {
-	return l.AcceptKCP()
-}
-
 // AcceptKCP accepts a KCP connection
 func (l *Listener) AcceptKCP() (*UDPSession, error) {
 	var timeout <-chan time.Time
@@ -964,17 +955,8 @@ func (l *Listener) closeSession(conv uint64) (ret bool) {
 // Addr returns the listener's network address, The Addr returned is shared by all invocations of Addr, so do not modify it.
 func (l *Listener) Addr() net.Addr { return l.conn.LocalAddr() }
 
-// Listen listens for incoming KCP packets addressed to the local address laddr on the network "udp",
-func Listen(laddr string) (net.Listener, error) { return ListenWithOptions(laddr) }
-
-// ListenWithOptions listens for incoming KCP packets addressed to the local address laddr on the network "udp" with packet encryption.
-//
-// 'block' is the block encryption algorithm to encrypt packets.
-//
-// 'dataShards', 'parityShards' specify how many parity packets will be generated following the data packets.
-//
-// Check https://github.com/klauspost/reedsolomon for details
-func ListenWithOptions(laddr string) (*Listener, error) {
+// ListenKCP listens for incoming KCP packets addressed to the local address laddr on the network "udp",
+func ListenKCP(laddr string) (*Listener, error) {
 	udpaddr, err := net.ResolveUDPAddr("udp", laddr)
 	if err != nil {
 		return nil, err
@@ -1020,17 +1002,8 @@ func serveConn(conn net.PacketConn, ownConn bool) (*Listener, error) {
 	return l, nil
 }
 
-// Dial connects to the remote address "raddr" on the network "udp" without encryption and FEC
-func Dial(raddr string) (net.Conn, error) { return DialWithOptions(raddr) }
-
-// DialWithOptions connects to the remote address "raddr" on the network "udp" with packet encryption
-//
-// 'block' is the block encryption algorithm to encrypt packets.
-//
-// 'dataShards', 'parityShards' specify how many parity packets will be generated following the data packets.
-//
-// Check https://github.com/klauspost/reedsolomon for details
-func DialWithOptions(raddr string) (*UDPSession, error) {
+// DialKCP connects to the remote address "raddr" on the network "udp" without encryption and FEC
+func DialKCP(raddr string) (*UDPSession, error) {
 	// network type detection
 	udpaddr, err := net.ResolveUDPAddr("udp", raddr)
 	if err != nil {

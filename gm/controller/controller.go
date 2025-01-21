@@ -95,7 +95,7 @@ type CommonRsp struct {
 }
 
 func (c *Controller) registerRouter() {
-	if config.GetConfig().Logger.Level == "DEBUG" {
+	if logger.GetConfig().Level == logger.DEBUG {
 		gin.SetMode(gin.DebugMode)
 	} else {
 		gin.SetMode(gin.ReleaseMode)

@@ -59,7 +59,9 @@ func (h *Handle) run() {
 				} else {
 					h.DelPlayerAcCtx(serverMsg.UserId)
 				}
+			default:
 			}
+		default:
 		}
 	}
 }

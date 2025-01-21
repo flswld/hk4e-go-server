@@ -1,8 +1,6 @@
 package net
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -19,17 +17,6 @@ import (
 	pb "google.golang.org/protobuf/proto"
 )
 
-type Packet struct {
-	Time       uint64 `json:"time"`
-	Dir        string `json:"dir"`
-	CmdId      uint32 `json:"cmd_id"`
-	CmdName    string `json:"cmd_name"`
-	HeadMsg    string `json:"head_msg"`
-	PayloadMsg string `json:"payload_msg"`
-	NotParse   bool   `json:"not_parse"`
-	PayloadRaw string `json:"payload_raw"`
-}
-
 type Session struct {
 	Conn                   *kcp.UDPSession
 	XorKey                 []byte
@@ -38,21 +25,15 @@ type Session struct {
 	ServerCmdProtoMap      *cmd.CmdProtoMap
 	ClientCmdProtoMap      *client_proto.ClientCmdProtoMap
 	ClientSeq              uint32
-	DeadEvent              chan bool
+	DeadEvent              chan struct{}
 	ClientVersionRandomKey string
 	SecurityCmdBuffer      []byte
 	Uid                    uint32
-	IsClose                bool
+	CloseOnce              sync.Once
 }
 
-var (
-	PktList = make([]*Packet, 0)
-	PktLock sync.Mutex
-	PktChan = make(chan *Packet, 1000)
-)
-
 func NewSession(gateAddr string, dispatchKey []byte) (*Session, error) {
-	conn, err := kcp.DialWithOptions(gateAddr)
+	conn, err := kcp.DialKCP(gateAddr)
 	if err != nil {
 		logger.Error("kcp client conn to server error: %v", err)
 		return nil, err
@@ -70,11 +51,10 @@ func NewSession(gateAddr string, dispatchKey []byte) (*Session, error) {
 		ServerCmdProtoMap:      cmd.NewCmdProtoMap(),
 		ClientCmdProtoMap:      nil,
 		ClientSeq:              0,
-		DeadEvent:              make(chan bool, 1),
+		DeadEvent:              make(chan struct{}),
 		ClientVersionRandomKey: "",
 		SecurityCmdBuffer:      nil,
 		Uid:                    0,
-		IsClose:                false,
 	}
 	if config.GetConfig().Hk4e.ClientProtoProxyEnable {
 		r.ClientCmdProtoMap = client_proto.NewClientCmdProtoMap()
@@ -97,41 +77,11 @@ func (s *Session) SendMsg(cmdId uint16, msg pb.Message) {
 	}
 }
 
-func (s *Session) SendMsgFwd(cmdId uint16, clientSeq uint32, msg pb.Message) {
-	s.SendChan <- &hk4egatenet.ProtoMsg{
-		SessionId: 0,
-		CmdId:     cmdId,
-		HeadMessage: &proto.PacketHead{
-			ClientSequenceId: clientSeq,
-			SentMs:           uint64(time.Now().UnixMilli()),
-			EnetIsReliable:   1,
-		},
-		PayloadMessage: msg,
-	}
-}
-
-func (s *Session) SendMsgRaw(cmdId uint16, clientSeq uint32, raw []byte) {
-	s.SendChan <- &hk4egatenet.ProtoMsg{
-		SessionId: 0,
-		CmdId:     cmdId,
-		HeadMessage: &proto.PacketHead{
-			ClientSequenceId: clientSeq,
-			SentMs:           uint64(time.Now().UnixMilli()),
-			EnetIsReliable:   1,
-		},
-		PayloadMessage: nil,
-		NotParse:       true,
-		PayloadRaw:     raw,
-	}
-}
-
 func (s *Session) Close() {
-	if s.IsClose {
-		return
-	}
-	s.IsClose = true
-	_ = s.Conn.CloseConn(kcp.EnetClientClose)
-	s.DeadEvent <- true
+	s.CloseOnce.Do(func() {
+		_ = s.Conn.Close(kcp.EnetClientClose)
+		close(s.DeadEvent)
+	})
 }
 
 func (s *Session) recvHandle() {
@@ -154,28 +104,6 @@ func (s *Session) recvHandle() {
 			protoMsgList := hk4egatenet.ProtoDecode(v, s.ServerCmdProtoMap, s.ClientCmdProtoMap)
 			for _, vv := range protoMsgList {
 				s.RecvChan <- vv
-				packet := &Packet{
-					Time:       uint64(time.Now().UnixMilli()),
-					Dir:        "RECV",
-					CmdId:      uint32(v.CmdId),
-					CmdName:    "",
-					HeadMsg:    "",
-					PayloadMsg: "",
-					NotParse:   vv.NotParse,
-					PayloadRaw: base64.StdEncoding.EncodeToString(v.ProtoData),
-				}
-				headMsg, _ := json.Marshal(vv.HeadMessage)
-				packet.HeadMsg = string(headMsg)
-				if !vv.NotParse {
-					cmdName := string(vv.PayloadMessage.ProtoReflect().Descriptor().FullName())
-					payloadMsg, _ := json.Marshal(vv.PayloadMessage)
-					packet.CmdName = cmdName
-					packet.PayloadMsg = string(payloadMsg)
-				}
-				PktLock.Lock()
-				PktList = append(PktList, packet)
-				PktChan <- packet
-				PktLock.Unlock()
 			}
 		}
 	}
@@ -205,27 +133,5 @@ func (s *Session) sendHandle() {
 			s.Close()
 			break
 		}
-		packet := &Packet{
-			Time:       uint64(time.Now().UnixMilli()),
-			Dir:        "SEND",
-			CmdId:      uint32(kcpMsg.CmdId),
-			CmdName:    "",
-			HeadMsg:    "",
-			PayloadMsg: "",
-			NotParse:   protoMsg.NotParse,
-			PayloadRaw: base64.StdEncoding.EncodeToString(kcpMsg.ProtoData),
-		}
-		headMsg, _ := json.Marshal(protoMsg.HeadMessage)
-		packet.HeadMsg = string(headMsg)
-		if !protoMsg.NotParse {
-			cmdName := string(protoMsg.PayloadMessage.ProtoReflect().Descriptor().FullName())
-			payloadMsg, _ := json.Marshal(protoMsg.PayloadMessage)
-			packet.CmdName = cmdName
-			packet.PayloadMsg = string(payloadMsg)
-		}
-		PktLock.Lock()
-		PktList = append(PktList, packet)
-		PktChan <- packet
-		PktLock.Unlock()
 	}
 }

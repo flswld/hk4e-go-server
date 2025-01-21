@@ -1,6 +1,9 @@
 package game
 
 import (
+	"math"
+	"strings"
+
 	"hk4e/common/constant"
 	"hk4e/gdconf"
 	"hk4e/gs/model"
@@ -9,8 +12,6 @@ import (
 	"hk4e/pkg/reflection"
 	"hk4e/protocol/cmd"
 	"hk4e/protocol/proto"
-	"math"
-	"strings"
 
 	pb "google.golang.org/protobuf/proto"
 )

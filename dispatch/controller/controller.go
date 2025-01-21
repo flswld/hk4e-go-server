@@ -2,11 +2,12 @@ package controller
 
 import (
 	"context"
-	"hk4e/dispatch/model"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
+
+	"hk4e/dispatch/model"
 
 	"hk4e/common/config"
 	"hk4e/common/mq"
@@ -101,7 +102,7 @@ func (c *Controller) Close() {
 }
 
 func (c *Controller) registerRouter() {
-	if config.GetConfig().Logger.Level == "DEBUG" {
+	if logger.GetConfig().Level == logger.DEBUG {
 		gin.SetMode(gin.DebugMode)
 	} else {
 		gin.SetMode(gin.ReleaseMode)

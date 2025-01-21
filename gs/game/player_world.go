@@ -87,7 +87,7 @@ func (g *Game) GetScenePointReq(player *model.Player, payloadMsg pb.Message) {
 
 	world := WORLD_MANAGER.GetWorldById(player.WorldId)
 	if world == nil {
-		logger.Error("get world is nil, worldId: %v, uid: %v", world.GetId(), player.PlayerId)
+		logger.Error("get world is nil, worldId: %v, uid: %v", player.WorldId, player.PlayerId)
 		g.SendError(cmd.GetScenePointRsp, player, &proto.GetScenePointRsp{})
 		return
 	}
@@ -215,7 +215,7 @@ func (g *Game) GetSceneAreaReq(player *model.Player, payloadMsg pb.Message) {
 
 	world := WORLD_MANAGER.GetWorldById(player.WorldId)
 	if world == nil {
-		logger.Error("get world is nil, worldId: %v, uid: %v", world.GetId(), player.PlayerId)
+		logger.Error("get world is nil, worldId: %v, uid: %v", player.WorldId, player.PlayerId)
 		g.SendError(cmd.GetSceneAreaRsp, player, &proto.GetSceneAreaRsp{})
 		return
 	}

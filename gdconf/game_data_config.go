@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"hk4e/common/config"
@@ -22,8 +23,11 @@ import (
 
 // 游戏数据配置表
 
-var CONF *GameDataConfig = nil
-var CONF_RELOAD *GameDataConfig = nil
+var (
+	CONF        *GameDataConfig = nil
+	CONF_RELOAD *GameDataConfig = nil
+	ONCE        sync.Once
+)
 
 type GameDataConfig struct {
 	// 配置表路径前缀
@@ -94,12 +98,14 @@ type GameDataConfig struct {
 }
 
 func InitGameDataConfig() {
-	CONF = new(GameDataConfig)
-	startTime := time.Now().Unix()
-	CONF.loadAll(config.GetConfig().Hk4e.LoadSceneLuaConfig)
-	endTime := time.Now().Unix()
-	runtime.GC()
-	logger.Info("load all game data config finish, cost: %v(s)", endTime-startTime)
+	ONCE.Do(func() {
+		CONF = new(GameDataConfig)
+		startTime := time.Now().Unix()
+		CONF.loadAll(config.GetConfig().Hk4e.LoadSceneLuaConfig)
+		endTime := time.Now().Unix()
+		runtime.GC()
+		logger.Info("load all game data config finish, cost: %v(s)", endTime-startTime)
+	})
 }
 
 func ReloadGameDataConfig(reloadSceneLua bool) {

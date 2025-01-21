@@ -45,7 +45,7 @@ func (s *UDPSession) rx() {
 						continue
 					}
 					if connType == ConnEnetFin {
-						_ = s.CloseConn(enetType)
+						_ = s.Close(enetType)
 						continue
 					}
 				}

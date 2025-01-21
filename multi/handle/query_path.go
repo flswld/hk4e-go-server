@@ -41,6 +41,7 @@ func (h *Handle) QueryPath(userId uint32, gateAppId string, payloadMsg pb.Messag
 func (h *Handle) ObstacleModifyNotify(userId uint32, gateAppId string, payloadMsg pb.Message) {
 	ntf := payloadMsg.(*proto.ObstacleModifyNotify)
 	logger.Debug("obstacle modify ntf: %v, uid: %v, gateAppId: %v", ntf, userId, gateAppId)
+	return
 	navMeshManager, exist := h.worldStatic.navMeshManagerMap[ntf.SceneId]
 	if !exist {
 		return

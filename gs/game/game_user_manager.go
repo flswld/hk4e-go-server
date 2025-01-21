@@ -2,11 +2,12 @@ package game
 
 import (
 	"context"
-	"hk4e/common/config"
 	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"hk4e/common/config"
 
 	"hk4e/common/mq"
 	"hk4e/gs/dao"
