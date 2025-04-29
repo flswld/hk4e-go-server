@@ -15,10 +15,10 @@ import (
 	httpapi "hk4e/dispatch/api"
 	"hk4e/node/api"
 	"hk4e/pkg/endec"
-	"hk4e/pkg/logger"
 	"hk4e/pkg/random"
 	"hk4e/protocol/proto"
 
+	"github.com/flswld/halo/logger"
 	"github.com/gin-gonic/gin"
 	pb "google.golang.org/protobuf/proto"
 )

@@ -8,11 +8,11 @@ import (
 
 	"hk4e/common/config"
 	"hk4e/gate/client_proto"
-	"hk4e/pkg/logger"
 	"hk4e/pkg/object"
 	"hk4e/protocol/cmd"
 	"hk4e/protocol/proto"
 
+	"github.com/flswld/halo/logger"
 	"google.golang.org/protobuf/encoding/protojson"
 	pb "google.golang.org/protobuf/proto"
 )

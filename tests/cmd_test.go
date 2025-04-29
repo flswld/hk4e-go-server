@@ -1,11 +1,11 @@
 package tests
 
 import (
-	"hk4e/protocol/cmd"
-	"hk4e/protocol/proto"
-
 	"reflect"
 	"testing"
+
+	"hk4e/protocol/cmd"
+	"hk4e/protocol/proto"
 
 	"github.com/stretchr/testify/assert"
 )

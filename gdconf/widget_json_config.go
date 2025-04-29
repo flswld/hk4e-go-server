@@ -5,8 +5,7 @@ import (
 	"os"
 	"strconv"
 
-	"hk4e/pkg/logger"
-
+	"github.com/flswld/halo/logger"
 	"github.com/hjson/hjson-go/v4"
 )
 

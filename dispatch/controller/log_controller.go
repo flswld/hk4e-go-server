@@ -2,8 +2,8 @@ package controller
 
 import (
 	"hk4e/dispatch/model"
-	"hk4e/pkg/logger"
 
+	"github.com/flswld/halo/logger"
 	"github.com/gin-gonic/gin"
 )
 

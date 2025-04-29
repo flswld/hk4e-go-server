@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"hk4e/gs/model"
-	"hk4e/pkg/logger"
 
+	"github.com/flswld/halo/logger"
 	"github.com/pierrec/lz4/v4"
 	"github.com/vmihailenco/msgpack/v5"
 )

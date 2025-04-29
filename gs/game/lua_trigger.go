@@ -5,7 +5,8 @@ import (
 	"hk4e/gdconf"
 	"hk4e/gs/model"
 	"hk4e/pkg/alg"
-	"hk4e/pkg/logger"
+
+	"github.com/flswld/halo/logger"
 )
 
 func forEachPlayerSceneGroup(player *model.Player, handleFunc func(suiteConfig *gdconf.Suite, groupConfig *gdconf.Group)) {

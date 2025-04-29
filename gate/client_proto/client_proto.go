@@ -3,7 +3,7 @@ package client_proto
 import (
 	"reflect"
 
-	"hk4e/pkg/logger"
+	"github.com/flswld/halo/logger"
 )
 
 type ClientCmdProtoMap struct {

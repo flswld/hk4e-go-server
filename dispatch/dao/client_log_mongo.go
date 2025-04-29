@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"hk4e/dispatch/model"
-	"hk4e/pkg/logger"
 
+	"github.com/flswld/halo/logger"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

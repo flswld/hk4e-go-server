@@ -5,7 +5,7 @@ import (
 	"os"
 	"strconv"
 
-	"hk4e/pkg/logger"
+	"github.com/flswld/halo/logger"
 )
 
 // 场景传送点配置数据

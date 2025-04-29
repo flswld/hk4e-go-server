@@ -7,8 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"hk4e/pkg/logger"
-
+	"github.com/flswld/halo/logger"
 	lua "github.com/yuin/gopher-lua"
 )
 

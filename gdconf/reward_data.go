@@ -1,7 +1,7 @@
 package gdconf
 
 import (
-	"hk4e/pkg/logger"
+	"github.com/flswld/halo/logger"
 )
 
 // RewardData 奖励配置表

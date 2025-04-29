@@ -5,9 +5,9 @@ import (
 	"sync"
 
 	"hk4e/common/config"
-	"hk4e/pkg/logger"
 	"hk4e/protocol/proto"
 
+	"github.com/flswld/halo/logger"
 	pb "google.golang.org/protobuf/proto"
 )
 

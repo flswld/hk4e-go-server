@@ -15,11 +15,12 @@ import (
 	"hk4e/common/rpc"
 	"hk4e/gate/client_proto"
 	"hk4e/gate/dao"
-	"hk4e/gate/kcp"
 	"hk4e/node/api"
-	"hk4e/pkg/logger"
 	"hk4e/pkg/random"
 	"hk4e/protocol/cmd"
+
+	"github.com/flswld/halo/logger"
+	"github.com/flswld/halo/protocol/kcp"
 )
 
 // 网络连接管理
@@ -241,16 +242,17 @@ func (c *ConnManager) acceptHandle(tcpMode bool, kcpListener *kcp.Listener, tcpL
 			sessionId:        sessionId,
 			conn:             conn,
 			connState:        ConnEst,
+			isLogin:          atomic.Bool{},
 			userId:           0,
 			sendChan:         make(chan *ProtoMsg, 1000),
 			seed:             0,
 			xorKey:           c.dispatchKey,
-			changeXorKeyFin:  false,
 			gsServerAppId:    "",
 			multiServerAppId: "",
 			robotServerAppId: "",
 			useMagicSeed:     false,
 		}
+		session.isLogin.Store(false)
 		go c.recvHandle(session)
 		go c.sendHandle(session)
 		// 连接建立成功通知
@@ -268,11 +270,11 @@ type Session struct {
 	sessionId        uint32
 	conn             Conn
 	connState        uint32
+	isLogin          atomic.Bool
 	userId           uint32
 	sendChan         chan *ProtoMsg
 	seed             uint64
 	xorKey           []byte
-	changeXorKeyFin  bool
 	gsServerAppId    string
 	multiServerAppId string
 	robotServerAppId string
@@ -427,10 +429,9 @@ func (c *ConnManager) sendHandle(session *Session) {
 				return
 			}
 		}
-		if session.changeXorKeyFin == false && protoMsg.CmdId == cmd.GetPlayerTokenRsp {
+		if session.isLogin.Load() == false && protoMsg.CmdId == cmd.GetPlayerTokenRsp {
 			// XOR密钥切换
 			logger.Info("change session xor key, sessionId: %v", session.sessionId)
-			session.changeXorKeyFin = true
 			keyBlock := random.NewKeyBlock(session.seed, session.useMagicSeed)
 			xorKey := keyBlock.XorKey()
 			key := make([]byte, 4096)
@@ -484,7 +485,7 @@ func (c *ConnManager) closeConnBySessionId(sessionId uint32, reason uint32) {
 
 // 关闭连接
 func (c *ConnManager) closeConn(session *Session, enetType uint32) {
-	ok := atomic.CompareAndSwapUint32(&(session.connState), atomic.LoadUint32(&(session.connState)), ConnClose)
+	ok := atomic.CompareAndSwapUint32(&(session.connState), ConnEst, ConnClose)
 	if !ok {
 		return
 	}

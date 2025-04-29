@@ -12,8 +12,8 @@ import (
 	"hk4e/node/api"
 	"hk4e/node/dao"
 	"hk4e/node/service"
-	"hk4e/pkg/logger"
 
+	"github.com/flswld/halo/logger"
 	"github.com/nats-io/nats.go"
 )
 

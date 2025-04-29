@@ -1,7 +1,7 @@
 package gdconf
 
 import (
-	"hk4e/pkg/logger"
+	"github.com/flswld/halo/logger"
 )
 
 // WeatherTemplateData 天气模版配置表

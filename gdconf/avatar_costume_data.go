@@ -1,7 +1,7 @@
 package gdconf
 
 import (
-	"hk4e/pkg/logger"
+	"github.com/flswld/halo/logger"
 )
 
 // AvatarCostumeData 角色时装配置表

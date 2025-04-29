@@ -3,7 +3,7 @@ package gdconf
 import (
 	"fmt"
 
-	"hk4e/pkg/logger"
+	"github.com/flswld/halo/logger"
 )
 
 type SubDrop struct {

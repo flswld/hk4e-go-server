@@ -8,7 +8,8 @@ import (
 
 	"hk4e/common/constant"
 	"hk4e/gdconf"
-	"hk4e/pkg/logger"
+
+	"github.com/flswld/halo/logger"
 )
 
 // 玩家游戏内GM命令格式解析模块

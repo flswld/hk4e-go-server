@@ -5,7 +5,8 @@ import (
 
 	"hk4e/common/constant"
 	"hk4e/gdconf"
-	"hk4e/pkg/logger"
+
+	"github.com/flswld/halo/logger"
 )
 
 // DbQuest 玩家任务数据

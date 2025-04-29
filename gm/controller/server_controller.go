@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"hk4e/node/api"
-	"hk4e/pkg/logger"
 
+	"github.com/flswld/halo/logger"
 	"github.com/gin-gonic/gin"
 )
 

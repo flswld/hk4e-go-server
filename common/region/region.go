@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strconv"
 
-	"hk4e/pkg/logger"
+	"github.com/flswld/halo/logger"
 )
 
 func LoadRegionRsaKey() (signRsaKey []byte, encRsaKeyMap map[string][]byte, pwdRsaKey []byte) {

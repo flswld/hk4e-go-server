@@ -4,7 +4,8 @@ import (
 	"time"
 
 	"hk4e/gdconf"
-	"hk4e/pkg/logger"
+
+	"github.com/flswld/halo/logger"
 )
 
 // 本地事件队列管理器

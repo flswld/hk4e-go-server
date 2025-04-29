@@ -1,9 +1,9 @@
 package model
 
 import (
-	"hk4e/pkg/logger"
 	"hk4e/protocol/proto"
 
+	"github.com/flswld/halo/logger"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

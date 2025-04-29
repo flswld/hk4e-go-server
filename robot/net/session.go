@@ -6,14 +6,13 @@ import (
 	"time"
 
 	"hk4e/common/config"
-
 	"hk4e/gate/client_proto"
-	"hk4e/gate/kcp"
 	hk4egatenet "hk4e/gate/net"
-	"hk4e/pkg/logger"
 	"hk4e/protocol/cmd"
 	"hk4e/protocol/proto"
 
+	"github.com/flswld/halo/logger"
+	"github.com/flswld/halo/protocol/kcp"
 	pb "google.golang.org/protobuf/proto"
 )
 

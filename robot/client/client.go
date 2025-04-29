@@ -7,13 +7,13 @@ import (
 	"hk4e/common/config"
 	"hk4e/common/constant"
 	hk4egatenet "hk4e/gate/net"
-	"hk4e/pkg/logger"
 	"hk4e/pkg/object"
 	"hk4e/pkg/random"
 	"hk4e/protocol/cmd"
 	"hk4e/protocol/proto"
 	"hk4e/robot/net"
 
+	"github.com/flswld/halo/logger"
 	pb "google.golang.org/protobuf/proto"
 )
 

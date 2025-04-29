@@ -10,8 +10,8 @@ import (
 	"hk4e/common/config"
 	"hk4e/common/mq"
 	"hk4e/common/rpc"
-	"hk4e/pkg/logger"
 
+	"github.com/flswld/halo/logger"
 	"github.com/gin-gonic/gin"
 )
 

@@ -2,11 +2,11 @@ package handle
 
 import (
 	"hk4e/common/mq"
-	"hk4e/gate/kcp"
 	"hk4e/node/api"
-	"hk4e/pkg/logger"
 	"hk4e/protocol/cmd"
 
+	"github.com/flswld/halo/logger"
+	"github.com/flswld/halo/protocol/kcp"
 	pb "google.golang.org/protobuf/proto"
 )
 

@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"hk4e/common/constant"
-	"hk4e/pkg/logger"
 
+	"github.com/flswld/halo/logger"
 	"github.com/hjson/hjson-go/v4"
 )
 

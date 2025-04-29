@@ -8,13 +8,12 @@ import (
 	"time"
 
 	"hk4e/common/config"
-
 	"hk4e/common/mq"
 	"hk4e/gs/dao"
 	"hk4e/gs/model"
-	"hk4e/pkg/logger"
 	"hk4e/protocol/proto"
 
+	"github.com/flswld/halo/logger"
 	"github.com/vmihailenco/msgpack/v5"
 )
 

@@ -6,9 +6,10 @@ import (
 	"hk4e/common/constant"
 	"hk4e/gdconf"
 	"hk4e/gs/model"
-	"hk4e/pkg/logger"
 	"hk4e/protocol/cmd"
 	"hk4e/protocol/proto"
+
+	"github.com/flswld/halo/logger"
 )
 
 // 游戏服务器定时帧管理器

@@ -6,9 +6,9 @@ import (
 
 	"hk4e/common/constant"
 	"hk4e/gdconf"
-	"hk4e/pkg/logger"
 	"hk4e/protocol/proto"
 
+	"github.com/flswld/halo/logger"
 	pb "google.golang.org/protobuf/proto"
 )
 

@@ -15,8 +15,8 @@ import (
 
 	"hk4e/common/config"
 	"hk4e/common/constant"
-	"hk4e/pkg/logger"
 
+	"github.com/flswld/halo/logger"
 	"github.com/jszwec/csvutil"
 	lua "github.com/yuin/gopher-lua"
 )

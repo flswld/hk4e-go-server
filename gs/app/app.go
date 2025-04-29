@@ -18,8 +18,8 @@ import (
 	"hk4e/gs/game"
 	"hk4e/gs/service"
 	"hk4e/node/api"
-	"hk4e/pkg/logger"
 
+	"github.com/flswld/halo/logger"
 	"github.com/nats-io/nats.go"
 )
 

@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"hk4e/common/config"
-
 	"hk4e/common/mq"
 	"hk4e/node/api"
 	"hk4e/node/dao"
-	"hk4e/pkg/logger"
 	"hk4e/pkg/random"
+
+	"github.com/flswld/halo/logger"
 )
 
 const (

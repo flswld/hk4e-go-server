@@ -7,12 +7,12 @@ import (
 	"runtime"
 
 	"hk4e/pkg/alg"
-	"hk4e/pkg/logger"
 	"hk4e/pkg/navmesh"
 	"hk4e/pkg/navmesh/format"
 	"hk4e/protocol/cmd"
 	"hk4e/protocol/proto"
 
+	"github.com/flswld/halo/logger"
 	pb "google.golang.org/protobuf/proto"
 )
 

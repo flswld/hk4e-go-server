@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"hk4e/pkg/logger"
+	"github.com/flswld/halo/logger"
 )
 
 // MainQuestData 主线任务配置表

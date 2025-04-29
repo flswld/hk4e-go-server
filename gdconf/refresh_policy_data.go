@@ -7,7 +7,7 @@ import (
 
 	"hk4e/common/constant"
 
-	"hk4e/pkg/logger"
+	"github.com/flswld/halo/logger"
 )
 
 // RefreshPolicyData 刷新策略配置表

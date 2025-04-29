@@ -12,11 +12,12 @@ import (
 
 	"hk4e/common/region"
 	"hk4e/pkg/endec"
-	"hk4e/pkg/logger"
 	"hk4e/pkg/random"
 	"hk4e/protocol/cmd"
 	"hk4e/protocol/proto"
 	"hk4e/robot/net"
+
+	"github.com/flswld/halo/logger"
 )
 
 func GateLogin(dispatchInfo *DispatchInfo, accountInfo *AccountInfo, keyId string) (*net.Session, error) {

@@ -1,6 +1,8 @@
 package model
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 type SdkAccount struct {
 	ID                   primitive.ObjectID `bson:"_id,omitempty"`

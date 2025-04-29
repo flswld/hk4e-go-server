@@ -12,9 +12,9 @@ import (
 
 	"hk4e/common/constant"
 	"hk4e/gs/model"
-	"hk4e/pkg/logger"
 	"hk4e/protocol/proto"
 
+	"github.com/flswld/halo/logger"
 	"gitlab.com/gomidi/midi/v2"
 	"gitlab.com/gomidi/midi/v2/smf"
 )

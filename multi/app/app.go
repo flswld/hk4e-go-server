@@ -14,7 +14,8 @@ import (
 	"hk4e/gdconf"
 	"hk4e/multi/handle"
 	"hk4e/node/api"
-	"hk4e/pkg/logger"
+
+	"github.com/flswld/halo/logger"
 )
 
 var APPID string

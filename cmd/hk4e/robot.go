@@ -1,13 +1,12 @@
 package main
 
 import (
-	cfg "hk4e/common/config"
-
-	"github.com/spf13/cobra"
-
 	"context"
 
+	cfg "hk4e/common/config"
 	"hk4e/robot/app"
+
+	"github.com/spf13/cobra"
 )
 
 func RobotCmd() *cobra.Command {

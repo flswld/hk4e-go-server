@@ -16,8 +16,9 @@ import (
 	gsapp "hk4e/gs/app"
 	multiapp "hk4e/multi/app"
 	nodeapp "hk4e/node/app"
-	"hk4e/pkg/logger"
 	"hk4e/pkg/statsviz_serve"
+
+	"github.com/flswld/halo/logger"
 )
 
 var (

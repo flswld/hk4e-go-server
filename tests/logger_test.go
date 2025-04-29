@@ -1,9 +1,9 @@
 package tests
 
 import (
-	"hk4e/pkg/logger"
-
 	"testing"
+
+	"github.com/flswld/halo/logger"
 )
 
 func TestLogger(t *testing.T) {

@@ -1,6 +1,8 @@
 package reflection
 
-import "reflect"
+import (
+	"reflect"
+)
 
 func ConvStructToMap(value any) map[string]any {
 	refType := reflect.TypeOf(value)

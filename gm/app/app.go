@@ -11,7 +11,8 @@ import (
 	"hk4e/common/rpc"
 	"hk4e/gm/controller"
 	"hk4e/node/api"
-	"hk4e/pkg/logger"
+
+	"github.com/flswld/halo/logger"
 )
 
 func Run(ctx context.Context) error {

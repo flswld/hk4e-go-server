@@ -6,8 +6,7 @@ import (
 
 	"hk4e/pkg/alg"
 
-	"hk4e/pkg/logger"
-
+	"github.com/flswld/halo/logger"
 	"github.com/hjson/hjson-go/v4"
 )
 

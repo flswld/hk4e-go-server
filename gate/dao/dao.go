@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"hk4e/common/config"
-	"hk4e/pkg/logger"
 
+	"github.com/flswld/halo/logger"
 	"github.com/glebarez/sqlite"
 	"github.com/go-redis/redis/v8"
 	"go.mongodb.org/mongo-driver/mongo"

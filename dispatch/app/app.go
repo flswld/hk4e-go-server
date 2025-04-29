@@ -14,7 +14,8 @@ import (
 	"hk4e/dispatch/controller"
 	"hk4e/dispatch/dao"
 	"hk4e/node/api"
-	"hk4e/pkg/logger"
+
+	"github.com/flswld/halo/logger"
 )
 
 var APPID string

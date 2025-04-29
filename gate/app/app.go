@@ -16,7 +16,8 @@ import (
 	"hk4e/gate/dao"
 	"hk4e/gate/net"
 	"hk4e/node/api"
-	"hk4e/pkg/logger"
+
+	"github.com/flswld/halo/logger"
 )
 
 var APPID string

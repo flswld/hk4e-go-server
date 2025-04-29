@@ -14,11 +14,12 @@ import (
 
 	"hk4e/common/config"
 	"hk4e/pkg/endec"
-	"hk4e/pkg/logger"
 	"hk4e/protocol/cmd"
 	"hk4e/protocol/proto"
 	"hk4e/robot/client"
 	"hk4e/robot/login"
+
+	"github.com/flswld/halo/logger"
 )
 
 var APPVERSION string

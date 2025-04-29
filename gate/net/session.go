@@ -19,15 +19,15 @@ import (
 	"hk4e/common/mq"
 	"hk4e/dispatch/controller"
 	"hk4e/gate/dao"
-	"hk4e/gate/kcp"
 	"hk4e/node/api"
 	"hk4e/pkg/endec"
 	"hk4e/pkg/httpclient"
-	"hk4e/pkg/logger"
 	"hk4e/pkg/random"
 	"hk4e/protocol/cmd"
 	"hk4e/protocol/proto"
 
+	"github.com/flswld/halo/logger"
+	"github.com/flswld/halo/protocol/kcp"
 	pb "google.golang.org/protobuf/proto"
 )
 
@@ -35,14 +35,12 @@ import (
 
 const (
 	ConnEst = iota
-	ConnWaitLogin
-	ConnActive
 	ConnClose
 )
 
 // 转发客户端消息到其他服务器 每个连接独立协程
 func (c *ConnManager) forwardClientMsgToServerHandle(protoMsg *ProtoMsg, session *Session) {
-	if session.connState == ConnClose {
+	if atomic.LoadUint32(&session.connState) == ConnClose {
 		return
 	}
 	if protoMsg.HeadMessage == nil {
@@ -53,10 +51,9 @@ func (c *ConnManager) forwardClientMsgToServerHandle(protoMsg *ProtoMsg, session
 	switch protoMsg.CmdId {
 	case cmd.GetPlayerTokenReq:
 		// GATE登录包
-		if session.connState != ConnEst {
+		if session.isLogin.Load() {
 			return
 		}
-		session.connState = ConnWaitLogin
 		req := protoMsg.PayloadMessage.(*proto.GetPlayerTokenReq)
 		rsp := c.doGateLogin(req, session)
 		// 返回数据到客户端
@@ -69,14 +66,14 @@ func (c *ConnManager) forwardClientMsgToServerHandle(protoMsg *ProtoMsg, session
 		session.sendChan <- msg
 	case cmd.PlayerForceExitReq:
 		// 退出游戏
-		if session.connState != ConnActive {
+		if !session.isLogin.Load() {
 			return
 		}
 		// 关闭连接
 		c.closeConnBySessionId(protoMsg.SessionId, kcp.EnetClientClose)
 	case cmd.PlayerLoginReq:
 		// GS登录包
-		if session.connState != ConnWaitLogin {
+		if session.isLogin.Load() {
 			return
 		}
 		req := protoMsg.PayloadMessage.(*proto.PlayerLoginReq)
@@ -95,7 +92,7 @@ func (c *ConnManager) forwardClientMsgToServerHandle(protoMsg *ProtoMsg, session
 			GameMsg: gameMsg,
 		})
 	default:
-		if session.connState != ConnActive {
+		if !session.isLogin.Load() {
 			logger.Error("conn not active so drop packet, cmdId: %v, uid: %v, sessionId: %v",
 				protoMsg.CmdId, session.userId, protoMsg.SessionId)
 			return
@@ -206,14 +203,14 @@ func (c *ConnManager) gameMsgHandle(
 			logger.Error("session is nil, sessionId: %v", protoMsg.SessionId)
 			return
 		}
-		if session.connState == ConnClose {
+		if atomic.LoadUint32(&session.connState) == ConnClose {
 			return
 		}
 		if protoMsg.CmdId == cmd.PlayerLoginRsp {
 			rsp := protoMsg.PayloadMessage.(*proto.PlayerLoginRsp)
 			if rsp.Retcode == 0 {
 				logger.Debug("session active, sessionId: %v", protoMsg.SessionId)
-				session.connState = ConnActive
+				session.isLogin.Store(true)
 				// 通知GS玩家各个服务器的appid
 				serverMsg := &mq.ServerMsg{
 					UserId:           session.userId,

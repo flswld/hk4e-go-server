@@ -8,7 +8,8 @@ import (
 	"strings"
 
 	"hk4e/gs/model"
-	"hk4e/pkg/logger"
+
+	"github.com/flswld/halo/logger"
 )
 
 // GM命令管理器模块

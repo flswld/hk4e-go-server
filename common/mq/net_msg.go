@@ -1,6 +1,8 @@
 package mq
 
-import pb "google.golang.org/protobuf/proto"
+import (
+	pb "google.golang.org/protobuf/proto"
+)
 
 const (
 	MsgTypeGame     = iota // 来自客户端的游戏消息

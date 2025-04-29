@@ -4,7 +4,8 @@ import (
 	"encoding/binary"
 
 	"hk4e/pkg/endec"
-	"hk4e/pkg/logger"
+
+	"github.com/flswld/halo/logger"
 )
 
 // hk4e游戏协议编解码

@@ -2,7 +2,8 @@ package model
 
 import (
 	"hk4e/gdconf"
-	"hk4e/pkg/logger"
+
+	"github.com/flswld/halo/logger"
 )
 
 type DbReliquary struct {

@@ -7,17 +7,16 @@ import (
 	"sync"
 	"time"
 
-	"hk4e/dispatch/model"
-
 	"hk4e/common/config"
 	"hk4e/common/mq"
 	"hk4e/common/region"
 	"hk4e/common/rpc"
 	"hk4e/dispatch/dao"
+	"hk4e/dispatch/model"
 	"hk4e/node/api"
-	"hk4e/pkg/logger"
 	"hk4e/pkg/random"
 
+	"github.com/flswld/halo/logger"
 	"github.com/gin-gonic/gin"
 )
 
