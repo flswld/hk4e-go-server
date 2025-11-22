@@ -226,7 +226,7 @@ func (c *ConnManager) acceptHandle(tcpMode bool, kcpListener *kcp.Listener, tcpL
 				connEstFreqLimitTimer = now
 			} else {
 				logger.Error("conn est freq limit, now: %v conn/s", connEstFreqLimitCounter)
-				_ = conn.Close(kcp.EnetServerKick)
+				_ = conn.CloseReason(kcp.EnetServerKick)
 				continue
 			}
 		}
@@ -494,7 +494,7 @@ func (c *ConnManager) closeConn(session *Session, enetType uint32) {
 	// 清理数据
 	c.DeleteSession(session.sessionId, session.userId)
 	// 关闭连接
-	_ = session.conn.Close(enetType)
+	_ = session.conn.CloseReason(enetType)
 	// 连接关闭通知
 	c.connEventChan <- &ConnEvent{
 		SessionId:    session.sessionId,
@@ -634,7 +634,7 @@ func (c *ConnManager) syncWhiteList() {
 type Conn interface {
 	GetSessionId() uint32
 	GetConv() uint32
-	Close(e uint32) error
+	CloseReason(e uint32) error
 	RemoteAddr() net.Addr
 	SetReadDeadline(t time.Time) error
 	Read(b []byte) (int, error)
@@ -667,7 +667,7 @@ func (c *TCPConn) GetConv() uint32 {
 	return 0
 }
 
-func (c *TCPConn) Close(e uint32) error {
+func (c *TCPConn) CloseReason(e uint32) error {
 	return c.TCPConn.Close()
 }
 
