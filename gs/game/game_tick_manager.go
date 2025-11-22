@@ -190,7 +190,10 @@ func (t *TickManager) OnGameServerTick() {
 		t.onTickHour(now)
 	}
 	for userId, userTick := range t.userTickMap {
-		if len(userTick.globalTick.C) == 0 {
+		select {
+		case <-userTick.globalTick.C:
+			break
+		default:
 			// 跳过还没到时间的定时器
 			continue
 		}
