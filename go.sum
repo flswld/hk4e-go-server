@@ -24,8 +24,8 @@ github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f h1:lO4WD4F/r
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f/go.mod h1:cuUVRXasLTGF7a8hSLbxyZXjz+1KgoB3wDUb6vlszIc=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
-github.com/flswld/halo v1.1.1 h1:QuLPBfVOxU7PC+smcb9oU/Mdd1ZaFZlsEnjAtFPuhv8=
-github.com/flswld/halo v1.1.1/go.mod h1:FE+YKLvDDlbKkPeXeCYWmj6S8HZl6FMR1//uPqp9kWY=
+github.com/flswld/halo v1.2.3 h1:hiYB39wFupVoOsYvYdCtI/fd2eywTqfzWJpqH51nIB8=
+github.com/flswld/halo v1.2.3/go.mod h1:FE+YKLvDDlbKkPeXeCYWmj6S8HZl6FMR1//uPqp9kWY=
 github.com/fsnotify/fsnotify v1.4.9 h1:hsms1Qyu0jgnwNXIxa+/V/PDsU6CfLf6CNO8H7IWoS4=
 github.com/fsnotify/fsnotify v1.4.9/go.mod h1:znqG4EE+3YCdAaPaxE2ZRY/06pZUdp0tY4IgpuI1SZQ=
 github.com/gabriel-vasile/mimetype v1.4.2 h1:w5qFW6JKBz9Y393Y4q372O9A7cUSequkh1Q7OhCmWKU=

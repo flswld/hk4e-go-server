@@ -7,7 +7,7 @@ require (
 	github.com/arl/statsviz v0.5.1
 	github.com/byebyebruce/natsrpc v0.5.5
 	github.com/dengsgo/math-engine v0.0.0-20230823154425-78f211b48149
-	github.com/flswld/halo v1.1.1
+	github.com/flswld/halo v1.2.3
 	github.com/gin-gonic/gin v1.9.1
 	github.com/glebarez/sqlite v1.11.0
 	github.com/go-redis/redis/v8 v8.11.5
